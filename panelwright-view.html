@@ -88,6 +88,91 @@ header .toolbar .info b { color: var(--amber); font-weight: 600; }
   display: flex; align-items: center; justify-content: center;
 }
 
+/* Fill-data slide-out panel from the right side of the stage */
+.fill-panel {
+  position: absolute; top: 0; right: -340px;
+  width: 340px; height: 100%;
+  background: var(--panel); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  transition: right 0.16s ease-out;
+  z-index: 100; box-shadow: -8px 0 18px rgba(0,0,0,0.3);
+}
+.fill-panel.open { right: 0; }
+.fill-panel > header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+}
+.fill-panel > header h2 {
+  font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--amber);
+}
+.fill-panel > header .close {
+  background: transparent; border: none; color: var(--ink-dim);
+  font-size: 18px; cursor: pointer; padding: 0 4px;
+}
+.fill-panel > header .close:hover { color: var(--amber-bright); }
+.fill-explain {
+  padding: 10px 16px; font-size: 10px; line-height: 1.5;
+  color: var(--ink-dim); border-bottom: 1px solid var(--border);
+}
+.fill-rows {
+  flex: 1; overflow-y: auto;
+  padding: 8px 0;
+}
+.fill-row {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.fill-row .label {
+  display: flex; gap: 8px; align-items: baseline;
+  margin-bottom: 6px; font-size: 10px;
+  color: var(--ink-dim); text-transform: uppercase; letter-spacing: 0.06em;
+}
+.fill-row .label .name { color: var(--ink); }
+.fill-row .label .type {
+  font-size: 9px; color: var(--ink-mute);
+  margin-left: auto;
+}
+.fill-row .label .override-flag {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--amber); display: inline-block;
+  visibility: hidden;
+}
+.fill-row.has-override .label .override-flag { visibility: visible; }
+.fill-row .control input[type="number"],
+.fill-row .control input[type="text"],
+.fill-row .control select {
+  width: 100%;
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--ink); padding: 4px 6px; font-family: var(--mono);
+  font-size: 11px;
+}
+.fill-row .control input[type="range"] { width: 100%; }
+.fill-row .control input[type="checkbox"] { transform: scale(1.2); }
+.fill-row .control .range-value {
+  display: inline-block; min-width: 40px; text-align: right;
+  color: var(--amber); font-size: 10px;
+  margin-left: 8px;
+}
+.fill-row .control .pair {
+  display: flex; align-items: center; gap: 8px;
+}
+.fill-panel > footer {
+  padding: 10px 16px; border-top: 1px solid var(--border);
+  display: flex; gap: 8px;
+}
+.fill-panel > footer .link {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--ink-dim); padding: 4px 10px; cursor: pointer;
+  font-family: inherit; font-size: 10px; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.fill-panel > footer .link:hover { color: var(--amber-bright); border-color: var(--amber); }
+.fill-empty {
+  padding: 24px 16px; text-align: center;
+  color: var(--ink-mute); font-size: 10px; line-height: 1.5;
+}
+
 .device-shell {
   position: relative;
   background: #050505;
@@ -294,6 +379,7 @@ footer.status .spacer { flex: 1; }
     <a href="../" class="back-link">\u2190 Editor</a>
     <button id="btn-load" class="primary">Open .json</button>
     <input type="file" id="file-input" accept=".json" style="display:none">
+    <button id="btn-fill-data" title="Override widget values to test the design" style="display:none;">Fill Data</button>
     <button id="btn-reset" style="display:none;">Reset to default</button>
   </div>
 </header>
@@ -312,6 +398,20 @@ footer.status .spacer { flex: 1; }
     <div class="shell-banner" id="shell-banner">ARDUINO GIGA DISPLAY SHIELD</div>
     <div id="canvas"></div>
   </div>
+  <aside class="fill-panel" id="fill-panel">
+    <header>
+      <h2>Fill Data</h2>
+      <button class="close" id="fill-close" title="Close">&times;</button>
+    </header>
+    <div class="fill-explain">
+      Override widget values to walk through what your design will look like
+      with live data. Changes do not persist to the saved project.
+    </div>
+    <div class="fill-rows" id="fill-rows"></div>
+    <footer>
+      <button class="link" id="fill-clear">Clear overrides</button>
+    </footer>
+  </aside>
 </div>
 
 <footer class="status">
@@ -354,7 +454,8 @@ const LV_SYMBOLS = {
   battery_2: { ch: '\u2585' }, battery_1: { ch: '\u2583' }, battery_empty: { ch: '\u2581' }
 };
 
-const state = { project: null, activeScreenId: null, defaultScreenId: null };
+const state = { project: null, activeScreenId: null, defaultScreenId: null,
+                 fillData: {} };
 
 const $canvas = document.getElementById('canvas');
 const $shell = document.getElementById('device-shell');
@@ -365,6 +466,9 @@ const $statusProject = document.getElementById('status-project');
 const $statusScreen = document.getElementById('status-screen');
 const $statusTheme = document.getElementById('status-theme');
 const $btnReset = document.getElementById('btn-reset');
+const $btnFillData = document.getElementById('btn-fill-data');
+const $fillPanel = document.getElementById('fill-panel');
+const $fillRows = document.getElementById('fill-rows');
 
 // Color helpers (same as the editor)
 function hexToRgb(h) {
@@ -789,7 +893,8 @@ function renderScreen(screenId) {
   for (const w of screen.widgets) {
     const r = RENDERERS[w.type];
     if (!r) continue;
-    const el = r(w);
+    const effective = applyFillData(w);
+    const el = r(effective);
     // Navigation: buttons with goto action become clickable
     if (w.type === 'button' && w.props.action === 'goto' && w.props.actionTarget) {
       el.classList.add('clickable');
@@ -804,11 +909,220 @@ function renderScreen(screenId) {
                              ' // SCREEN: ' + screen.name.toUpperCase();
   $infoScreen.innerHTML = 'Screen: <b>' + escapeHtml(screen.name) + '</b>';
   $statusScreen.textContent = screen.name;
+  // Rebuild the fill-data panel for this screen's widgets
+  renderFillRows();
+}
+
+// Returns a shallow widget clone whose props include any active fill-data
+// overrides for that widget. Renderers operate on the clone unchanged, so
+// they need no fill-data awareness.
+function applyFillData(w) {
+  const override = state.fillData[w.id];
+  if (!override) return w;
+  return Object.assign({}, w, { props: Object.assign({}, w.props, override) });
 }
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+// ----- Fill data mode -------------------------------------
+// Each widget on the active screen is listed with a control matching its
+// type. Editing the control writes an override into state.fillData; the
+// renderer reads from there before rendering. Overrides do not persist
+// across screen changes or loads, by design: this is a what-if tool.
+
+// Returns a list of fill-data-compatible widgets on the active screen,
+// flattened (tab children included), keyed by id.
+function collectFillTargets() {
+  const out = [];
+  if (!state.project) return out;
+  const screen = state.project.screens.find(s => s.id === state.activeScreenId);
+  if (!screen) return out;
+  function walk(arr) {
+    for (const w of arr) {
+      out.push(w);
+      if (w.type === 'tabview' && Array.isArray(w.props && w.props.tabs)) {
+        for (const t of w.props.tabs) {
+          if (Array.isArray(t.widgets)) walk(t.widgets);
+        }
+      }
+    }
+  }
+  walk(screen.widgets);
+  return out.filter(w => fillSpec(w) !== null);
+}
+
+// Per-widget-type fill spec: which prop to override and how to control it.
+// Returns null for types we don't expose. The shape is:
+//   { prop, kind, ...args }
+// Where kind is 'range' (slider/bar/arc/meter), 'text' (label/textarea),
+// 'bool' (switch/checkbox/led), or 'select' (dropdown/roller).
+function fillSpec(w) {
+  switch (w.type) {
+    case 'slider':
+    case 'bar':
+    case 'arc':
+    case 'meter':
+      return { prop: 'value', kind: 'range',
+               min: w.props.min != null ? w.props.min : 0,
+               max: w.props.max != null ? w.props.max : 100 };
+    case 'label':
+    case 'textarea':
+      return { prop: 'text', kind: 'text' };
+    case 'switch':
+    case 'checkbox':
+      return { prop: 'checked', kind: 'bool' };
+    case 'led':
+      return { prop: 'on', kind: 'bool' };
+    case 'dropdown':
+    case 'roller':
+      return { prop: 'selected', kind: 'select',
+               options: (w.props.options || '').split('\n').filter(s => s.length) };
+    default:
+      return null;
+  }
+}
+
+function renderFillRows() {
+  if (!$fillRows) return;
+  $fillRows.innerHTML = '';
+  const targets = collectFillTargets();
+  if (!targets.length) {
+    $fillRows.innerHTML = '<div class="fill-empty">No value-bearing widgets on this screen.<br>' +
+      'Add a slider, label, bar, switch, or chart in the editor.</div>';
+    return;
+  }
+  for (const w of targets) {
+    const spec = fillSpec(w);
+    const override = state.fillData[w.id] || {};
+    const hasOverride = spec.prop in override;
+    const effectiveVal = hasOverride ? override[spec.prop] : w.props[spec.prop];
+
+    const row = document.createElement('div');
+    row.className = 'fill-row' + (hasOverride ? ' has-override' : '');
+
+    const labelLine = document.createElement('div');
+    labelLine.className = 'label';
+    labelLine.innerHTML =
+      '<span class="override-flag"></span>' +
+      '<span class="name">' + escapeHtml(w.name) + '</span>' +
+      '<span class="type">' + w.type + '</span>';
+    row.appendChild(labelLine);
+
+    const control = document.createElement('div');
+    control.className = 'control';
+
+    if (spec.kind === 'range') {
+      const pair = document.createElement('div');
+      pair.className = 'pair';
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.min = spec.min; range.max = spec.max;
+      range.value = effectiveVal != null ? effectiveVal : spec.min;
+      const num = document.createElement('input');
+      num.type = 'number';
+      num.style.width = '64px';
+      num.min = spec.min; num.max = spec.max;
+      num.value = range.value;
+      range.addEventListener('input', () => {
+        num.value = range.value;
+        setOverride(w.id, spec.prop, parseInt(range.value, 10));
+      });
+      num.addEventListener('input', () => {
+        let v = parseInt(num.value, 10);
+        if (isNaN(v)) return;
+        v = Math.max(spec.min, Math.min(spec.max, v));
+        range.value = v;
+        setOverride(w.id, spec.prop, v);
+      });
+      pair.appendChild(range);
+      pair.appendChild(num);
+      control.appendChild(pair);
+    } else if (spec.kind === 'text') {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = effectiveVal != null ? effectiveVal : '';
+      inp.addEventListener('input', () => setOverride(w.id, spec.prop, inp.value));
+      control.appendChild(inp);
+    } else if (spec.kind === 'bool') {
+      const inp = document.createElement('input');
+      inp.type = 'checkbox';
+      inp.checked = !!effectiveVal;
+      inp.addEventListener('change', () => setOverride(w.id, spec.prop, inp.checked));
+      control.appendChild(inp);
+    } else if (spec.kind === 'select') {
+      const sel = document.createElement('select');
+      for (let i = 0; i < spec.options.length; i++) {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = spec.options[i];
+        if (i === (effectiveVal | 0)) opt.selected = true;
+        sel.appendChild(opt);
+      }
+      sel.addEventListener('change', () => setOverride(w.id, spec.prop, parseInt(sel.value, 10)));
+      control.appendChild(sel);
+    }
+    row.appendChild(control);
+    $fillRows.appendChild(row);
+  }
+}
+
+function setOverride(widgetId, propKey, value) {
+  if (!state.fillData[widgetId]) state.fillData[widgetId] = {};
+  state.fillData[widgetId][propKey] = value;
+  // Re-render the canvas with the new value, but skip the fill-row rebuild
+  // so the user's cursor stays in the input they were typing into.
+  if (state.activeScreenId) {
+    const screen = state.project.screens.find(s => s.id === state.activeScreenId);
+    if (screen) renderCanvasOnly(screen);
+  }
+  // Mark the row visually as overridden
+  const row = $fillRows.querySelector('.fill-row');
+  $fillRows.querySelectorAll('.fill-row').forEach(r => {
+    const name = r.querySelector('.name')?.textContent;
+    if (!name) return;
+    const w = collectFillTargets().find(ww => ww.name === name);
+    if (!w) return;
+    const has = state.fillData[w.id] && Object.keys(state.fillData[w.id]).length > 0;
+    r.classList.toggle('has-override', !!has);
+  });
+}
+
+// Re-render just the canvas (no fill-row rebuild). Used when an override
+// changes value so the rows panel doesn't blow away the user's input focus.
+function renderCanvasOnly(screen) {
+  $canvas.innerHTML = '';
+  $canvas.classList.toggle('theme-tradigital', state.project.theme === 'tradigital');
+  for (const w of screen.widgets) {
+    const r = RENDERERS[w.type];
+    if (!r) continue;
+    const effective = applyFillData(w);
+    const el = r(effective);
+    if (w.type === 'button' && w.props.action === 'goto' && w.props.actionTarget) {
+      el.classList.add('clickable');
+      el.addEventListener('click', () => renderScreen(w.props.actionTarget));
+    }
+    $canvas.appendChild(el);
+  }
+}
+
+function clearAllOverrides() {
+  state.fillData = {};
+  renderFillRows();
+  if (state.activeScreenId) renderScreen(state.activeScreenId);
+}
+
+function toggleFillPanel() {
+  const open = $fillPanel.classList.toggle('open');
+  if (open) renderFillRows();
+}
+
+if ($btnFillData) $btnFillData.addEventListener('click', toggleFillPanel);
+const $fillClose = document.getElementById('fill-close');
+const $fillClear = document.getElementById('fill-clear');
+if ($fillClose) $fillClose.addEventListener('click', () => $fillPanel.classList.remove('open'));
+if ($fillClear) $fillClear.addEventListener('click', clearAllOverrides);
 
 function loadProject(data) {
   // Migrate v1 → v2 just like the editor does
@@ -818,11 +1132,13 @@ function loadProject(data) {
   data.orientation = data.orientation || 'landscape';
   data.theme = data.theme || 'lvgl_default';
   state.project = data;
+  state.fillData = {};
   const def = (data.screens.find(s => s.isDefault) || data.screens[0]);
   state.defaultScreenId = def ? def.id : null;
   $empty.style.display = 'none';
   $shell.style.display = '';
   $btnReset.style.display = '';
+  if ($btnFillData) $btnFillData.style.display = '';
   $statusProject.textContent = data.tool || 'PANELWRIGHT';
   $statusTheme.textContent = data.theme;
   renderScreen(state.defaultScreenId);

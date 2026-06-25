@@ -23,6 +23,42 @@ library stack.
 It is a drafting tool. It does not run your code, simulate touch events, or
 flash the board. It produces source you paste into the Arduino IDE.
 
+## What landed recently
+
+Eight waves of editor work since the initial 18-widget release:
+
+1. Project metadata, dirty indicator, keyboard nudging, snap-to-margin guides,
+   copy/paste/duplicate, and a right-click context menu.
+2. Multi-select with rubber-band box-select, group drag, group nudge, group
+   align/distribute, and a right-click group menu.
+3. Layer outline panel with glyph + name + type rows, drag-to-reorder z-order,
+   and click-and-drag numeric scrubbing on every geometry and property number
+   input (Shift for 10x, Alt for 0.1x).
+4. Pre-generate validation pass that catches duplicate names, C++ reserved
+   words, stale navigation targets, and orphan keyboard bindings; a
+   board-profile abstraction (Giga + Display Shield, Custom); and a
+   `arduino_secrets.h` split for WiFi credentials in zip exports.
+5. Tab sub-canvases: tabview tabs are now editable nested workspaces.
+   Double-click a tabview to enter a tab, lay widgets inside the tab content
+   area, and the generator emits children with the correct LVGL parent.
+6. Codegen refactored into section emitters; new `ui.h` / `ui.cpp` split for
+   larger projects. The .ino keeps the hardware (display, touch,
+   peripherals, setup/loop); ui.cpp holds the theme, event handlers, and
+   per-screen builders; ui.h is the contract between them.
+7. Docked live preview in the editor; Fill Data mode in the viewer. The
+   editor gets a Preview button that opens a side panel mirroring the active
+   screen in real time, with goto buttons clickable for nav testing. The
+   viewer gets a Fill Data button that lists every value-bearing widget on
+   the current screen with type-appropriate controls (range, text,
+   checkbox, select) so you can walk through what the design will look
+   like with realistic data.
+8. SVG export. An Export SVG button in the toolbar opens a small modal
+   for choosing scope (current screen vs. all screens packed into a zip)
+   and whether to wrap each screen in the device-shell frame. The output
+   uses HTML in `foreignObject` so every browser renders it pixel-perfect
+   with the editor canvas. PNG rasterization is deferred to a future round
+   that ships native SVG primitives.
+
 ## What it is not
 
 Not a full IDE. Not a runtime emulator. Not a substitute for reading the LVGL
@@ -135,6 +171,53 @@ void setup() {
   lv_scr_load(scr_main);
 }
 ```
+
+---
+
+## Editing tab content
+
+The Tabview widget is more than a static container: each of its tabs is its
+own editable workspace.
+
+Drop a Tabview from the palette and you see the tab bar drawn on the canvas
+with placeholder content that says "(double-click to edit tab content)". To
+enter a tab, either:
+
+- double-click the tabview on the canvas, which opens the tab marked as the
+  preview tab in the properties panel, or
+- select the tabview and click one of the **Enter tab** buttons in the
+  properties panel (one per tab), or
+- use the tab switcher buttons in the scope breadcrumb once you are already
+  inside one of the tabs.
+
+While editing a tab:
+
+- a breadcrumb appears above the canvas showing
+  `[screen] > [tabview name] > [tab name]`, with click-to-pop crumbs and an
+  **Exit tab** button on the right;
+- the parent screen's widgets dim out and the host tabview gets an amber
+  outline so you keep your context;
+- a dashed amber frame marks the tab content area, and widget coordinates
+  inside the tab are relative to that frame's top-left (LVGL parent
+  semantics, so the generator can hand them straight to LVGL);
+- drag, drop, nudge, multi-select, align, distribute, copy, paste, and
+  numeric scrubbing all work exactly as they do at the screen root, just
+  clamped to the tab content bounds.
+
+Tab names are edited as one-per-line in the properties panel. Renaming
+preserves the existing per-tab widget arrays; reducing the line count drops
+the trailing tabs.
+
+The generator emits one `lv_tabview_add_tab(...)` call per tab. Tabs with
+children inside them recurse: the generator outputs
+`lv_btn_create(<tv>_tab_0)` (or whichever widget type) with the tab handle as
+the parent. Tabs without children stay as a `(void)<tv>_tab_N;` line that
+suppresses the unused-variable warning.
+
+Validation walks every tab on every screen. Widget names across screens and
+tabs share a single namespace; a duplicate inside a tab will show up in the
+validation modal just like one on a screen, and clicking the entry jumps
+into the tab.
 
 ---
 
@@ -323,6 +406,49 @@ above for the exact rules.
 
 ---
 
+## Single .ino vs split layout
+
+In **Project Details** the **Code layout** option chooses between two outputs.
+The choice only affects what the zip export writes; the on-screen Generate
+Code preview always shows the single-file form, because it is the most
+readable representation of the whole project.
+
+**Single .ino** (the default) puts everything in one file. Header comment,
+includes, display and touch declarations, peripheral globals and init
+functions, screen and widget handle declarations, theme, event handlers,
+screen builders, `setup()`, and `loop()`. Three hundred lines for a small
+project, two thousand for a large one. Zero indirection.
+
+**Split into ui.h / ui.cpp** is the option for larger projects. The zip
+contains three files:
+
+- `<sketch>.ino` is the Arduino entry point. It owns the hardware: display
+  and touch declarations, every peripheral's includes and init functions,
+  `setup()` (which calls peripheral inits then `ui_init()`), and `loop()`.
+- `ui.h` is the contract between the .ino and the LVGL logic. It declares
+  the screen and widget handles as `extern`, exposes a single
+  `void ui_init(void)` entry point, and includes `lvgl.h`.
+- `ui.cpp` owns the UI logic. It defines every handle, holds the theme
+  function, every event handler, every `build_screen_*` function, and
+  implements `ui_init()` (theme apply + every screen build + load default).
+
+The split exists because past a few hundred widgets the single-file output
+becomes harder to navigate than separate compilation units. The .ino stays
+short. The ui.cpp groups all the LVGL code together where it is easy to
+read and to hand-edit after generation.
+
+One caveat for users with custom Event Code: peripheral state like
+`mic_buffer` lives in the .ino. If your custom code in an event handler
+references a peripheral global, you will need to add a matching `extern`
+declaration to the top of ui.cpp by hand. The default event handlers
+(navigation, `Serial.println` stubs, value reads via `lv_*_get_value`) need
+no externs and compile cleanly.
+
+The validation pass, the `arduino_secrets.h` companion, the .gitignore, and
+the tab sub-canvas codegen all work in both layouts.
+
+---
+
 ## Project files
 
 PANELWRIGHT can save and load its own layouts as JSON. Use **Save .json** in
@@ -404,6 +530,54 @@ generator translates these into the (sweep_angle, rotation) pair that
 
 ---
 
+## Docked live preview
+
+The **Preview** button in the toolbar opens a side panel between the canvas
+and the property panel. It renders the active screen at every edit, scaled
+to fit the dock, with no selection chrome, no resize handles, and no drag
+listeners. The preview shows what the device will actually display.
+
+Goto buttons in the preview are clickable: clicking one switches the
+editor's active screen, so you can walk a navigation flow without leaving
+the editor. Tab content renders at its real position inside the parent
+tabview (using the tabview's `activeTab` prop to pick which tab to show),
+so previewing a screen with a tabview shows the tab that the device will
+boot to.
+
+The preview updates on every editor action: drag, drop, nudge, property
+edit, scrub, theme change, screen switch, undo, redo. Toggle it off when
+you do not need it; the dock takes about 380 pixels of horizontal screen
+real estate.
+
+---
+
+## SVG export
+
+The **Export SVG** button in the toolbar opens a small modal with two
+options: **Scope** (current screen only, or all screens packed into a
+zip) and **Device shell** (plain canvas, best for embedding in
+documentation, or a product-photo style frame with the device shield
+banner). The download is one .svg file or one .zip of .svg files.
+
+Each exported SVG is a complete standalone document. The screen content
+is wrapped in an SVG `<foreignObject>` with HTML inside and the widget
+CSS inlined, which means every browser renders the SVG pixel-perfect
+with the editor canvas. The same renderers that paint the editor produce
+the export, so a meter or chart or arc or any custom widget styling
+carries through.
+
+PNG rasterization is intentionally not in this release. Drawing an SVG
+that contains foreignObject onto a canvas taints the canvas by browser
+security policy, and the tainted canvas refuses to export via `toBlob`
+or `toDataURL`. The proper path to PNG is a set of native SVG primitive
+renderers (rect, text, circle, path per widget type), which is its own
+focused round of work and is on the roadmap. In the meantime, the SVG
+output is a clean and durable artifact for design docs, design reviews,
+and code documentation, and any tool that renders SVG (browser save-as,
+Inkscape, ImageMagick, Pixelmator) can turn it into a PNG.
+
+---
+
 ## PANELWRIGHT View
 
 `panelwright-view.html` is a separate, standalone HTML file that loads a
@@ -419,6 +593,28 @@ one. The Reset button returns to the project's default screen.
 The viewer ships with the same eighteen widget renderers as the editor and
 honors the project's theme. It does not allow editing, generating code, or
 saving; it is read-only.
+
+### Fill Data mode
+
+The viewer's **Fill Data** button (visible once a project is loaded) opens
+a slide-out panel from the right side of the stage. Every value-bearing
+widget on the active screen gets a row with a type-appropriate control:
+
+- Sliders, bars, arcs, and meters get a range slider plus a number input,
+  bounded by the widget's min and max.
+- Labels and textareas get a text input.
+- Switches, checkboxes, and the LED widget get a checkbox.
+- Dropdowns and rollers get a select with the widget's options.
+
+Each row has a small amber dot that lights up when an override is active.
+The **Clear overrides** button in the panel footer resets everything to
+the widget defaults from the saved project.
+
+Overrides do not persist. They are a what-if tool for walking through what
+the design will look like with realistic data ("battery at 23 percent",
+"WiFi off", "temperature reading 87 degrees") before you flash the board
+and feed it real values. Changing screens preserves overrides on the
+screen you left; loading a new project clears everything.
 
 ### Editor and viewer linkage
 
@@ -457,9 +653,6 @@ inside its two HTML files, and each one stands on its own.
 
 ## Known limitations
 
-- Tabview content is not laid out inside the designer. The generator creates
-  the tabs and leaves them as empty containers with TODO markers; widgets that
-  belong inside a tab are added by hand in your copy of the sketch.
 - No image widget. The Giga Display Shield supports `lv_img` with image
   descriptors compiled in, but image asset handling is outside the scope of
   a single-file tool.

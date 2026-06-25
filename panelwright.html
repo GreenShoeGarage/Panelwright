@@ -213,13 +213,76 @@ main.workbench {
   grid-template-columns: 200px 1fr 280px;
   overflow: hidden;
 }
+main.workbench.preview-on {
+  grid-template-columns: 200px 1fr 380px 280px;
+}
 
-aside.palette, aside.props {
+aside.palette, aside.props, aside.preview-dock {
   background: var(--panel);
   border-right: 1px solid var(--border);
   overflow-y: auto;
 }
 aside.props { border-right: none; border-left: 1px solid var(--border); }
+aside.preview-dock {
+  display: none;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  flex-direction: column;
+}
+main.workbench.preview-on aside.preview-dock { display: flex; }
+
+/* Active state on the toolbar Preview button */
+button#btn-preview.active {
+  background: var(--amber);
+  color: var(--bg);
+  border-color: var(--amber);
+}
+
+/* Preview dock contents */
+.preview-dock .preview-header {
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-dim); font-family: var(--mono);
+  display: flex; align-items: center; gap: 8px;
+}
+.preview-dock .preview-header .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--amber); display: inline-block;
+  animation: preview-pulse 2s infinite;
+}
+@keyframes preview-pulse {
+  0%, 60%, 100% { opacity: 0.4; }
+  20%, 40% { opacity: 1; }
+}
+.preview-dock .preview-screen-name { color: var(--amber); margin-left: auto; text-transform: none; letter-spacing: 0.04em; }
+.preview-dock .preview-stage {
+  padding: 16px; display: flex; align-items: center; justify-content: center;
+  flex: 1;
+}
+.preview-dock .preview-stage-inner {
+  position: relative;
+  background: #000;
+  border: 1px solid var(--border);
+  box-shadow: 0 0 0 1px var(--bg), 0 0 0 4px var(--panel-2);
+  transform-origin: top left;
+}
+.preview-dock .preview-stage-inner .widget {
+  /* Preview widgets render the same as canvas widgets but without any
+     edit chrome (no selection ring, no resize handles, no drag cursor). */
+  cursor: default;
+}
+.preview-dock .preview-stage-inner .widget.clickable-nav {
+  cursor: pointer;
+}
+.preview-dock .preview-stage-inner .widget.clickable-nav:hover {
+  outline: 1px solid var(--amber);
+  outline-offset: -1px;
+}
+.preview-dock .preview-footer {
+  padding: 8px 14px; border-top: 1px solid var(--border);
+  font-size: 9px; color: var(--ink-mute); line-height: 1.5;
+  font-family: var(--mono);
+}
 
 .panel-section {
   border-bottom: 1px solid var(--border);
@@ -612,14 +675,16 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
 .prop-grid-2 .prop-row { display: block; }
 .prop-grid-2 .prop-row label { display: block; margin-bottom: 3px; }
 
-.widget-list { max-height: 180px; overflow-y: auto; }
+.widget-list { max-height: 240px; overflow-y: auto; padding: 2px 0; }
 .widget-list .item {
   display: flex;
   align-items: center;
+  gap: 6px;
   padding: 4px 6px;
   cursor: pointer;
   border-left: 2px solid transparent;
   font-size: 10.5px;
+  user-select: none;
 }
 .widget-list .item:hover { background: var(--panel-2); }
 .widget-list .item.selected {
@@ -627,12 +692,29 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
   background: var(--panel-2);
   color: var(--amber-bright);
 }
+.widget-list .item .glyph {
+  width: 14px; flex-shrink: 0; text-align: center;
+  color: var(--ink-mute); font-family: var(--mono);
+}
+.widget-list .item.selected .glyph { color: var(--amber); }
+.widget-list .item .name {
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .widget-list .item .type {
   color: var(--ink-mute);
   margin-left: auto;
   font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+/* Drag-and-drop reorder */
+.widget-list .item.dragging { opacity: 0.4; }
+.widget-list .item.drop-above { border-top: 1px solid var(--amber); }
+.widget-list .item.drop-below { border-bottom: 1px solid var(--amber); }
+.widget-list .panel-hint {
+  color: var(--ink-mute); font-size: 9px;
+  padding: 4px 6px; line-height: 1.4;
+  letter-spacing: 0.04em;
 }
 
 /* === Code panel === */
@@ -718,6 +800,25 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
 .tok-kw { color: #6fb5a8; }
 .tok-str { color: #d4a574; }
 .tok-num { color: #b9684a; }
+
+/* Project tag in topbar */
+.project-tag {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--ink); padding: 4px 10px; font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; display: flex; align-items: center; gap: 6px;
+  margin-right: 8px;
+}
+.project-tag:hover { border-color: var(--amber); color: var(--amber-bright); }
+.project-tag .dirty-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: transparent;
+  border: 1px solid var(--ink-mute); transition: background 0.12s;
+}
+.project-tag.dirty .dirty-dot {
+  background: var(--amber); border-color: var(--amber);
+  box-shadow: 0 0 4px var(--amber);
+}
+.project-tag .project-title { color: inherit; }
 
 /* Hardware modal */
 .hardware-modal {
@@ -831,6 +932,130 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
 .periph-indicators .indicator .dot {
   width: 6px; height: 6px; border-radius: 50%;
   background: var(--amber); box-shadow: 0 0 4px var(--amber);
+}
+
+/* Multi-select action buttons inside the property panel */
+.multi-action {
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--ink); font-family: var(--mono); font-size: 10px;
+  padding: 4px 8px; cursor: pointer;
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.multi-action:hover { background: var(--border); color: var(--amber-bright); }
+
+/* Tabview "enter tab" buttons */
+.tab-enter-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 6px;
+}
+.enter-tab-btn {
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--ink); font-family: var(--mono); font-size: 9px;
+  padding: 4px 6px; cursor: pointer; text-align: left;
+  letter-spacing: 0.06em; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.enter-tab-btn:hover { background: var(--border); color: var(--amber-bright); border-color: var(--amber); }
+
+/* Breadcrumb bar shown when editing a tab */
+.scope-breadcrumb {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--panel-2); border-bottom: 1px solid var(--amber);
+  padding: 6px 14px; font-size: 10px; color: var(--ink);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: var(--mono);
+}
+.scope-breadcrumb .crumb { color: var(--ink-dim); }
+.scope-breadcrumb .crumb-sep { color: var(--ink-mute); }
+.scope-breadcrumb .crumb-active { color: var(--amber); font-weight: 600; }
+.scope-breadcrumb .exit-scope {
+  margin-left: auto;
+  background: var(--bg); border: 1px solid var(--amber);
+  color: var(--amber); padding: 3px 10px; cursor: pointer;
+  font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  font-family: var(--mono);
+}
+.scope-breadcrumb .exit-scope:hover { background: var(--amber); color: var(--bg); }
+
+/* Tab content area frame on the canvas when editing a tab */
+.tab-content-frame {
+  position: absolute; pointer-events: none;
+  border: 2px dashed var(--amber); z-index: 1;
+  background: rgba(212, 165, 116, 0.04);
+}
+/* Widgets outside the current edit scope (dimmed for context) */
+.widget.out-of-scope { opacity: 0.25; }
+.widget.parent-tabview { opacity: 0.6; border-color: var(--amber); }
+
+/* Box-select rubber band on the canvas */
+.box-select {
+  position: absolute; pointer-events: none;
+  border: 1px dashed var(--amber); background: rgba(212, 165, 116, 0.08);
+  z-index: 240;
+}
+
+/* Validation modal rows */
+.validate-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+}
+.validate-row:hover { background: var(--panel-2); }
+.validate-row:last-child { border-bottom: none; }
+.validate-sev {
+  flex-shrink: 0; padding: 2px 8px; font-size: 9px;
+  font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  font-family: var(--mono); border-radius: 2px;
+}
+.validate-row.severity-error .validate-sev {
+  background: rgba(185, 104, 74, 0.2); color: var(--rust);
+  border: 1px solid var(--rust);
+}
+.validate-row.severity-warning .validate-sev {
+  background: rgba(212, 165, 116, 0.15); color: var(--amber);
+  border: 1px solid var(--amber);
+}
+.validate-msg {
+  flex: 1; font-size: 11px; line-height: 1.5; color: var(--ink);
+}
+
+/* Warning banner at top of code modal */
+.code-warning-banner {
+  background: rgba(212, 165, 116, 0.08);
+  border: 1px solid var(--amber); border-radius: 2px;
+  padding: 8px 12px; margin: 0 16px 12px;
+  color: var(--ink-dim); font-size: 10px; line-height: 1.6;
+}
+.code-warning-header {
+  color: var(--amber); font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 4px; font-size: 9px;
+}
+.code-warning-row { padding-left: 4px; }
+
+/* Right-click context menu (widget) */
+.ctx-menu {
+  position: fixed; z-index: 300;
+  background: var(--panel); border: 1px solid var(--border-hot);
+  min-width: 180px; padding: 4px 0;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  display: none;
+}
+.ctx-menu.open { display: block; }
+.ctx-menu .ctx-item {
+  padding: 6px 14px; font-size: 11px; color: var(--ink);
+  cursor: pointer; display: flex; justify-content: space-between;
+  font-family: var(--mono); letter-spacing: 0.04em;
+}
+.ctx-menu .ctx-item:hover { background: var(--panel-2); color: var(--amber-bright); }
+.ctx-menu .ctx-item.disabled {
+  color: var(--ink-mute); cursor: not-allowed;
+}
+.ctx-menu .ctx-item.disabled:hover { background: transparent; color: var(--ink-mute); }
+.ctx-menu .ctx-item .ctx-key {
+  color: var(--ink-mute); font-size: 9px; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ctx-menu .ctx-sep {
+  height: 1px; background: var(--border); margin: 4px 0;
 }
 .tok-cmt { color: #585348; font-style: italic; }
 .tok-pp { color: #a78bfa; }
@@ -961,6 +1186,10 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
 
 <header class="topbar">
   <div class="brand">FI-042 // PANELWRIGHT <span class="sub">// GIGA DISPLAY SHIELD UI DESIGNER</span></div>
+  <button class="project-tag" id="project-tag" title="Project details">
+    <span class="dirty-dot" id="dirty-dot"></span>
+    <span class="project-title" id="project-title">Untitled</span>
+  </button>
   <div class="toolbar">
     <label class="opt">
       <span>Orient</span>
@@ -990,6 +1219,8 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
     <input type="file" id="file-input" accept=".json" style="display:none">
     <span class="sep"></span>
     <button id="btn-hardware" title="Configure onboard peripherals (microphone, camera, SD, WiFi, BLE, LED, RTC)">Hardware</button>
+    <button id="btn-preview" title="Toggle the docked live preview pane">Preview</button>
+    <button id="btn-export" title="Export the current screen as a standalone SVG">Export SVG</button>
     <button id="btn-code" class="primary">Generate Code</button>
     <button id="btn-viewer" title="Preview current project in the viewer (opens in a new tab)">Open Viewer \u2197</button>
     <button id="btn-help">?</button>
@@ -1038,6 +1269,21 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
       <div class="item"><span class="key">Display</span><span class="val" id="status-display">800 x 480</span></div>
     </div>
   </section>
+
+  <aside class="preview-dock" id="preview-dock">
+    <div class="preview-header">
+      <span class="dot"></span>
+      <span>Live preview</span>
+      <span class="preview-screen-name" id="preview-screen-name"></span>
+    </div>
+    <div class="preview-stage">
+      <div class="preview-stage-inner" id="preview-stage-inner"></div>
+    </div>
+    <div class="preview-footer">
+      Mirrors the active screen at every edit. Click a goto button to navigate.
+      Selection chrome and resize handles are stripped.
+    </div>
+  </aside>
 
   <aside class="props" id="props-panel"></aside>
 
@@ -1094,6 +1340,117 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
     <div class="actions">
       <button id="prompt-cancel">Cancel</button>
       <button id="prompt-ok" class="primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Project metadata modal -->
+<div class="hardware-modal" id="project-modal">
+  <div class="box" style="max-width: 560px;">
+    <header>
+      <h2>Project Details</h2>
+      <button class="close" id="project-close">&times;</button>
+    </header>
+    <div class="hardware-grid" id="project-grid" style="grid-template-columns: 1fr;">
+      <div class="periph-card enabled" style="opacity: 1;">
+        <div class="ph-settings">
+          <div class="ph-row">
+            <label>Title</label>
+            <input type="text" id="meta-title" placeholder="Untitled" spellcheck="false">
+          </div>
+          <div class="ph-row">
+            <label>Author</label>
+            <input type="text" id="meta-author" placeholder="Your name or call sign" spellcheck="false">
+          </div>
+          <div class="ph-row">
+            <label>Target board</label>
+            <input type="text" id="meta-target" placeholder="Arduino Giga R1 + Display Shield" spellcheck="false">
+          </div>
+          <div class="ph-row">
+            <label>Board profile</label>
+            <select id="meta-board-profile">
+              <option value="giga_display_shield">Giga R1 + Display Shield</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="ph-row">
+            <label>Code layout</label>
+            <select id="meta-split-files">
+              <option value="false">Single .ino file</option>
+              <option value="true">Split into ui.h / ui.cpp (zip only)</option>
+            </select>
+          </div>
+          <div class="ph-row" style="grid-template-columns: 110px 1fr; align-items: start;">
+            <label style="padding-top: 5px;">Description</label>
+            <textarea id="meta-description" rows="4" spellcheck="false"
+              style="background: var(--bg); border: 1px solid var(--border); color: var(--ink);
+                     padding: 4px 6px; font-family: var(--mono); font-size: 10px; width: 100%;
+                     resize: vertical;"></textarea>
+          </div>
+          <div class="ph-hint" style="color: var(--ink-dim); font-style: normal;">
+            These fields are included in the generated sketch as a comment header at the top
+            of the .ino file, and the title is used as the default filename when you save.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <span class="hardware-help">Saved with the project file (v3).</span>
+      <button id="project-done" class="primary">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Right-click context menu (populated by JS) -->
+<div class="ctx-menu" id="ctx-menu"></div>
+
+<!-- Validation issues modal -->
+<div class="hardware-modal" id="validate-modal">
+  <div class="box" style="max-width: 640px;">
+    <header>
+      <h2>Validation</h2>
+      <button class="close" id="validate-close">&times;</button>
+    </header>
+    <div class="hardware-grid" id="validate-list" style="grid-template-columns: 1fr; padding: 0; gap: 0;">
+    </div>
+    <div class="actions">
+      <span class="hardware-help">Click a row to jump to the widget. Fix errors before generating code.</span>
+      <button id="validate-done" class="primary">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export image modal -->
+<div class="hardware-modal" id="export-modal">
+  <div class="box" style="max-width: 480px;">
+    <header>
+      <h2>Export SVG</h2>
+      <button class="close" id="export-close">&times;</button>
+    </header>
+    <div style="padding: 16px;">
+      <div class="ph-row">
+        <label>Scope</label>
+        <select id="export-scope">
+          <option value="current">Current screen only</option>
+          <option value="all">All screens (zip)</option>
+        </select>
+      </div>
+      <div class="ph-row">
+        <label>Device shell</label>
+        <select id="export-shell">
+          <option value="off">Plain canvas (default, best for docs)</option>
+          <option value="on">With shell frame (product photo style)</option>
+        </select>
+      </div>
+      <div class="hardware-help" id="export-status" style="margin-top: 12px; color: var(--ink-dim); font-size: 10px; line-height: 1.5;">
+        SVG is exported via an HTML foreignObject so the widgets render in
+        any browser pixel-for-pixel with the editor canvas. PNG rasterization
+        is deferred until native SVG primitives land.
+      </div>
+    </div>
+    <div class="actions">
+      <button id="export-cancel">Cancel</button>
+      <button id="export-download" class="primary">Download</button>
     </div>
   </div>
 </div>
@@ -1394,15 +1751,25 @@ const WIDGET_TYPES = {
     label: 'Tabview', glyph: '\u25A1\u25A1',
     defaultSize: { w: 360, h: 220 },
     defaultName: 'tv',
-    defaultProps: { tabs: 'Tab 1\nTab 2\nTab 3', tabPosition: 'top', tabSize: 50 },
+    defaultProps: {
+      tabs: [
+        { name: 'Tab 1', widgets: [] },
+        { name: 'Tab 2', widgets: [] },
+        { name: 'Tab 3', widgets: [] }
+      ],
+      tabPosition: 'top',
+      tabSize: 50,
+      activeTab: 0           // which tab is shown in the editor preview
+    },
     render: renderTabview,
     properties: [
-      { key: 'tabs', label: 'Tabs', type: 'textarea', hint: 'One per line' },
+      { key: 'tabs', label: 'Tab names', type: 'tab_names', hint: 'One per line. Edit tab content by double-clicking the tabview.' },
       { key: 'tabPosition', label: 'Position', type: 'select', options: [
           { v: 'top', l: 'Top' }, { v: 'bottom', l: 'Bottom' },
           { v: 'left', l: 'Left' }, { v: 'right', l: 'Right' }
       ]},
-      { key: 'tabSize', label: 'Tab Size', type: 'number', min: 20, max: 200 }
+      { key: 'tabSize', label: 'Tab Size', type: 'number', min: 20, max: 200 },
+      { key: 'activeTab', label: 'Preview tab', type: 'number', min: 0, max: 99 }
     ]
   },
   list: {
@@ -1499,6 +1866,44 @@ const THEME_DEFAULTS = {
   tradigital:   { primary: '#d4a574', secondary: '#6fb5a8' }
 };
 
+// ----- Board profiles -------------------------------------
+// Each profile carries the includes, display + touch declarations, and
+// canvas dimensions for a supported board combo. The active profile is
+// stored in state.meta.boardProfile. Adding a new board is one entry.
+
+const BOARDS = {
+  giga_display_shield: {
+    label: 'Arduino Giga R1 + Display Shield',
+    landscape: { w: 800, h: 480 },
+    portrait:  { w: 480, h: 800 },
+    includes: [
+      '#include "Arduino_H7_Video.h"',
+      '#include "Arduino_GigaDisplayTouch.h"',
+      '#include "lvgl.h"'
+    ],
+    displayDecl: 'Arduino_H7_Video          Display({W}, {H}, GigaDisplayShield);',
+    touchDecl:   'Arduino_GigaDisplayTouch  TouchDetector;',
+    setupBegin:  ['Display.begin();', 'TouchDetector.begin();']
+  },
+  custom: {
+    label: 'Custom (edit declarations in the generated sketch)',
+    landscape: { w: 800, h: 480 },
+    portrait:  { w: 480, h: 800 },
+    includes: [
+      '// TODO: include your display and touch driver headers',
+      '#include "lvgl.h"'
+    ],
+    displayDecl: '// TODO: declare your display instance ({W} x {H})',
+    touchDecl:   '// TODO: declare your touch detector instance',
+    setupBegin:  ['// TODO: call Display.begin() / TouchDetector.begin() as appropriate']
+  }
+};
+
+function boardProfile() {
+  const key = (state.meta && state.meta.boardProfile) || 'giga_display_shield';
+  return BOARDS[key] || BOARDS.giga_display_shield;
+}
+
 // ----- Peripheral definitions -----------------------------
 // Onboard hardware on the Giga R1 + Display Shield combo. These are
 // project-level, not per-screen. When enabled, the code generator emits
@@ -1564,9 +1969,11 @@ const PERIPHERALS = {
     settings: [
       { key: 'ssid', label: 'SSID', type: 'text' },
       { key: 'password', label: 'Password', type: 'password',
-        hint: 'Stored in the sketch as a literal. Move to arduino_secrets.h before publishing.' }
+        hint: 'Stored in the sketch as a literal. Move to arduino_secrets.h before publishing.' },
+      { key: 'useSecretsFile', label: 'Secrets file', type: 'select',
+        options: [{v:true,l:'Use arduino_secrets.h (zip only)'},{v:false,l:'Inline in sketch'}] }
     ],
-    defaults: { enabled: false, ssid: 'YOUR_SSID', password: 'YOUR_PASSWORD' }
+    defaults: { enabled: false, ssid: 'YOUR_SSID', password: 'YOUR_PASSWORD', useSecretsFile: true }
   },
   ble: {
     label: 'BLE',
@@ -1608,13 +2015,18 @@ function defaultPeripherals() {
 const state = {
   screens: [],            // array of screens
   activeScreenId: null,
-  selectedId: null,
+  selectedId: null,       // primary selection (last clicked); drives the property panel
+  selectedIds: [],        // all currently selected widgets on the active screen
   nextId: 1,
   nextScreenId: 1,
   nameCounts: {},         // type -> counter for auto names
   orientation: 'landscape',
   theme: 'lvgl_default',
   peripherals: defaultPeripherals(),
+  meta: { title: 'Untitled', author: '', targetBoard: 'Arduino Giga R1 + Display Shield', description: '', boardProfile: 'giga_display_shield' },
+  dirty: false,           // unsaved changes since last save
+  clipboard: null,        // copied widget data, in-session only
+  editScope: null,        // null = editing screen root; { kind:'tab', widgetId, tabIndex } when inside a tab
   grid: true,
   snap: true,
   gridSize: 10,
@@ -1623,15 +2035,171 @@ const state = {
   historyMax: 50
 };
 
+// ----- Selection helpers ----------------------------------
+// Multi-select model. The selectedIds array is the source of truth.
+// state.selectedId is the "primary" (last touched) used by the property
+// panel and single-widget operations.
+
+// Edit scope tracking. When null, we're editing the active screen root.
+// When set, we're inside a container widget (currently only tabview tabs).
+// Shape: { kind: 'tab', widgetId: 'w_5', tabIndex: 0 }. Selection is
+// scoped to whichever container is current.
+
+function curContainer() {
+  // Returns the widget array we're currently editing into.
+  if (state.editScope && state.editScope.kind === 'tab') {
+    const tv = findTabview(state.editScope.widgetId);
+    if (tv && tv.props.tabs && tv.props.tabs[state.editScope.tabIndex]) {
+      const tab = tv.props.tabs[state.editScope.tabIndex];
+      if (!Array.isArray(tab.widgets)) tab.widgets = [];
+      return tab.widgets;
+    }
+    // Scope is stale (tab removed). Drop back to screen root.
+    state.editScope = null;
+  }
+  const s = curScreen();
+  return s ? s.widgets : [];
+}
+
+// Find a tabview anywhere in the active screen (search the screen and any
+// nested tab widget lists). Returns the widget object or null.
+function findTabview(id) {
+  const seen = new Set();
+  function recurse(arr) {
+    for (const w of arr) {
+      if (seen.has(w.id)) continue;
+      seen.add(w.id);
+      if (w.id === id && w.type === 'tabview') return w;
+      if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
+        for (const t of w.props.tabs) {
+          if (Array.isArray(t.widgets)) {
+            const f = recurse(t.widgets);
+            if (f) return f;
+          }
+        }
+      }
+    }
+    return null;
+  }
+  const s = curScreen();
+  return s ? recurse(s.widgets) : null;
+}
+
+function isSelected(id) {
+  return state.selectedIds.indexOf(id) >= 0;
+}
+function selectedWidgets() {
+  return curContainer().filter(w => isSelected(w.id));
+}
+function selectOne(id) {
+  state.selectedIds = id ? [id] : [];
+  state.selectedId = id || null;
+}
+function addToSelection(id) {
+  if (!id || isSelected(id)) return;
+  state.selectedIds.push(id);
+  state.selectedId = id;
+}
+function toggleSelect(id) {
+  if (!id) return;
+  const idx = state.selectedIds.indexOf(id);
+  if (idx >= 0) {
+    state.selectedIds.splice(idx, 1);
+    state.selectedId = state.selectedIds.length
+      ? state.selectedIds[state.selectedIds.length - 1] : null;
+  } else {
+    addToSelection(id);
+  }
+}
+function clearSelection() {
+  state.selectedIds = [];
+  state.selectedId = null;
+}
+function setSelection(ids) {
+  state.selectedIds = ids.slice();
+  state.selectedId = ids.length ? ids[ids.length - 1] : null;
+}
+
 function curScreen() {
   return state.screens.find(s => s.id === state.activeScreenId);
 }
 function curWidgets() {
-  const s = curScreen();
-  return s ? s.widgets : [];
+  // Delegates to curContainer so callers can be agnostic about whether we're
+  // editing the screen root or inside a tab.
+  return curContainer();
 }
 function defaultScreen() {
   return state.screens.find(s => s.isDefault) || state.screens[0];
+}
+
+// Compute the on-canvas rectangle of a tabview's tab content area.
+// Returns { x, y, w, h } in screen-canvas coordinates.
+function tabContentRect(tv) {
+  const pos = tv.props.tabPosition || 'top';
+  const size = tv.props.tabSize || 50;
+  if (pos === 'top')    return { x: tv.x,        y: tv.y + size, w: tv.w,        h: tv.h - size };
+  if (pos === 'bottom') return { x: tv.x,        y: tv.y,        w: tv.w,        h: tv.h - size };
+  if (pos === 'left')   return { x: tv.x + size, y: tv.y,        w: tv.w - size, h: tv.h };
+  if (pos === 'right')  return { x: tv.x,        y: tv.y,        w: tv.w - size, h: tv.h };
+  return { x: tv.x, y: tv.y, w: tv.w, h: tv.h };
+}
+
+// Bounds the editor uses to clamp widget positions. When at the screen
+// root this is the full canvas; when inside a tab, it's the tab content
+// area's local 0,0..w,h. Returned as { w, h } so existing callers using
+// .w / .h still work.
+function editBounds() {
+  if (state.editScope && state.editScope.kind === 'tab') {
+    const tv = findTabview(state.editScope.widgetId);
+    if (tv) {
+      const r = tabContentRect(tv);
+      return { w: r.w, h: r.h };
+    }
+  }
+  return getCanvasDims();
+}
+
+// Enter a tabview's tab for editing. Saves no extra history; the scope
+// itself is metadata (the actual undo-able operation is what you do next).
+function enterTab(widgetId, tabIndex) {
+  const tv = findTabview(widgetId);
+  if (!tv || tv.type !== 'tabview') return;
+  const tabs = tv.props.tabs || [];
+  if (tabIndex < 0 || tabIndex >= tabs.length) return;
+  state.editScope = { kind: 'tab', widgetId, tabIndex };
+  tv.props.activeTab = tabIndex;
+  clearSelection();
+  redrawAll();
+}
+
+function exitTab() {
+  state.editScope = null;
+  clearSelection();
+  redrawAll();
+}
+
+// Migrate legacy tabview props: tabs as a newline-separated string becomes
+// an array of { name, widgets: [] } objects. Idempotent.
+function migrateTabviews(screens) {
+  function walk(arr) {
+    for (const w of arr) {
+      if (w.type === 'tabview') {
+        if (typeof w.props.tabs === 'string') {
+          const names = w.props.tabs.split('\n').filter(s => s.length);
+          w.props.tabs = names.map(n => ({ name: n, widgets: [] }));
+        }
+        if (!Array.isArray(w.props.tabs)) w.props.tabs = [];
+        for (const t of w.props.tabs) {
+          if (!Array.isArray(t.widgets)) t.widgets = [];
+          walk(t.widgets);
+        }
+        if (typeof w.props.activeTab !== 'number') w.props.activeTab = 0;
+      }
+    }
+  }
+  for (const s of screens) {
+    walk(s.widgets);
+  }
 }
 
 // ----- Widget rendering on canvas -------------------------
@@ -1978,18 +2546,29 @@ function renderTabview(w) {
   inner.className = 'lv-tabview tab-' + w.props.tabPosition;
   inner.style.width = '100%';
   inner.style.height = '100%';
-  const tabs = (w.props.tabs || '').split('\n').filter(s => s.length);
+  // Normalize to the array form (handles legacy/unmigrated input)
+  let tabs = w.props.tabs;
+  if (typeof tabs === 'string') tabs = tabs.split('\n').filter(s => s.length).map(n => ({ name: n, widgets: [] }));
+  if (!Array.isArray(tabs)) tabs = [];
+  const activeIdx = Math.max(0, Math.min(tabs.length - 1, w.props.activeTab || 0));
   const bar = document.createElement('div');
   bar.className = 'tab-bar';
   for (let i = 0; i < tabs.length; i++) {
     const btn = document.createElement('div');
-    btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
-    btn.textContent = tabs[i];
+    btn.className = 'tab-btn' + (i === activeIdx ? ' active' : '');
+    btn.textContent = tabs[i].name;
     bar.appendChild(btn);
   }
   const content = document.createElement('div');
   content.className = 'tab-content';
-  content.textContent = '(tab content set in your sketch)';
+  // If we're editing this tabview's tab, the tab body will be filled by the
+  // tab-render path in redrawAll. Otherwise, show a hint.
+  const active = tabs[activeIdx];
+  if (active && active.widgets && active.widgets.length) {
+    content.textContent = '(' + active.widgets.length + ' widgets in this tab)';
+  } else {
+    content.textContent = '(double-click to edit tab content)';
+  }
   inner.appendChild(bar);
   inner.appendChild(content);
   el.appendChild(inner);
@@ -2402,8 +2981,19 @@ function beginPaletteDrag(e, type) {
     const rect = $canvas.getBoundingClientRect();
     if (ev.clientX >= rect.left && ev.clientX <= rect.right &&
         ev.clientY >= rect.top && ev.clientY <= rect.bottom) {
-      const x = snap(Math.max(0, ev.clientX - rect.left - def.defaultSize.w / 2));
-      const y = snap(Math.max(0, ev.clientY - rect.top - def.defaultSize.h / 2));
+      let x = snap(Math.max(0, ev.clientX - rect.left - def.defaultSize.w / 2));
+      let y = snap(Math.max(0, ev.clientY - rect.top  - def.defaultSize.h / 2));
+      // When editing inside a tab, translate the drop position into the
+      // tab content's local 0,0 origin so the widget lands where the
+      // cursor is, not at the screen origin.
+      if (state.editScope && state.editScope.kind === 'tab') {
+        const tv = findTabview(state.editScope.widgetId);
+        if (tv) {
+          const r = tabContentRect(tv);
+          x = Math.max(0, x - r.x);
+          y = Math.max(0, y - r.y);
+        }
+      }
       addWidget(type, x, y);
     }
   }
@@ -2426,7 +3016,7 @@ function autoName(type) {
 
 function addWidget(type, x, y) {
   const def = WIDGET_TYPES[type];
-  const dims = getCanvasDims();
+  const dims = editBounds();
   const w = Math.min(def.defaultSize.w, dims.w - x);
   const h = Math.min(def.defaultSize.h, dims.h - y);
   const widget = {
@@ -2444,15 +3034,34 @@ function addWidget(type, x, y) {
 
   pushHistory();
   curWidgets().push(widget);
-  state.selectedId = widget.id;
+  selectOne(widget.id);
   redrawAll();
 }
 
 function deleteWidget(id) {
   pushHistory();
-  const cs = curScreen();
-  cs.widgets = cs.widgets.filter(w => w.id !== id);
-  if (state.selectedId === id) state.selectedId = null;
+  const arr = curContainer();
+  const idx = arr.findIndex(w => w.id === id);
+  if (idx >= 0) arr.splice(idx, 1);
+  // Remove from selection if it was selected
+  state.selectedIds = state.selectedIds.filter(x => x !== id);
+  if (state.selectedId === id) {
+    state.selectedId = state.selectedIds.length
+      ? state.selectedIds[state.selectedIds.length - 1] : null;
+  }
+  redrawAll();
+}
+
+// Remove every selected widget at once.
+function deleteSelected() {
+  if (!state.selectedIds.length) return;
+  pushHistory();
+  const ids = new Set(state.selectedIds);
+  const arr = curContainer();
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (ids.has(arr[i].id)) arr.splice(i, 1);
+  }
+  clearSelection();
   redrawAll();
 }
 
@@ -2463,19 +3072,269 @@ function duplicateWidget(id) {
   const copy = JSON.parse(JSON.stringify(src));
   copy.id = 'w_' + (state.nextId++);
   copy.name = autoName(src.type);
-  copy.x = Math.min(src.x + 20, getCanvasDims().w - copy.w);
-  copy.y = Math.min(src.y + 20, getCanvasDims().h - copy.h);
+  copy.x = Math.min(src.x + 20, editBounds().w - copy.w);
+  copy.y = Math.min(src.y + 20, editBounds().h - copy.h);
   curWidgets().push(copy);
-  state.selectedId = copy.id;
+  selectOne(copy.id);
   redrawAll();
 }
 
-function moveSelected(dx, dy) {
-  const w = curWidgets().find(w => w.id === state.selectedId);
+// Duplicate every selected widget, with a small offset so the copies are
+// visible. The new copies become the selection.
+function duplicateSelected() {
+  if (!state.selectedIds.length) return;
+  pushHistory();
+  const dims = editBounds();
+  const newIds = [];
+  for (const w of selectedWidgets()) {
+    const copy = JSON.parse(JSON.stringify(w));
+    copy.id = 'w_' + (state.nextId++);
+    copy.name = autoName(w.type);
+    copy.x = Math.min(w.x + 20, dims.w - copy.w);
+    copy.y = Math.min(w.y + 20, dims.h - copy.h);
+    curWidgets().push(copy);
+    newIds.push(copy.id);
+  }
+  setSelection(newIds);
+  redrawAll();
+}
+
+// Copy the currently selected widget(s) into the in-memory clipboard.
+// Single selection produces a 'widget' clipboard (for back-compat);
+// multi-selection produces a 'widgets' clipboard with relative offsets so
+// the geometry is preserved on paste.
+function copySelected() {
+  const sel = selectedWidgets();
+  if (!sel.length) return;
+  if (sel.length === 1) {
+    state.clipboard = { kind: 'widget', data: JSON.parse(JSON.stringify(sel[0])) };
+  } else {
+    // Anchor at the top-left of the group so paste can recreate the layout
+    const minX = Math.min(...sel.map(w => w.x));
+    const minY = Math.min(...sel.map(w => w.y));
+    state.clipboard = {
+      kind: 'widgets',
+      anchor: { x: minX, y: minY },
+      data: sel.map(w => {
+        const cp = JSON.parse(JSON.stringify(w));
+        cp._dx = w.x - minX; cp._dy = w.y - minY;
+        return cp;
+      })
+    };
+  }
+}
+
+// Paste from the clipboard into the active screen. Singles are offset by
+// 20px from their source; groups preserve their internal layout and are
+// offset 20px from the anchor.
+function pasteClipboard() {
+  if (!state.clipboard) return;
+  const dims = editBounds();
+  if (state.clipboard.kind === 'widget') {
+    pushHistory();
+    const src = state.clipboard.data;
+    const copy = JSON.parse(JSON.stringify(src));
+    copy.id = 'w_' + (state.nextId++);
+    copy.name = autoName(src.type);
+    copy.x = Math.min(Math.max(0, src.x + 20), dims.w - copy.w);
+    copy.y = Math.min(Math.max(0, src.y + 20), dims.h - copy.h);
+    if (copy.type === 'button' && copy.props && copy.props.action === 'goto') {
+      const tgtExists = state.screens.find(s => s.id === copy.props.actionTarget);
+      if (!tgtExists) copy.props.actionTarget = '';
+    }
+    curWidgets().push(copy);
+    selectOne(copy.id);
+    redrawAll();
+    return;
+  }
+  if (state.clipboard.kind === 'widgets') {
+    pushHistory();
+    // Anchor the pasted group 20px right and 20px down from where it
+    // originated, clamped so the group still fits on screen.
+    const src = state.clipboard.data;
+    const baseX = state.clipboard.anchor.x + 20;
+    const baseY = state.clipboard.anchor.y + 20;
+    const newIds = [];
+    for (const s of src) {
+      const copy = JSON.parse(JSON.stringify(s));
+      delete copy._dx; delete copy._dy;
+      copy.id = 'w_' + (state.nextId++);
+      copy.name = autoName(s.type);
+      copy.x = Math.min(Math.max(0, baseX + s._dx), dims.w - copy.w);
+      copy.y = Math.min(Math.max(0, baseY + s._dy), dims.h - copy.h);
+      if (copy.type === 'button' && copy.props && copy.props.action === 'goto') {
+        const tgtExists = state.screens.find(sc => sc.id === copy.props.actionTarget);
+        if (!tgtExists) copy.props.actionTarget = '';
+      }
+      curWidgets().push(copy);
+      newIds.push(copy.id);
+    }
+    setSelection(newIds);
+    redrawAll();
+    return;
+  }
+}
+
+function bringToFront(id) {
+  const cs = curScreen();
+  const idx = cs.widgets.findIndex(w => w.id === id);
+  if (idx < 0 || idx === cs.widgets.length - 1) return;
+  pushHistory();
+  const [w] = cs.widgets.splice(idx, 1);
+  cs.widgets.push(w);
+  redrawAll();
+}
+function sendToBack(id) {
+  const cs = curScreen();
+  const idx = cs.widgets.findIndex(w => w.id === id);
+  if (idx <= 0) return;
+  pushHistory();
+  const [w] = cs.widgets.splice(idx, 1);
+  cs.widgets.unshift(w);
+  redrawAll();
+}
+
+// Copy just the `props` object of a widget; subsequent paste-properties
+// applies those to a different widget of the same type.
+function copyProperties(id) {
+  const w = curWidgets().find(w => w.id === id);
   if (!w) return;
-  const dims = getCanvasDims();
-  w.x = Math.max(0, Math.min(dims.w - w.w, w.x + dx));
-  w.y = Math.max(0, Math.min(dims.h - w.h, w.y + dy));
+  state.clipboard = { kind: 'properties', type: w.type, data: JSON.parse(JSON.stringify(w.props)) };
+}
+function pasteProperties(id) {
+  const w = curWidgets().find(w => w.id === id);
+  if (!w || !state.clipboard || state.clipboard.kind !== 'properties') return;
+  if (state.clipboard.type !== w.type) {
+    alert('Cannot paste properties from a ' + state.clipboard.type + ' onto a ' + w.type + '.');
+    return;
+  }
+  pushHistory();
+  w.props = JSON.parse(JSON.stringify(state.clipboard.data));
+  redrawAll();
+}
+
+// ----- Right-click context menu ---------------------------
+function showContextMenu(x, y, widgetId) {
+  const menu = document.getElementById('ctx-menu');
+  const w = curWidgets().find(w => w.id === widgetId);
+  if (!w) return;
+
+  const multi = state.selectedIds.length > 1;
+  const propsClipboardMatches = state.clipboard
+    && state.clipboard.kind === 'properties'
+    && state.clipboard.type === w.type;
+  const hasPasteable = state.clipboard
+    && (state.clipboard.kind === 'widget' || state.clipboard.kind === 'widgets');
+
+  let items;
+  if (multi) {
+    // Group menu
+    items = [
+      { label: 'Duplicate group',  key: 'Ctrl+D',  action: () => duplicateSelected() },
+      { label: 'Copy group',       key: 'Ctrl+C',  action: () => copySelected() },
+      { label: 'Paste',            key: 'Ctrl+V',  action: () => pasteClipboard(),
+        disabled: !hasPasteable },
+      { sep: true },
+      { label: 'Align left',         action: () => alignSelected('left') },
+      { label: 'Align center',       action: () => alignSelected('center-h') },
+      { label: 'Align right',        action: () => alignSelected('right') },
+      { sep: true },
+      { label: 'Align top',          action: () => alignSelected('top') },
+      { label: 'Align middle',       action: () => alignSelected('center-v') },
+      { label: 'Align bottom',       action: () => alignSelected('bottom') },
+      { sep: true },
+      { label: 'Distribute horizontally', action: () => distributeSelected('h'),
+        disabled: state.selectedIds.length < 3 },
+      { label: 'Distribute vertically',   action: () => distributeSelected('v'),
+        disabled: state.selectedIds.length < 3 },
+      { sep: true },
+      { label: 'Delete group',     key: 'Del',     action: () => deleteSelected() }
+    ];
+  } else {
+    items = [
+      { label: 'Duplicate',          key: 'Ctrl+D',  action: () => duplicateWidget(widgetId) },
+      { label: 'Copy',               key: 'Ctrl+C',  action: () => copySelected() },
+      { label: 'Paste',              key: 'Ctrl+V',  action: () => pasteClipboard(),
+        disabled: !hasPasteable },
+      { sep: true },
+      { label: 'Bring to front',     action: () => bringToFront(widgetId) },
+      { label: 'Send to back',       action: () => sendToBack(widgetId) },
+      { sep: true },
+      { label: 'Copy properties',    action: () => copyProperties(widgetId) },
+      { label: 'Paste properties',   action: () => pasteProperties(widgetId),
+        disabled: !propsClipboardMatches },
+      { sep: true },
+      { label: 'Delete',             key: 'Del',     action: () => deleteWidget(widgetId) }
+    ];
+  }
+
+  menu.innerHTML = '';
+  for (const it of items) {
+    if (it.sep) {
+      const s = document.createElement('div');
+      s.className = 'ctx-sep';
+      menu.appendChild(s);
+      continue;
+    }
+    const el = document.createElement('div');
+    el.className = 'ctx-item' + (it.disabled ? ' disabled' : '');
+    const lab = document.createElement('span'); lab.textContent = it.label;
+    el.appendChild(lab);
+    if (it.key) {
+      const k = document.createElement('span');
+      k.className = 'ctx-key'; k.textContent = it.key;
+      el.appendChild(k);
+    }
+    if (!it.disabled) {
+      el.addEventListener('click', () => { hideContextMenu(); it.action(); });
+    }
+    menu.appendChild(el);
+  }
+
+  // Position; flip to keep it on-screen
+  menu.classList.add('open');
+  const rect = menu.getBoundingClientRect();
+  let px = x, py = y;
+  if (x + rect.width > window.innerWidth)  px = window.innerWidth  - rect.width  - 4;
+  if (y + rect.height > window.innerHeight) py = window.innerHeight - rect.height - 4;
+  menu.style.left = px + 'px';
+  menu.style.top  = py + 'px';
+}
+function hideContextMenu() {
+  document.getElementById('ctx-menu').classList.remove('open');
+}
+// Click anywhere else closes the menu
+document.addEventListener('click',     () => hideContextMenu());
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideContextMenu(); });
+// Also close on right-click anywhere not over a widget (let widget handlers run first)
+document.addEventListener('contextmenu', e => {
+  if (!e.defaultPrevented) hideContextMenu();
+});
+
+let _nudgeTimer = null;
+function moveSelected(dx, dy) {
+  const widgets = selectedWidgets();
+  if (!widgets.length) return;
+  // Coalesce rapid nudges into a single history entry: push once at the
+  // start of a burst, then suppress further pushes for 500 ms.
+  if (!_nudgeTimer) {
+    pushHistory();
+  } else {
+    clearTimeout(_nudgeTimer);
+  }
+  _nudgeTimer = setTimeout(() => { _nudgeTimer = null; }, 500);
+  const dims = editBounds();
+  // Compute the clamped delta the entire group can actually move, so the
+  // group stays cohesive at canvas edges rather than collapsing.
+  let realDx = dx, realDy = dy;
+  for (const w of widgets) {
+    realDx = realDx > 0 ? Math.min(realDx, dims.w - w.w - w.x)
+                        : Math.max(realDx, -w.x);
+    realDy = realDy > 0 ? Math.min(realDy, dims.h - w.h - w.y)
+                        : Math.max(realDy, -w.y);
+  }
+  for (const w of widgets) { w.x += realDx; w.y += realDy; }
+  markDirty();
   redrawAll();
 }
 
@@ -2497,7 +3356,7 @@ function addScreen(name) {
   };
   state.screens.push(screen);
   state.activeScreenId = id;
-  state.selectedId = null;
+  clearSelection();
   redrawAll();
 }
 
@@ -2524,7 +3383,7 @@ function deleteScreen(id) {
   if (state.activeScreenId === id) {
     state.activeScreenId = state.screens[0].id;
   }
-  state.selectedId = null;
+  clearSelection();
   redrawAll();
 }
 
@@ -2544,7 +3403,8 @@ function setDefaultScreen(id) {
 
 function switchToScreen(id) {
   state.activeScreenId = id;
-  state.selectedId = null;
+  state.editScope = null;
+  clearSelection();
   redrawAll();
 }
 
@@ -2618,24 +3478,267 @@ function renderScreensStrip() {
 function redrawAll() {
   $canvas.innerHTML = '';
   $canvas.classList.toggle('theme-tradigital', state.theme === 'tradigital');
-  $shellBanner.textContent = 'ARDUINO GIGA DISPLAY SHIELD // ' +
-    getCanvasDims().w + ' x ' + getCanvasDims().h +
-    ' // SCREEN: ' + (curScreen() ? curScreen().name.toUpperCase() : '');
 
-  for (const w of curWidgets()) {
-    const def = WIDGET_TYPES[w.type];
-    const el = def.render(w);
-    if (w.id === state.selectedId) {
-      el.classList.add('selected');
-      attachResizeHandles(el, w);
+  // In tab scope, render the parent screen widgets dimmed for context,
+  // then the tab content area frame, then the tab widgets at offset.
+  if (state.editScope && state.editScope.kind === 'tab') {
+    const tv = findTabview(state.editScope.widgetId);
+    if (!tv) {
+      // Stale scope (tabview deleted). Drop back and rerun.
+      state.editScope = null;
+      return redrawAll();
     }
-    el.addEventListener('pointerdown', e => beginWidgetDrag(e, w));
-    $canvas.appendChild(el);
+    const tabs = tv.props.tabs || [];
+    const tabIdx = Math.max(0, Math.min(tabs.length - 1, state.editScope.tabIndex));
+    const tab = tabs[tabIdx] || { name: '', widgets: [] };
+
+    $shellBanner.textContent = 'ARDUINO GIGA DISPLAY SHIELD // ' +
+      getCanvasDims().w + ' x ' + getCanvasDims().h +
+      ' // SCREEN: ' + (curScreen() ? curScreen().name.toUpperCase() : '') +
+      ' \u203A ' + tv.name.toUpperCase() + ' \u203A ' + (tab.name || '').toUpperCase();
+
+    // Parent-screen widgets render dimmed and inert
+    for (const sw of curScreen().widgets) {
+      const def = WIDGET_TYPES[sw.type];
+      const el = def.render(sw);
+      // Make the host tabview look slightly highlighted; everything else dim
+      if (sw.id === tv.id) {
+        el.classList.add('parent-tabview');
+      } else {
+        el.classList.add('out-of-scope');
+      }
+      el.style.pointerEvents = 'none';
+      $canvas.appendChild(el);
+    }
+
+    // Tab content area frame
+    const content = tabContentRect(tv);
+    const frame = document.createElement('div');
+    frame.className = 'tab-content-frame';
+    frame.style.left = content.x + 'px';
+    frame.style.top = content.y + 'px';
+    frame.style.width = content.w + 'px';
+    frame.style.height = content.h + 'px';
+    $canvas.appendChild(frame);
+
+    // Tab widgets: render normally, then translate to content origin
+    for (const w of tab.widgets) {
+      const def = WIDGET_TYPES[w.type];
+      const el = def.render(w);
+      el.style.left = (content.x + w.x) + 'px';
+      el.style.top  = (content.y + w.y) + 'px';
+      if (isSelected(w.id)) {
+        el.classList.add('selected');
+        if (state.selectedIds.length === 1) attachResizeHandles(el, w);
+      }
+      el.addEventListener('pointerdown', e => beginWidgetDrag(e, w));
+      el.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isSelected(w.id)) selectOne(w.id);
+        redrawAll();
+        showContextMenu(e.clientX, e.clientY, w.id);
+      });
+      $canvas.appendChild(el);
+    }
+  } else {
+    // Normal screen-root rendering
+    $shellBanner.textContent = 'ARDUINO GIGA DISPLAY SHIELD // ' +
+      getCanvasDims().w + ' x ' + getCanvasDims().h +
+      ' // SCREEN: ' + (curScreen() ? curScreen().name.toUpperCase() : '');
+
+    for (const w of curWidgets()) {
+      const def = WIDGET_TYPES[w.type];
+      const el = def.render(w);
+      if (isSelected(w.id)) {
+        el.classList.add('selected');
+        if (state.selectedIds.length === 1) attachResizeHandles(el, w);
+      }
+      el.addEventListener('pointerdown', e => beginWidgetDrag(e, w));
+      el.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isSelected(w.id)) selectOne(w.id);
+        redrawAll();
+        showContextMenu(e.clientX, e.clientY, w.id);
+      });
+      // Double-click on a tabview enters its active tab
+      if (w.type === 'tabview') {
+        el.addEventListener('dblclick', () => {
+          enterTab(w.id, w.props.activeTab || 0);
+        });
+      }
+      $canvas.appendChild(el);
+    }
   }
+  renderBreadcrumb();
   renderScreensStrip();
   renderHierarchy();
   renderPropsPanel();
+  renderPreview();
   updateStatus();
+}
+
+// ----- Docked live preview --------------------------------
+// Renders the active screen's widgets without edit chrome (no selection,
+// no resize handles, no drag listeners) into the preview-dock pane. Runs
+// every redrawAll, so the preview always matches the editor state.
+//
+// Navigation: buttons whose action is goto and whose target screen
+// exists become clickable. Clicking switches the editor's active screen
+// (which then triggers another redrawAll, refreshing the preview).
+function renderPreview() {
+  const stage = document.getElementById('preview-stage-inner');
+  if (!stage) return;
+  // Only do work when the preview is actually visible. Avoids a noticeable
+  // double-render on every editor action when the dock is closed.
+  const dock = document.getElementById('preview-dock');
+  if (!dock || dock.parentElement.classList.contains('preview-on') === false) return;
+
+  const screen = curScreen();
+  const dims = getCanvasDims();
+  const $nameLabel = document.getElementById('preview-screen-name');
+  if ($nameLabel) $nameLabel.textContent = screen ? screen.name : '';
+
+  // Size the stage to the device dimensions, then scale to fit the dock
+  stage.innerHTML = '';
+  stage.style.width = dims.w + 'px';
+  stage.style.height = dims.h + 'px';
+  stage.classList.toggle('theme-tradigital', state.theme === 'tradigital');
+
+  // Compute scale to fit the available stage width. The dock content area
+  // is ~348px wide (380px minus padding); aim for that as the target.
+  const targetWidth = Math.max(200, dock.clientWidth - 32);
+  const scale = Math.min(1, targetWidth / dims.w);
+  stage.style.transform = 'scale(' + scale.toFixed(4) + ')';
+  stage.parentElement.style.minHeight = Math.ceil(dims.h * scale) + 'px';
+
+  if (!screen) return;
+
+  // Render every widget on the active screen. Tab children render at
+  // their absolute on-canvas positions (tabContentRect + tab-local x/y)
+  // so the preview matches what the device would show.
+  for (const w of screen.widgets) {
+    renderPreviewWidget(w, stage, 0, 0);
+  }
+}
+
+function renderPreviewWidget(w, stage, ox, oy) {
+  const def = WIDGET_TYPES[w.type];
+  if (!def) return;
+  const el = def.render(w);
+  // Strip selection chrome
+  el.classList.remove('selected', 'out-of-scope', 'parent-tabview');
+  el.style.left = (ox + w.x) + 'px';
+  el.style.top  = (oy + w.y) + 'px';
+
+  // Wire up goto-button navigation in the preview
+  if (w.type === 'button' && w.props.action === 'goto' && w.props.actionTarget) {
+    const target = state.screens.find(s => s.id === w.props.actionTarget);
+    if (target) {
+      el.classList.add('clickable-nav');
+      el.addEventListener('click', () => {
+        switchToScreen(target.id);
+      });
+    }
+  }
+  stage.appendChild(el);
+
+  // Recurse into a tabview's currently-shown tab so the preview shows
+  // tab content at the right place.
+  if (w.type === 'tabview' && Array.isArray(w.props.tabs) && w.props.tabs.length) {
+    const tabIdx = Math.max(0, Math.min(w.props.tabs.length - 1, w.props.activeTab || 0));
+    const tab = w.props.tabs[tabIdx];
+    if (tab && Array.isArray(tab.widgets) && tab.widgets.length) {
+      const content = tabContentRect(w);
+      for (const child of tab.widgets) {
+        renderPreviewWidget(child, stage, content.x, content.y);
+      }
+    }
+  }
+}
+
+function togglePreview() {
+  const work = document.querySelector('main.workbench');
+  if (!work) return;
+  const on = !work.classList.contains('preview-on');
+  work.classList.toggle('preview-on', on);
+  document.getElementById('btn-preview').classList.toggle('active', on);
+  if (on) renderPreview();
+}
+
+// Render or hide the scope breadcrumb above the canvas.
+function renderBreadcrumb() {
+  let bc = document.getElementById('scope-breadcrumb');
+  if (!state.editScope) {
+    if (bc) bc.remove();
+    return;
+  }
+  const tv = findTabview(state.editScope.widgetId);
+  if (!tv) {
+    if (bc) bc.remove();
+    return;
+  }
+  const tabs = tv.props.tabs || [];
+  const tabIdx = Math.max(0, Math.min(tabs.length - 1, state.editScope.tabIndex));
+  const tab = tabs[tabIdx] || { name: '' };
+
+  if (!bc) {
+    bc = document.createElement('div');
+    bc.id = 'scope-breadcrumb';
+    bc.className = 'scope-breadcrumb';
+    // Insert above the canvas
+    const canvasWrap = $canvas.parentElement;
+    canvasWrap.insertBefore(bc, $canvas);
+  }
+  bc.innerHTML = '';
+  const screen = curScreen();
+  const crumbs = [
+    { label: screen ? screen.name : 'screen', active: false, action: exitTab },
+    { label: tv.name, active: false, action: exitTab },
+    { label: tab.name, active: true, action: null }
+  ];
+  for (let i = 0; i < crumbs.length; i++) {
+    if (i > 0) {
+      const sep = document.createElement('span');
+      sep.className = 'crumb-sep';
+      sep.textContent = '\u203A';
+      bc.appendChild(sep);
+    }
+    const span = document.createElement('span');
+    span.className = crumbs[i].active ? 'crumb-active' : 'crumb';
+    span.textContent = crumbs[i].label;
+    if (crumbs[i].action) {
+      span.style.cursor = 'pointer';
+      span.addEventListener('click', crumbs[i].action);
+    }
+    bc.appendChild(span);
+  }
+  // Tab switcher: small buttons for each tab in this tabview
+  if (tabs.length > 1) {
+    const switcher = document.createElement('span');
+    switcher.style.marginLeft = '12px';
+    switcher.style.display = 'flex';
+    switcher.style.gap = '4px';
+    for (let i = 0; i < tabs.length; i++) {
+      const tb = document.createElement('button');
+      tb.className = 'exit-scope';
+      tb.style.padding = '2px 8px';
+      if (i === tabIdx) {
+        tb.style.background = 'var(--amber)';
+        tb.style.color = 'var(--bg)';
+      }
+      tb.textContent = tabs[i].name;
+      tb.addEventListener('click', () => enterTab(tv.id, i));
+      switcher.appendChild(tb);
+    }
+    bc.appendChild(switcher);
+  }
+  const exit = document.createElement('button');
+  exit.className = 'exit-scope';
+  exit.textContent = '\u2190 Exit tab';
+  exit.addEventListener('click', exitTab);
+  bc.appendChild(exit);
 }
 
 function attachResizeHandles(el, w) {
@@ -2649,8 +3752,12 @@ function attachResizeHandles(el, w) {
 }
 
 function updateStatus() {
-  const sel = curWidgets().find(w => w.id === state.selectedId);
-  $statusSelected.textContent = sel ? `${sel.name} (${sel.type})` : 'none';
+  if (state.selectedIds.length > 1) {
+    $statusSelected.textContent = state.selectedIds.length + ' widgets';
+  } else {
+    const sel = curWidgets().find(w => w.id === state.selectedId);
+    $statusSelected.textContent = sel ? `${sel.name} (${sel.type})` : 'none';
+  }
   $statusScreen.textContent = curScreen() ? curScreen().name : 'none';
   $statusCount.textContent = curWidgets().length;
   const dims = getCanvasDims();
@@ -2663,13 +3770,32 @@ function updateStatus() {
 function beginWidgetDrag(e, w) {
   if (e.target.classList.contains('resize-handle')) return;
   e.stopPropagation();
-  state.selectedId = w.id;
+
+  // Selection logic:
+  //   shift+click  -> toggle this widget in/out of the selection
+  //   click on a widget already in the selection -> keep the selection (drag the group)
+  //   click on an unselected widget -> select only it
+  if (e.shiftKey) {
+    toggleSelect(w.id);
+  } else if (!isSelected(w.id)) {
+    selectOne(w.id);
+  } else {
+    // Make this widget the primary so the property panel reflects the
+    // widget the user actually grabbed.
+    state.selectedId = w.id;
+  }
   redrawAll();
+
+  // If the just-grabbed widget is not selected (shift-toggled it off),
+  // there is nothing to drag.
+  if (!isSelected(w.id)) return;
 
   const startX = e.clientX;
   const startY = e.clientY;
-  const startWX = w.x;
-  const startWY = w.y;
+  const moving = selectedWidgets();
+  // Snapshot starting positions of every selected widget so we can drive
+  // the group from a single delta computed off the cursor.
+  const starts = new Map(moving.map(mw => [mw.id, { x: mw.x, y: mw.y }]));
   let moved = false;
 
   function onMove(ev) {
@@ -2680,15 +3806,36 @@ function beginWidgetDrag(e, w) {
     if (!moved) return;
     const dx = ev.clientX - startX;
     const dy = ev.clientY - startY;
-    const dims = getCanvasDims();
-    let nx = Math.max(0, Math.min(dims.w - w.w, snap(startWX + dx)));
-    let ny = Math.max(0, Math.min(dims.h - w.h, snap(startWY + dy)));
+    const dims = editBounds();
 
-    // Alignment snapping against other widgets on this screen
-    const align = findAlignment(w, nx, ny);
-    w.x = align.x;
-    w.y = align.y;
-    showGuides(align.guides);
+    if (moving.length === 1) {
+      // Single-widget drag: use existing snap + alignment guides.
+      let nx = Math.max(0, Math.min(dims.w - w.w, snap(starts.get(w.id).x + dx)));
+      let ny = Math.max(0, Math.min(dims.h - w.h, snap(starts.get(w.id).y + dy)));
+      const align = findAlignment(w, nx, ny);
+      w.x = align.x;
+      w.y = align.y;
+      showGuides(align.guides);
+    } else {
+      // Group drag: compute the largest delta the entire group can move
+      // without any member leaving the canvas. No per-widget snapping.
+      let realDx = snap(dx), realDy = snap(dy);
+      for (const mw of moving) {
+        const s = starts.get(mw.id);
+        realDx = realDx > 0
+          ? Math.min(realDx, dims.w - mw.w - s.x)
+          : Math.max(realDx, -s.x);
+        realDy = realDy > 0
+          ? Math.min(realDy, dims.h - mw.h - s.y)
+          : Math.max(realDy, -s.y);
+      }
+      for (const mw of moving) {
+        const s = starts.get(mw.id);
+        mw.x = s.x + realDx;
+        mw.y = s.y + realDy;
+      }
+      hideGuides();
+    }
     redrawAll();
   }
   function onUp() {
@@ -2706,7 +3853,7 @@ function findAlignment(w, candX, candY) {
   const tol = 5;
   const others = curWidgets().filter(x => x.id !== w.id);
   if (!others.length) return { x: candX, y: candY, guides: [] };
-  const dims = getCanvasDims();
+  const dims = editBounds();
 
   // Edges of the moving widget at the candidate position
   let x = candX, y = candY;
@@ -2730,8 +3877,14 @@ function findAlignment(w, candX, candY) {
       }
     }
   }
-  // Also snap to canvas center and edges
+  // Also snap to canvas center, edges, and common margin distances
+  // (8, 16, 20, 24, 40 pixels from each edge). The margins help when
+  // laying out content with consistent breathing room from the bezels.
+  const MARGINS = [8, 16, 20, 24, 40];
   const canvasXTargets = [0, dims.w / 2, dims.w];
+  for (const m of MARGINS) {
+    canvasXTargets.push(m, dims.w - m);
+  }
   for (const cand of xCandidates) {
     for (const t of canvasXTargets) {
       const d = Math.abs(cand.v - t);
@@ -2765,6 +3918,9 @@ function findAlignment(w, candX, candY) {
     }
   }
   const canvasYTargets = [0, dims.h / 2, dims.h];
+  for (const m of MARGINS) {
+    canvasYTargets.push(m, dims.h - m);
+  }
   for (const cand of yCandidates) {
     for (const t of canvasYTargets) {
       const d = Math.abs(cand.v - t);
@@ -2813,7 +3969,7 @@ function beginResize(e, w, dir) {
     let dx = ev.clientX - startX;
     let dy = ev.clientY - startY;
     let nx = sX, ny = sY, nw = sW, nh = sH;
-    const dims = getCanvasDims();
+    const dims = editBounds();
 
     if (dir.includes('e')) nw = Math.max(20, snap(sW + dx));
     if (dir.includes('s')) nh = Math.max(20, snap(sH + dy));
@@ -2834,11 +3990,68 @@ function beginResize(e, w, dir) {
   document.addEventListener('pointerup', onUp);
 }
 
+// Canvas pointerdown: start a box-select on empty area. Plain click
+// without drag clears the selection (or extends if shift is held).
 $canvas.addEventListener('pointerdown', e => {
-  if (e.target === $canvas) {
-    state.selectedId = null;
+  if (e.target !== $canvas) return;
+  const rect = $canvas.getBoundingClientRect();
+  const x0 = e.clientX - rect.left;
+  const y0 = e.clientY - rect.top;
+  const additive = e.shiftKey;
+  if (!additive) clearSelection();
+  redrawAll();
+
+  // Create a rubber-band rectangle
+  let box = null;
+  let moved = false;
+
+  function onMove(ev) {
+    const x1 = ev.clientX - rect.left;
+    const y1 = ev.clientY - rect.top;
+    if (!moved && (Math.abs(x1 - x0) > 2 || Math.abs(y1 - y0) > 2)) {
+      moved = true;
+      box = document.createElement('div');
+      box.className = 'box-select';
+      $canvas.appendChild(box);
+    }
+    if (!moved) return;
+    const lx = Math.min(x0, x1), ly = Math.min(y0, y1);
+    const w  = Math.abs(x1 - x0), h  = Math.abs(y1 - y0);
+    box.style.left = lx + 'px';
+    box.style.top  = ly + 'px';
+    box.style.width  = w + 'px';
+    box.style.height = h + 'px';
+
+    // Live update selection: widgets whose bounding box intersects the
+    // rubber-band rectangle become selected (or additionally selected
+    // when shift is held).
+    const baseIds = additive ? new Set(state.selectedIds) : new Set();
+    // When in tab scope, widget x/y are tab-local; the rubber band
+    // rectangle is in canvas-local coords. Translate widgets to canvas
+    // coords for the intersection test.
+    let ox = 0, oy = 0;
+    if (state.editScope && state.editScope.kind === 'tab') {
+      const tv = findTabview(state.editScope.widgetId);
+      if (tv) { const r = tabContentRect(tv); ox = r.x; oy = r.y; }
+    }
+    for (const ww of curWidgets()) {
+      const wx = ww.x + ox, wy = ww.y + oy;
+      const intersects = wx < lx + w && wx + ww.w > lx
+                      && wy < ly + h && wy + ww.h > ly;
+      if (intersects) baseIds.add(ww.id);
+    }
+    setSelection([...baseIds]);
     redrawAll();
+    // Re-append the box because redrawAll wiped the canvas
+    $canvas.appendChild(box);
   }
+  function onUp() {
+    if (box) box.remove();
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+  }
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
 });
 
 $canvas.addEventListener('pointermove', e => {
@@ -2857,24 +4070,112 @@ function renderHierarchy() {
     return;
   }
   $widgetList.innerHTML = '';
+  // Listed top-of-screen first, which in canvas terms means the END of
+  // the widgets array (last painted, on top). Drop targets compute their
+  // intended array index accordingly.
   for (let i = ws.length - 1; i >= 0; i--) {
     const w = ws[i];
+    const def = WIDGET_TYPES[w.type];
     const item = document.createElement('div');
-    item.className = 'item' + (w.id === state.selectedId ? ' selected' : '');
-    item.innerHTML = `<span>${escapeHtml(w.name)}</span><span class="type">${w.type}</span>`;
-    item.addEventListener('click', () => {
-      state.selectedId = w.id;
+    item.className = 'item' + (isSelected(w.id) ? ' selected' : '');
+    item.dataset.id = w.id;
+    item.dataset.index = i;
+    item.draggable = true;
+
+    const glyph = document.createElement('span');
+    glyph.className = 'glyph';
+    glyph.textContent = def ? def.glyph : '?';
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = w.name;
+    const type = document.createElement('span');
+    type.className = 'type';
+    type.textContent = w.type;
+    item.appendChild(glyph);
+    item.appendChild(name);
+    item.appendChild(type);
+
+    // Click: select. Shift-click: toggle into multi-selection.
+    item.addEventListener('click', (e) => {
+      if (e.shiftKey) toggleSelect(w.id);
+      else selectOne(w.id);
       redrawAll();
     });
+
+    // Right-click: same context menu as on canvas
+    item.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (!isSelected(w.id)) selectOne(w.id);
+      redrawAll();
+      showContextMenu(e.clientX, e.clientY, w.id);
+    });
+
+    // Drag-and-drop for z-order reorder. The visual list is top-first,
+    // so dropping above an item means a higher array index.
+    item.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', w.id);
+      e.dataTransfer.effectAllowed = 'move';
+      item.classList.add('dragging');
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      $widgetList.querySelectorAll('.item').forEach(el => {
+        el.classList.remove('drop-above', 'drop-below');
+      });
+    });
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const rect = item.getBoundingClientRect();
+      const above = (e.clientY - rect.top) < rect.height / 2;
+      item.classList.toggle('drop-above', above);
+      item.classList.toggle('drop-below', !above);
+    });
+    item.addEventListener('dragleave', () => {
+      item.classList.remove('drop-above', 'drop-below');
+    });
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const fromId = e.dataTransfer.getData('text/plain');
+      if (!fromId || fromId === w.id) return;
+      const rect = item.getBoundingClientRect();
+      const above = (e.clientY - rect.top) < rect.height / 2;
+      // List shows top-first (highest z-order first). "Drop above" in the
+      // visual list means a higher array index in widgets.
+      let targetIdx = i + (above ? 1 : 0);
+      moveWidgetToIndex(fromId, targetIdx);
+    });
+
     $widgetList.appendChild(item);
   }
+  // Small instructional footer
+  const hint = document.createElement('div');
+  hint.className = 'panel-hint';
+  hint.textContent = 'Top of list = front of canvas. Drag to reorder.';
+  $widgetList.appendChild(hint);
+}
+
+// Move a widget to a specific position in its screen's widgets array,
+// updating the z-order. Compensates for index shift when moving forward.
+function moveWidgetToIndex(id, targetIdx) {
+  const ws = curWidgets();
+  const fromIdx = ws.findIndex(w => w.id === id);
+  if (fromIdx < 0) return;
+  if (fromIdx === targetIdx || fromIdx + 1 === targetIdx) return;
+  pushHistory();
+  const [w] = ws.splice(fromIdx, 1);
+  // After splice, indices above fromIdx shift down by 1
+  const adjusted = targetIdx > fromIdx ? targetIdx - 1 : targetIdx;
+  ws.splice(Math.max(0, Math.min(ws.length, adjusted)), 0, w);
+  redrawAll();
 }
 
 // ----- Properties panel -----------------------------------
 
 function renderPropsPanel() {
-  const w = curWidgets().find(x => x.id === state.selectedId);
-  if (!w) {
+  const sel = selectedWidgets();
+  // Empty selection: show the canvas hint
+  if (!sel.length) {
     $propsPanel.innerHTML = `
       <div class="props-empty">
         <span class="glyph">+</span>
@@ -2883,9 +4184,37 @@ function renderPropsPanel() {
     `;
     return;
   }
+  // Multi-selection: show a summary with quick group actions; the property
+  // editor below still operates on the primary (last touched).
+  let multiBanner = '';
+  if (sel.length > 1) {
+    const types = [...new Set(sel.map(w => w.type))].sort();
+    multiBanner = `
+      <div class="panel-section">
+        <h3>Multi-select // ${sel.length} widgets</h3>
+        <div style="font-size: 10px; color: var(--ink-dim); padding: 4px 0 8px;">
+          Types: ${types.join(', ')}<br>
+          Property edits below apply to the primary (last selected).
+          Right-click for align and distribute.
+        </div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button class="multi-action" id="multi-clear">Clear selection</button>
+          <button class="multi-action" id="multi-delete">Delete all</button>
+          <button class="multi-action" id="multi-dup">Duplicate all</button>
+        </div>
+      </div>
+    `;
+  }
+  const w = curWidgets().find(x => x.id === state.selectedId);
+  if (!w) {
+    // Should be rare, but render just the banner
+    $propsPanel.innerHTML = multiBanner;
+    wireMultiSelectActions();
+    return;
+  }
   const def = WIDGET_TYPES[w.type];
 
-  let html = `
+  let html = multiBanner + `
     <div class="panel-section">
       <h3>${def.label} // Identity</h3>
       <div class="prop-row">
@@ -2929,6 +4258,7 @@ function renderPropsPanel() {
     </div>
   `;
   $propsPanel.innerHTML = html;
+  wireMultiSelectActions();
 
   $propsPanel.querySelector('#prop-name').addEventListener('change', e => {
     pushHistory();
@@ -2942,7 +4272,17 @@ function renderPropsPanel() {
       pushHistory();
       const k = inp.dataset.geo;
       const v = parseInt(inp.value, 10);
-      const dims = getCanvasDims();
+      const dims = editBounds();
+      if (k === 'x') w.x = Math.max(0, Math.min(dims.w - w.w, v));
+      if (k === 'y') w.y = Math.max(0, Math.min(dims.h - w.h, v));
+      if (k === 'w') w.w = Math.max(20, Math.min(dims.w - w.x, v));
+      if (k === 'h') w.h = Math.max(20, Math.min(dims.h - w.y, v));
+      redrawAll();
+    });
+    makeScrubbable(inp, () => {
+      const k = inp.dataset.geo;
+      const dims = editBounds();
+      const v = parseInt(inp.value, 10);
       if (k === 'x') w.x = Math.max(0, Math.min(dims.w - w.w, v));
       if (k === 'y') w.y = Math.max(0, Math.min(dims.h - w.h, v));
       if (k === 'w') w.w = Math.max(20, Math.min(dims.w - w.x, v));
@@ -2958,14 +4298,39 @@ function renderPropsPanel() {
       let v;
       if (inp.type === 'checkbox') v = inp.checked;
       else if (inp.type === 'number') v = parseInt(inp.value, 10);
+      else if (inp.dataset.tabNames) {
+        // Parse the textarea back into an array of { name, widgets },
+        // preserving the widget lists at each index where the name remains.
+        const lines = inp.value.split('\n').map(s => s.trim()).filter(s => s.length);
+        const prev = Array.isArray(w.props.tabs) ? w.props.tabs : [];
+        v = lines.map((name, i) => ({
+          name,
+          widgets: (prev[i] && Array.isArray(prev[i].widgets)) ? prev[i].widgets : []
+        }));
+      }
       else v = inp.value;
       w.props[k] = v;
+      // If we were editing a tab that no longer exists, exit the scope
+      if (k === 'tabs' && state.editScope && state.editScope.widgetId === w.id) {
+        const tabs = w.props.tabs || [];
+        if (state.editScope.tabIndex >= tabs.length) state.editScope = null;
+      }
       redrawAll();
     });
     if (inp.tagName === 'TEXTAREA' || inp.type === 'text') {
       inp.addEventListener('input', () => {
         const k = inp.dataset.prop;
+        // For tab_names, defer the array rebuild to change (Enter / blur)
+        // so we don't lose widgets on every keystroke.
+        if (inp.dataset.tabNames) return;
         w.props[k] = inp.value;
+        redrawAll();
+      });
+    }
+    if (inp.type === 'number') {
+      makeScrubbable(inp, () => {
+        const k = inp.dataset.prop;
+        w.props[k] = parseInt(inp.value, 10);
         redrawAll();
       });
     }
@@ -2980,6 +4345,14 @@ function renderPropsPanel() {
       else if (act === 'lower') zOrder(w.id, -1);
       else if (act === 'front') zOrder(w.id, 'front');
       else if (act === 'back') zOrder(w.id, 'back');
+    });
+  });
+
+  // Enter Tab buttons for tabview widgets
+  $propsPanel.querySelectorAll('.enter-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.tabIndex, 10);
+      enterTab(w.id, idx);
     });
   });
 }
@@ -3035,7 +4408,101 @@ function renderPropInput(w, p) {
       .join('');
     return `<div class="prop-row"><label>${p.label}</label><select data-prop="${p.key}"><option value="">--</option>${opts}</select></div>`;
   }
+  if (p.type === 'tab_names') {
+    // Render the tab names as a multi-line textarea (one name per line),
+    // followed by buttons to enter each tab.
+    const tabs = Array.isArray(val) ? val : [];
+    const text = tabs.map(t => t.name || '').join('\n');
+    const buttons = tabs.map((t, i) =>
+      '<button class="enter-tab-btn" data-tab-index="' + i + '">' + escapeHtml(t.name || ('Tab ' + (i + 1))) + ' \u2192</button>'
+    ).join('');
+    return `<div class="prop-row full"><label>${p.label}${p.hint ? ' <span style="color: var(--ink-mute); text-transform: none;">(' + p.hint + ')</span>' : ''}</label>
+              <textarea data-prop="${p.key}" data-tab-names="1" rows="3">${escapeHtml(text)}</textarea>
+              <div class="tab-enter-grid">${buttons}</div>
+            </div>`;
+  }
   return '';
+}
+
+// Wire the buttons shown by the multi-select banner in the property panel.
+function wireMultiSelectActions() {
+  const $c = document.getElementById('multi-clear');
+  const $d = document.getElementById('multi-delete');
+  const $u = document.getElementById('multi-dup');
+  if ($c) $c.addEventListener('click', () => { clearSelection(); redrawAll(); });
+  if ($d) $d.addEventListener('click', () => {
+    if (confirm('Delete ' + state.selectedIds.length + ' widgets?')) deleteSelected();
+  });
+  if ($u) $u.addEventListener('click', duplicateSelected);
+}
+
+// ----- Group align and distribute -------------------------
+// Each call pushes one history entry and applies to the current
+// selection. "edge" can be left/right/top/bottom/center-h/center-v.
+
+function alignSelected(edge) {
+  const ws = selectedWidgets();
+  if (ws.length < 2) return;
+  pushHistory();
+  if (edge === 'left') {
+    const x = Math.min(...ws.map(w => w.x));
+    for (const w of ws) w.x = x;
+  } else if (edge === 'right') {
+    const x = Math.max(...ws.map(w => w.x + w.w));
+    for (const w of ws) w.x = x - w.w;
+  } else if (edge === 'top') {
+    const y = Math.min(...ws.map(w => w.y));
+    for (const w of ws) w.y = y;
+  } else if (edge === 'bottom') {
+    const y = Math.max(...ws.map(w => w.y + w.h));
+    for (const w of ws) w.y = y - w.h;
+  } else if (edge === 'center-h') {
+    // Vertical center line (horizontal center of bounding box)
+    const minX = Math.min(...ws.map(w => w.x));
+    const maxX = Math.max(...ws.map(w => w.x + w.w));
+    const cx = (minX + maxX) / 2;
+    for (const w of ws) w.x = Math.round(cx - w.w / 2);
+  } else if (edge === 'center-v') {
+    // Horizontal center line (vertical center of bounding box)
+    const minY = Math.min(...ws.map(w => w.y));
+    const maxY = Math.max(...ws.map(w => w.y + w.h));
+    const cy = (minY + maxY) / 2;
+    for (const w of ws) w.y = Math.round(cy - w.h / 2);
+  }
+  redrawAll();
+}
+
+// Distribute selected widgets evenly between the outermost two on the axis.
+// 'h' distributes horizontally (equal gaps between widget edges along X),
+// 'v' distributes vertically.
+function distributeSelected(axis) {
+  const ws = selectedWidgets();
+  if (ws.length < 3) return;
+  pushHistory();
+  if (axis === 'h') {
+    const sorted = ws.slice().sort((a, b) => a.x - b.x);
+    const first = sorted[0], last = sorted[sorted.length - 1];
+    const totalSpan = (last.x + last.w) - first.x;
+    const totalWidth = sorted.reduce((s, w) => s + w.w, 0);
+    const gap = (totalSpan - totalWidth) / (sorted.length - 1);
+    let cursor = first.x + first.w + gap;
+    for (let i = 1; i < sorted.length - 1; i++) {
+      sorted[i].x = Math.round(cursor);
+      cursor += sorted[i].w + gap;
+    }
+  } else if (axis === 'v') {
+    const sorted = ws.slice().sort((a, b) => a.y - b.y);
+    const first = sorted[0], last = sorted[sorted.length - 1];
+    const totalSpan = (last.y + last.h) - first.y;
+    const totalHeight = sorted.reduce((s, w) => s + w.h, 0);
+    const gap = (totalSpan - totalHeight) / (sorted.length - 1);
+    let cursor = first.y + first.h + gap;
+    for (let i = 1; i < sorted.length - 1; i++) {
+      sorted[i].y = Math.round(cursor);
+      cursor += sorted[i].h + gap;
+    }
+  }
+  redrawAll();
 }
 
 function zOrder(id, dir) {
@@ -3053,6 +4520,49 @@ function zOrder(id, dir) {
   redrawAll();
 }
 
+// Make a number input click-and-drag-scrubbable. Click + drag horizontally
+// to change the value: 1 unit per pixel by default, 10 units per pixel with
+// Shift, 0.1 per pixel with Alt (then rounded to int). After each change,
+// onUpdate() is called so callers can apply the value to the underlying
+// state and redraw. A single pushHistory is recorded at the start of a
+// scrub. Hovering shows a horizontal-resize cursor.
+function makeScrubbable(input, onUpdate) {
+  input.style.cursor = 'ew-resize';
+  input.addEventListener('pointerdown', (e) => {
+    // Only scrub on a primary-button drag; let plain clicks and Tab focus pass
+    if (e.button !== 0) return;
+    // Don't kick in if the input already has focus (the user is typing in it)
+    if (document.activeElement === input) return;
+    e.preventDefault();
+    input.focus();
+    const startX = e.clientX;
+    const startVal = parseInt(input.value, 10) || 0;
+    const minAttr = input.getAttribute('min');
+    const maxAttr = input.getAttribute('max');
+    const minV = minAttr === null ? -Infinity : parseInt(minAttr, 10);
+    const maxV = maxAttr === null ?  Infinity : parseInt(maxAttr, 10);
+    let pushed = false;
+    let moved = false;
+    function onMove(ev) {
+      if (!moved && Math.abs(ev.clientX - startX) > 2) moved = true;
+      if (!moved) return;
+      if (!pushed) { pushHistory(); pushed = true; }
+      const dx = ev.clientX - startX;
+      const factor = ev.shiftKey ? 10 : (ev.altKey ? 0.1 : 1);
+      const next = Math.round(startVal + dx * factor);
+      const clamped = Math.max(minV, Math.min(maxV, next));
+      input.value = clamped;
+      onUpdate();
+    }
+    function onUp() {
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  });
+}
+
 function sanitizeName(s) {
   return (s || '').replace(/[^a-zA-Z0-9_]/g, '_').replace(/^([0-9])/, '_$1') || 'widget';
 }
@@ -3067,15 +4577,30 @@ function escapeAttr(s) { return escapeHtml(s); }
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
   if (e.key === 'Delete' || e.key === 'Backspace') {
-    if (state.selectedId) { deleteWidget(state.selectedId); e.preventDefault(); }
+    if (state.selectedIds.length) { deleteSelected(); e.preventDefault(); }
   }
-  if (e.key === 'Escape') { state.selectedId = null; redrawAll(); }
+  if (e.key === 'Escape') { clearSelection(); redrawAll(); hideContextMenu(); }
   if (e.key === 'ArrowLeft')  { moveSelected(e.shiftKey ? -10 : -1, 0); e.preventDefault(); }
   if (e.key === 'ArrowRight') { moveSelected(e.shiftKey ?  10 :  1, 0); e.preventDefault(); }
   if (e.key === 'ArrowUp')    { moveSelected(0, e.shiftKey ? -10 : -1); e.preventDefault(); }
   if (e.key === 'ArrowDown')  { moveSelected(0, e.shiftKey ?  10 :  1); e.preventDefault(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && !e.shiftKey) {
+    // Select all widgets on the current screen
+    const all = curWidgets().map(w => w.id);
+    if (all.length) { setSelection(all); redrawAll(); }
+    e.preventDefault();
+  }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
-    if (state.selectedId) duplicateWidget(state.selectedId);
+    if (state.selectedIds.length > 1) duplicateSelected();
+    else if (state.selectedId) duplicateWidget(state.selectedId);
+    e.preventDefault();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+    if (state.selectedId) copySelected();
+    e.preventDefault();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+    pasteClipboard();
     e.preventDefault();
   }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { undo(); e.preventDefault(); }
@@ -3090,11 +4615,15 @@ function snapshot() {
     screens: state.screens,
     activeScreenId: state.activeScreenId,
     selectedId: state.selectedId,
+    selectedIds: state.selectedIds,
+    editScope: state.editScope,
     nextId: state.nextId,
     nextScreenId: state.nextScreenId,
     nameCounts: state.nameCounts,
     orientation: state.orientation,
-    theme: state.theme
+    theme: state.theme,
+    meta: state.meta,
+    peripherals: state.peripherals
   });
 }
 
@@ -3103,11 +4632,15 @@ function restore(snap) {
   state.screens = obj.screens;
   state.activeScreenId = obj.activeScreenId;
   state.selectedId = obj.selectedId;
+  state.selectedIds = obj.selectedIds || (obj.selectedId ? [obj.selectedId] : []);
+  state.editScope = obj.editScope || null;
   state.nextId = obj.nextId;
   state.nextScreenId = obj.nextScreenId;
   state.nameCounts = obj.nameCounts;
   state.orientation = obj.orientation;
   state.theme = obj.theme;
+  if (obj.meta) state.meta = obj.meta;
+  if (obj.peripherals) state.peripherals = obj.peripherals;
   $orientSelect.value = state.orientation;
   $themeSelect.value = state.theme;
   applyOrientation();
@@ -3119,18 +4652,48 @@ function pushHistory() {
   state.history.push(snapshot());
   if (state.history.length > state.historyMax) state.history.shift();
   state.historyIdx = state.history.length - 1;
+  markDirty();
+}
+
+function markDirty() {
+  state.dirty = true;
+  updateProjectTag();
+}
+function markClean() {
+  state.dirty = false;
+  updateProjectTag();
+}
+function updateProjectTag() {
+  const tag = document.getElementById('project-tag');
+  if (!tag) return;
+  tag.classList.toggle('dirty', !!state.dirty);
+  const sketchSafe = (state.meta && state.meta.title) ? state.meta.title : 'Untitled';
+  document.getElementById('project-title').textContent = sketchSafe;
+  tag.title = state.dirty ? 'Unsaved changes (click to edit project details)' : 'Project details';
 }
 
 function undo() {
   if (state.historyIdx <= 0) return;
-  state.historyIdx--;
+  // history[idx] is the snapshot taken before the most recent operation.
+  // The current state is the "after" state of that operation. Swap them
+  // so redo can return here: stash the current state where the before
+  // snapshot lives, then restore the before snapshot.
+  const currentSnap = snapshot();
   restore(state.history[state.historyIdx]);
+  state.history[state.historyIdx] = currentSnap;
+  state.historyIdx--;
+  markDirty();
 }
 
 function redo() {
   if (state.historyIdx >= state.history.length - 1) return;
   state.historyIdx++;
+  // history[idx] now holds the "after" state we stashed during undo. Same
+  // swap as undo: stash current state, restore the saved one.
+  const currentSnap = snapshot();
   restore(state.history[state.historyIdx]);
+  state.history[state.historyIdx] = currentSnap;
+  markDirty();
 }
 
 document.getElementById('btn-undo').addEventListener('click', undo);
@@ -3142,11 +4705,13 @@ document.getElementById('btn-new').addEventListener('click', () => {
   if (state.screens.some(s => s.widgets.length) && !confirm('Discard the entire project?')) return;
   pushHistory();
   state.screens = [];
-  state.selectedId = null;
+  clearSelection();
   state.nameCounts = {};
   state.nextId = 1;
   state.nextScreenId = 1;
+  state.meta = { title: 'Untitled', author: '', targetBoard: 'Arduino Giga R1 + Display Shield', description: '', boardProfile: 'giga_display_shield' };
   addScreen('main');
+  markClean();
 });
 
 document.getElementById('btn-save').addEventListener('click', () => {
@@ -3155,14 +4720,18 @@ document.getElementById('btn-save').addEventListener('click', () => {
     tool: 'PANELWRIGHT',
     orientation: state.orientation,
     theme: state.theme,
+    meta: state.meta,
     screens: state.screens,
     peripherals: state.peripherals,
     nextId: state.nextId,
     nextScreenId: state.nextScreenId,
     nameCounts: state.nameCounts
   };
+  const fileName = (state.meta.title || 'panelwright-project')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'panelwright-project';
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  downloadBlob(blob, 'panelwright-project.json');
+  downloadBlob(blob, fileName + '.json');
+  markClean();
 });
 
 document.getElementById('btn-load').addEventListener('click', () => {
@@ -3194,6 +4763,12 @@ document.getElementById('file-input').addEventListener('change', e => {
       state.theme = data.theme || 'lvgl_default';
       state.nextId = data.nextId || 1;
       state.nameCounts = data.nameCounts || {};
+      // Metadata: pre-v3 files don't have any; default to sane values.
+      state.meta = Object.assign(
+        { title: 'Untitled', author: '', targetBoard: 'Arduino Giga R1 + Display Shield', description: '', boardProfile: 'giga_display_shield' },
+        data.meta || {}
+      );
+      if (!state.meta.boardProfile) state.meta.boardProfile = 'giga_display_shield';
       // Peripherals: merge stored values over defaults, so v1/v2 files
       // get all peripherals at their disabled defaults and v3 files
       // pick up any new peripherals added since the file was written.
@@ -3204,12 +4779,15 @@ document.getElementById('file-input').addEventListener('change', e => {
         }
       }
       state.peripherals = peripherals;
+      // Migrate tabview tabs from legacy string format to array of objects
+      migrateTabviews(state.screens);
       state.activeScreenId = (state.screens[0] || {}).id;
-      state.selectedId = null;
+      clearSelection();
       $orientSelect.value = state.orientation;
       $themeSelect.value = state.theme;
       applyOrientation();
       redrawAll();
+      markClean();
     } catch (err) {
       alert('Could not load file: ' + err.message);
     }
@@ -3277,6 +4855,8 @@ document.getElementById('btn-apply-theme').addEventListener('click', () => {
 // viewer in a new tab. The viewer reads sessionStorage on load and renders
 // the project automatically when present. Falls back to opening the viewer
 // empty if storage is unavailable.
+document.getElementById('btn-preview').addEventListener('click', togglePreview);
+
 document.getElementById('btn-viewer').addEventListener('click', () => {
   const data = {
     version: 3,
@@ -3314,6 +4894,97 @@ document.getElementById('hardware-done').addEventListener('click', () => {
 });
 $hardwareModal.addEventListener('click', (e) => {
   if (e.target === $hardwareModal) $hardwareModal.classList.remove('open');
+});
+
+// ----- Project metadata modal -----------------------------
+const $projectModal = document.getElementById('project-modal');
+const $metaTitle = document.getElementById('meta-title');
+const $metaAuthor = document.getElementById('meta-author');
+const $metaTarget = document.getElementById('meta-target');
+const $metaDescription = document.getElementById('meta-description');
+const $metaBoardProfile = document.getElementById('meta-board-profile');
+const $metaSplitFiles = document.getElementById('meta-split-files');
+
+function openProjectModal() {
+  $metaTitle.value = state.meta.title || '';
+  $metaAuthor.value = state.meta.author || '';
+  $metaTarget.value = state.meta.targetBoard || '';
+  $metaDescription.value = state.meta.description || '';
+  $metaBoardProfile.value = state.meta.boardProfile || 'giga_display_shield';
+  $metaSplitFiles.value = state.meta.splitFiles ? 'true' : 'false';
+  $projectModal.classList.add('open');
+}
+function closeProjectModal() {
+  const newMeta = {
+    title: $metaTitle.value.trim() || 'Untitled',
+    author: $metaAuthor.value.trim(),
+    targetBoard: $metaTarget.value.trim() || 'Arduino Giga R1 + Display Shield',
+    description: $metaDescription.value,
+    boardProfile: $metaBoardProfile.value || 'giga_display_shield',
+    splitFiles: $metaSplitFiles.value === 'true'
+  };
+  const changed = JSON.stringify(newMeta) !== JSON.stringify(state.meta);
+  if (changed) {
+    pushHistory();
+    state.meta = newMeta;
+    updateProjectTag();
+  }
+  $projectModal.classList.remove('open');
+}
+
+document.getElementById('project-tag').addEventListener('click', openProjectModal);
+document.getElementById('project-close').addEventListener('click', closeProjectModal);
+document.getElementById('project-done').addEventListener('click', closeProjectModal);
+$projectModal.addEventListener('click', (e) => {
+  if (e.target === $projectModal) closeProjectModal();
+});
+
+// Validation modal
+const $validateModal = document.getElementById('validate-modal');
+document.getElementById('validate-close').addEventListener('click',
+  () => $validateModal.classList.remove('open'));
+document.getElementById('validate-done').addEventListener('click',
+  () => $validateModal.classList.remove('open'));
+$validateModal.addEventListener('click', (e) => {
+  if (e.target === $validateModal) $validateModal.classList.remove('open');
+});
+
+// Export image modal
+const $exportModal = document.getElementById('export-modal');
+const $exportStatus = document.getElementById('export-status');
+const $exportDefaultMsg = 'SVG is exported via an HTML foreignObject so the widgets render in any browser pixel-for-pixel with the editor canvas. PNG rasterization is deferred until native SVG primitives land.';
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  $exportStatus.textContent = $exportDefaultMsg;
+  $exportStatus.style.color = 'var(--ink-dim)';
+  $exportModal.classList.add('open');
+});
+document.getElementById('export-close').addEventListener('click',
+  () => $exportModal.classList.remove('open'));
+document.getElementById('export-cancel').addEventListener('click',
+  () => $exportModal.classList.remove('open'));
+$exportModal.addEventListener('click', (e) => {
+  if (e.target === $exportModal) $exportModal.classList.remove('open');
+});
+document.getElementById('export-download').addEventListener('click', async () => {
+  const btn = document.getElementById('export-download');
+  const opts = {
+    scope: document.getElementById('export-scope').value,
+    includeShell: document.getElementById('export-shell').value === 'on'
+  };
+  $exportStatus.textContent = 'Rendering...';
+  $exportStatus.style.color = 'var(--amber)';
+  btn.disabled = true;
+  try {
+    await performImageExport(opts);
+    $exportStatus.textContent = 'Downloaded.';
+    setTimeout(() => $exportModal.classList.remove('open'), 600);
+  } catch (err) {
+    $exportStatus.textContent = 'Export failed: ' + (err.message || err);
+    $exportStatus.style.color = 'var(--rust)';
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 function renderHardwareModal() {
@@ -3483,221 +5154,575 @@ $promptInput.addEventListener('keydown', e => {
 
 // ----- Code generation ------------------------------------
 
+// ----- Project validation ---------------------------------
+// Pre-flight checks before code generation. Returns an array of
+// { severity, message, screenId?, widgetId? }. Errors block generation;
+// warnings surface in the code modal but allow it to proceed.
+// Each entry is click-to-jump: clicking on the offending screen/widget
+// brings the user there.
+
+function validateProject() {
+  const issues = [];
+  const cppReserved = new Set([
+    'auto','break','case','char','class','const','continue','default','do',
+    'double','else','enum','extern','float','for','goto','if','inline','int',
+    'long','new','operator','private','protected','public','register','return',
+    'short','signed','sizeof','static','struct','switch','this','throw','typedef',
+    'union','unsigned','virtual','void','volatile','while','setup','loop','main',
+    'true','false','null','NULL'
+  ]);
+
+  // Global checks
+  if (!state.screens.length) {
+    issues.push({ severity: 'error', message: 'Project has no screens.' });
+    return issues;
+  }
+  if (!state.screens.some(s => s.isDefault)) {
+    issues.push({ severity: 'warning', message: 'No default screen marked. The first screen will be used.' });
+  }
+
+  // Collect global name set to detect cross-screen name collisions, which
+  // would make the generated C++ ambiguous because all widget handles live
+  // at file scope.
+  const allNames = new Map(); // name -> first {screen, widget}
+  // Collect every textarea by id (across screen + every tab) so keyboard
+  // bindings can be validated regardless of where they live.
+  const textareaIds = new Set();
+  for (const s of state.screens) {
+    function noteTextareas(arr) {
+      for (const w of arr) {
+        if (w.type === 'textarea') textareaIds.add(w.id);
+        if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
+          for (const t of w.props.tabs) {
+            if (Array.isArray(t.widgets)) noteTextareas(t.widgets);
+          }
+        }
+      }
+    }
+    noteTextareas(s.widgets);
+  }
+
+  for (const s of state.screens) {
+    // Empty screen
+    if (!s.widgets.length) {
+      issues.push({ severity: 'warning', message: 'Screen "' + s.name + '" has no widgets.',
+                    screenId: s.id });
+      continue;
+    }
+    function checkWidget(w, locationLabel) {
+      // Reserved keyword as widget name
+      if (cppReserved.has(w.name)) {
+        issues.push({ severity: 'error', message: 'Widget "' + w.name + '" uses a C++ reserved word as its name.',
+                      screenId: s.id, widgetId: w.id });
+      }
+      // Cross-screen duplicate name (also covers tab-vs-screen collisions
+      // because every widget across the whole project funnels through here)
+      if (allNames.has(w.name)) {
+        const prev = allNames.get(w.name);
+        if (prev.screenId !== s.id) {
+          issues.push({ severity: 'error',
+            message: 'Widget name "' + w.name + '" is used on both "' + prev.screen + '" and "' + s.name + '".',
+            screenId: s.id, widgetId: w.id });
+        } else {
+          issues.push({ severity: 'error',
+            message: 'Widget name "' + w.name + '" is duplicated on screen "' + s.name + '".',
+            screenId: s.id, widgetId: w.id });
+        }
+      } else {
+        allNames.set(w.name, { screen: s.name, screenId: s.id, widgetId: w.id });
+      }
+      // Button navigation pointing at a deleted screen
+      if (w.type === 'button' && w.props.action === 'goto') {
+        if (!w.props.actionTarget) {
+          issues.push({ severity: 'warning',
+            message: 'Button "' + w.name + '" has goto action but no target screen.',
+            screenId: s.id, widgetId: w.id });
+        } else if (!state.screens.find(ss => ss.id === w.props.actionTarget)) {
+          issues.push({ severity: 'error',
+            message: 'Button "' + w.name + '" navigates to a screen that no longer exists.',
+            screenId: s.id, widgetId: w.id });
+        }
+      }
+      // Keyboard with a stale textarea target
+      if (w.type === 'keyboard' && w.props.textareaTarget && !textareaIds.has(w.props.textareaTarget)) {
+        issues.push({ severity: 'error',
+          message: 'Keyboard "' + w.name + '" is bound to a textarea that no longer exists.',
+          screenId: s.id, widgetId: w.id });
+      }
+      // Recurse into tabview tab children
+      if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
+        for (let ti = 0; ti < w.props.tabs.length; ti++) {
+          const t = w.props.tabs[ti];
+          if (!Array.isArray(t.widgets)) continue;
+          for (const child of t.widgets) {
+            checkWidget(child, locationLabel + ' \u203A ' + (t.name || 'tab ' + ti));
+          }
+        }
+      }
+    }
+    for (const w of s.widgets) checkWidget(w, s.name);
+  }
+  return issues;
+}
+
+// Show a modal listing all validation issues. Each entry is clickable;
+// clicking jumps to the offending screen and selects the widget.
+function showValidationModal(issues) {
+  const $m = document.getElementById('validate-modal');
+  const $list = document.getElementById('validate-list');
+  $list.innerHTML = '';
+  for (const it of issues) {
+    const row = document.createElement('div');
+    row.className = 'validate-row severity-' + it.severity;
+    const sev = document.createElement('span');
+    sev.className = 'validate-sev'; sev.textContent = it.severity;
+    const msg = document.createElement('span');
+    msg.className = 'validate-msg'; msg.textContent = it.message;
+    row.appendChild(sev); row.appendChild(msg);
+    if (it.screenId || it.widgetId) {
+      row.style.cursor = 'pointer';
+      row.title = 'Click to jump';
+      row.addEventListener('click', () => {
+        $m.classList.remove('open');
+        if (it.screenId && it.screenId !== state.activeScreenId) {
+          switchToScreen(it.screenId);
+        }
+        if (it.widgetId) {
+          selectOne(it.widgetId);
+          redrawAll();
+        }
+      });
+    }
+    $list.appendChild(row);
+  }
+  $m.classList.add('open');
+}
+
+// When code modal opens and there are warnings, prepend a small notice.
+function showCodeModalWarnings(warnings) {
+  // Remove any prior banner
+  const existing = document.getElementById('code-warnings');
+  if (existing) existing.remove();
+  if (!warnings.length) return;
+  const box = document.createElement('div');
+  box.id = 'code-warnings';
+  box.className = 'code-warning-banner';
+  const header = document.createElement('div');
+  header.className = 'code-warning-header';
+  header.textContent = warnings.length + ' validation warning' + (warnings.length === 1 ? '' : 's') + ':';
+  box.appendChild(header);
+  for (const w of warnings) {
+    const r = document.createElement('div');
+    r.className = 'code-warning-row';
+    r.textContent = '\u2022 ' + w.message;
+    box.appendChild(r);
+  }
+  const codeBox = document.querySelector('.code-modal .box');
+  codeBox.insertBefore(box, codeBox.querySelector('pre'));
+}
+
 function generateCode() {
+  // Single-file Arduino sketch: every section in one .ino. Assembled from
+  // the same section emitters that generateSplitCode uses; if you change
+  // codegen, change the emitters and both outputs stay in sync.
+  const ctx = codegenContext();
+  const out = [];
+  pushLines(out, emitHeaderComment(ctx));
+  out.push('');
+  pushLines(out, emitBoardIncludes(ctx));
+  pushLines(out, emitPeripheralIncludes(ctx));
+  out.push('');
+  pushLines(out, emitDisplayDecls(ctx));
+  out.push('');
+  pushLines(out, emitPeripheralBlock(ctx));
+  pushLines(out, emitScreenHandles(ctx, 'static'));
+  out.push('');
+  pushLines(out, emitWidgetHandles(ctx, 'static'));
+  pushLines(out, emitScreenForwardDecls(ctx, 'static'));
+  out.push('');
+  pushLines(out, emitThemeFunction(ctx));
+  pushLines(out, emitEventHandlers(ctx));
+  pushLines(out, emitScreenBuilders(ctx));
+  pushLines(out, emitSetupFunction(ctx, { inlineUiInit: true }));
+  out.push('');
+  pushLines(out, emitLoopFunction(ctx));
+  out.push('');
+  return out.join('\n');
+}
+
+// Split-file generator: returns { ino, header, cpp } with the same
+// content as generateCode() but split into a small Arduino sketch and a
+// pair of UI files. The .ino handles the hardware (display, touch, every
+// peripheral) and delegates the LVGL screen + widget work to ui_init() in
+// ui.cpp. ui.h declares the public API: screen and widget handles, plus
+// the single entry point.
+//
+// Limitation: when a project has Event Code that references peripheral
+// state declared in the .ino, the user must add their own extern lines
+// at the top of ui.cpp. The generated defaults (Serial.println stubs and
+// goto-screen navigation) need no externs and compile cleanly.
+function generateSplitCode() {
+  const ctx = codegenContext();
+  const m = state.meta || {};
+  const guardName = (m.title || 'PANELWRIGHT')
+    .toUpperCase().replace(/[^A-Z0-9_]/g, '_') + '_UI_H';
+  const themed = state.theme === 'tradigital';
+
+  // --- ui.h ---
+  const ui_h = [];
+  pushLines(ui_h, emitHeaderComment(ctx, { fileHint: 'ui.h: declarations consumed by both ui.cpp and the sketch' }));
+  ui_h.push('');
+  ui_h.push('#ifndef ' + guardName);
+  ui_h.push('#define ' + guardName);
+  ui_h.push('');
+  ui_h.push('#include "lvgl.h"');
+  ui_h.push('');
+  pushLines(ui_h, emitScreenHandles(ctx, 'extern'));
+  ui_h.push('');
+  pushLines(ui_h, emitWidgetHandles(ctx, 'extern'));
+  ui_h.push('// ---- Public API ----');
+  ui_h.push('// Call from setup() once after Display.begin() / TouchDetector.begin().');
+  ui_h.push('// Builds every screen, applies the theme, and loads the default screen.');
+  ui_h.push('void ui_init(void);');
+  ui_h.push('');
+  ui_h.push('#endif // ' + guardName);
+  ui_h.push('');
+
+  // --- ui.cpp ---
+  const ui_cpp = [];
+  pushLines(ui_cpp, emitHeaderComment(ctx, { fileHint: 'ui.cpp: theme, event handlers, and per-screen builders' }));
+  ui_cpp.push('');
+  ui_cpp.push('#include "ui.h"');
+  ui_cpp.push('#include <Arduino.h>   // Serial.println in event handler stubs');
+  ui_cpp.push('');
+  // Definitions: same names as the externs in ui.h, but file-scope (no
+  // storage keyword, since they're definitions and need external linkage).
+  pushLines(ui_cpp, emitScreenHandles(ctx, ''));
+  ui_cpp.push('');
+  pushLines(ui_cpp, emitWidgetHandles(ctx, ''));
+  pushLines(ui_cpp, emitScreenForwardDecls(ctx, 'static'));
+  ui_cpp.push('');
+  pushLines(ui_cpp, emitThemeFunction(ctx));
+  pushLines(ui_cpp, emitEventHandlers(ctx));
+  pushLines(ui_cpp, emitScreenBuilders(ctx));
+  // ui_init body: theme apply + every screen build + load default
+  ui_cpp.push('void ui_init(void) {');
+  if (themed) ui_cpp.push('  apply_theme();');
+  for (const s of state.screens) ui_cpp.push('  build_screen_' + s.name + '();');
+  const def = defaultScreen();
+  if (def) {
+    ui_cpp.push('');
+    ui_cpp.push('  lv_scr_load(scr_' + def.name + ');');
+  }
+  ui_cpp.push('}');
+  ui_cpp.push('');
+
+  // --- <sketch>.ino ---
+  const ino = [];
+  pushLines(ino, emitHeaderComment(ctx, { fileHint: 'sketch.ino: hardware, peripherals, and Arduino entry points' }));
+  ino.push('');
+  pushLines(ino, emitBoardIncludes(ctx));
+  pushLines(ino, emitPeripheralIncludes(ctx));
+  ino.push('#include "ui.h"');
+  ino.push('');
+  pushLines(ino, emitDisplayDecls(ctx));
+  ino.push('');
+  pushLines(ino, emitPeripheralBlock(ctx));
+  // setup() body: hardware init + ui_init()
+  pushLines(ino, emitSetupFunction(ctx, { inlineUiInit: false }));
+  ino.push('');
+  pushLines(ino, emitLoopFunction(ctx));
+  ino.push('');
+
+  return {
+    ino: ino.join('\n'),
+    header: ui_h.join('\n'),
+    cpp: ui_cpp.join('\n')
+  };
+}
+
+// ----- Codegen section emitters ---------------------------
+// Each emitter returns an array of lines (no trailing blanks unless
+// explicitly intentional). Callers join them with the rest of the file.
+// ctx is a precomputed bag of repeatedly-used values (board profile,
+// dimensions, the enabled() predicate, collected handle lists, etc).
+
+function pushLines(arr, more) { for (const l of more) arr.push(l); }
+
+function codegenContext() {
   const dims = getCanvasDims();
-  const lines = [];
-  const interactiveTypes = new Set(['button', 'slider', 'switch', 'checkbox', 'dropdown', 'roller']);
-
-  lines.push('// =====================================================================');
-  lines.push('// Arduino Giga Display Shield sketch');
-  lines.push('// Generated by PANELWRIGHT (Field Instrument 042)');
-  lines.push('// Display:  ' + dims.w + ' x ' + dims.h + '  (' + state.orientation + ')');
-  lines.push('// Screens:  ' + state.screens.length);
-  lines.push('// Theme:    ' + state.theme);
-  lines.push('// =====================================================================');
-  lines.push('');
-  lines.push('#include "Arduino_H7_Video.h"');
-  lines.push('#include "Arduino_GigaDisplayTouch.h"');
-  lines.push('#include "lvgl.h"');
-
-  // Peripheral-specific includes
+  const board = boardProfile();
   const enabled = name => state.peripherals[name] && state.peripherals[name].enabled;
-  if (enabled('microphone')) lines.push('#include <PDM.h>');
-  if (enabled('imu')) lines.push('#include "Arduino_BMI270_BMM150.h"');
-  if (enabled('camera')) {
-    lines.push('#include "camera.h"');
-    const sensor = state.peripherals.camera.sensor;
-    if (sensor === 'HM01B0') lines.push('#include "himax.h"');
-    else if (sensor === 'GC2145') lines.push('#include "gc2145.h"');
-    else if (sensor === 'OV7670' || sensor === 'OV7675') lines.push('#include "ov767x.h"');
-  }
-  if (enabled('sdcard')) {
-    lines.push('#include "SDMMCBlockDevice.h"');
-    lines.push('#include "FATFileSystem.h"');
-  }
-  if (enabled('wifi')) lines.push('#include <WiFi.h>');
-  if (enabled('ble')) lines.push('#include <ArduinoBLE.h>');
-  if (enabled('rtc')) lines.push('#include <mbed_rtc_time.h>');
-  lines.push('');
-
-  lines.push('Arduino_H7_Video          Display(' + dims.w + ', ' + dims.h + ', GigaDisplayShield);');
-  lines.push('Arduino_GigaDisplayTouch  TouchDetector;');
-  lines.push('');
-
-  // ---- Peripheral globals + init functions ----
-  if (Object.keys(state.peripherals).some(k => enabled(k))) {
-    lines.push('// =====================================================================');
-    lines.push('// Onboard peripherals');
-    lines.push('// =====================================================================');
-    lines.push('');
-    genPeripheralCode(lines);
-  }
-
-  // Screen handles
-  lines.push('// ---- Screen handles ----');
-  for (const s of state.screens) {
-    lines.push('static lv_obj_t * scr_' + s.name + ';');
-  }
-  lines.push('');
-
-  // Widget handles (across all screens)
-  const allHandles = [];
-  for (const s of state.screens) {
-    for (const w of s.widgets) {
-      allHandles.push(w.name);
-      if (w.type === 'button') allHandles.push(w.name + '_label');
+  // Walk every widget (screens and tab children) to collect handles and
+  // interactive widgets once, so each emitter doesn't redo the walk.
+  const interactiveTypes = new Set(['button', 'slider', 'switch', 'checkbox', 'dropdown', 'roller']);
+  const handles = [];
+  const eventWidgets = [];
+  function walk(arr, screen) {
+    for (const w of arr) {
+      handles.push(w.name);
+      if (w.type === 'button') handles.push(w.name + '_label');
       if (w.type === 'meter') {
-        allHandles.push(w.name + '_scale');
-        allHandles.push(w.name + '_indic');
+        handles.push(w.name + '_scale');
+        handles.push(w.name + '_indic');
+      }
+      if (interactiveTypes.has(w.type)) eventWidgets.push({ widget: w, screen });
+      if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
+        for (const t of w.props.tabs) {
+          if (Array.isArray(t.widgets)) walk(t.widgets, screen);
+        }
       }
     }
   }
-  if (allHandles.length) {
-    lines.push('// ---- Widget handles ----');
-    for (const h of allHandles) lines.push('static lv_obj_t * ' + h + ';');
-    lines.push('');
-  }
+  for (const s of state.screens) walk(s.widgets, s);
+  return { dims, board, enabled, handles, eventWidgets, interactiveTypes };
+}
 
-  // Forward decls for screen builders
-  for (const s of state.screens) {
-    lines.push('static void build_screen_' + s.name + '(void);');
+function emitHeaderComment(ctx, opts) {
+  const m = state.meta || {};
+  const out = [];
+  out.push('// =====================================================================');
+  out.push('// ' + (m.title || 'Untitled'));
+  if (m.author) out.push('// Author:   ' + m.author);
+  out.push('// Target:   ' + (m.targetBoard || 'Arduino Giga R1 + Display Shield'));
+  out.push('// Display:  ' + ctx.dims.w + ' x ' + ctx.dims.h + '  (' + state.orientation + ')');
+  out.push('// Screens:  ' + state.screens.length);
+  out.push('// Theme:    ' + state.theme);
+  out.push('// Generated by PANELWRIGHT (Field Instrument 042)');
+  if (opts && opts.fileHint) {
+    out.push('//');
+    out.push('// ' + opts.fileHint);
   }
-  lines.push('');
-
-  // Theme application
-  if (state.theme === 'tradigital') {
-    lines.push('// ---- Tradigital theme ----');
-    lines.push('static void apply_theme(void) {');
-    lines.push('  lv_theme_t * th = lv_theme_default_init(');
-    lines.push('      NULL,');
-    lines.push('      lv_color_hex(0xD4A574),   // primary: amber');
-    lines.push('      lv_color_hex(0x6FB5A8),   // secondary: teal');
-    lines.push('      true,                     // dark mode');
-    lines.push('      &lv_font_montserrat_16);');
-    lines.push('  lv_disp_set_theme(NULL, th);');
-    lines.push('}');
-    lines.push('');
+  if (m.description && m.description.trim()) {
+    out.push('//');
+    for (const ln of m.description.split('\n')) out.push('// ' + ln);
   }
+  out.push('// =====================================================================');
+  return out;
+}
 
-  // Event handler stubs (interactive widgets and navigation)
-  const eventWidgets = [];
-  for (const s of state.screens) {
-    for (const w of s.widgets) {
-      if (interactiveTypes.has(w.type)) eventWidgets.push({ widget: w, screen: s });
+function emitBoardIncludes(ctx) {
+  return ctx.board.includes.slice();
+}
+
+function emitPeripheralIncludes(ctx) {
+  const out = [];
+  const en = ctx.enabled;
+  if (en('microphone')) out.push('#include <PDM.h>');
+  if (en('imu')) out.push('#include "Arduino_BMI270_BMM150.h"');
+  if (en('camera')) {
+    out.push('#include "camera.h"');
+    const sensor = state.peripherals.camera.sensor;
+    if (sensor === 'HM01B0') out.push('#include "himax.h"');
+    else if (sensor === 'GC2145') out.push('#include "gc2145.h"');
+    else if (sensor === 'OV7670' || sensor === 'OV7675') out.push('#include "ov767x.h"');
+  }
+  if (en('sdcard')) {
+    out.push('#include "SDMMCBlockDevice.h"');
+    out.push('#include "FATFileSystem.h"');
+  }
+  if (en('wifi')) {
+    out.push('#include <WiFi.h>');
+    if (state.peripherals.wifi.useSecretsFile !== false) {
+      out.push('#include "arduino_secrets.h"');
     }
   }
-  if (eventWidgets.length) {
-    lines.push('// ---- Event handlers ----');
-    for (const { widget: w } of eventWidgets) {
-      const custom = (w.props.customLogic || '').trim();
-      const customIndented = custom
-        ? custom.split('\n').map(l => '  ' + l).join('\n')
-        : '';
-      lines.push('static void ' + w.name + '_event(lv_event_t * e) {');
-      if (w.type === 'button') {
-        if (w.props.action === 'goto' && w.props.actionTarget) {
-          const target = state.screens.find(s => s.id === w.props.actionTarget);
-          if (target) {
-            lines.push('  // Navigate to screen "' + target.name + '"');
-            lines.push('  lv_scr_load(scr_' + target.name + ');');
-            if (custom) {
-              lines.push('  // --- custom logic ---');
-              lines.push(customIndented);
-            }
-          } else if (custom) {
-            lines.push(customIndented);
-          } else {
-            lines.push('  Serial.println("' + w.name + ' pressed");');
+  if (en('ble')) out.push('#include <ArduinoBLE.h>');
+  if (en('rtc')) out.push('#include <mbed_rtc_time.h>');
+  return out;
+}
+
+function emitDisplayDecls(ctx) {
+  return [
+    ctx.board.displayDecl.replace('{W}', ctx.dims.w).replace('{H}', ctx.dims.h),
+    ctx.board.touchDecl
+  ];
+}
+
+function emitPeripheralBlock(ctx) {
+  // Returns the heading and the genPeripheralCode output as a section. If
+  // no peripherals are enabled, returns an empty array.
+  const en = ctx.enabled;
+  if (!Object.keys(state.peripherals).some(k => en(k))) return [];
+  const out = [];
+  out.push('// =====================================================================');
+  out.push('// Onboard peripherals');
+  out.push('// =====================================================================');
+  out.push('');
+  genPeripheralCode(out);
+  return out;
+}
+
+function emitScreenHandles(ctx, keyword) {
+  // keyword is 'static', 'extern', or '' (empty = global definition).
+  // Used both as declarations (ui.h: extern) and definitions (ui.cpp: '').
+  const out = [];
+  out.push('// ---- Screen handles ----');
+  const prefix = keyword ? keyword + ' ' : '';
+  for (const s of state.screens) {
+    out.push(prefix + 'lv_obj_t * scr_' + s.name + ';');
+  }
+  return out;
+}
+
+function emitWidgetHandles(ctx, keyword) {
+  if (!ctx.handles.length) return [];
+  const out = [];
+  out.push('// ---- Widget handles ----');
+  const prefix = keyword ? keyword + ' ' : '';
+  for (const h of ctx.handles) out.push(prefix + 'lv_obj_t * ' + h + ';');
+  return out;
+}
+
+function emitScreenForwardDecls(ctx, keyword) {
+  const out = [];
+  const prefix = keyword ? keyword + ' ' : '';
+  for (const s of state.screens) {
+    out.push(prefix + 'void build_screen_' + s.name + '(void);');
+  }
+  return out;
+}
+
+function emitThemeFunction(ctx) {
+  if (state.theme !== 'tradigital') return [];
+  return [
+    '// ---- Tradigital theme ----',
+    'static void apply_theme(void) {',
+    '  lv_theme_t * th = lv_theme_default_init(',
+    '      NULL,',
+    '      lv_color_hex(0xD4A574),   // primary: amber',
+    '      lv_color_hex(0x6FB5A8),   // secondary: teal',
+    '      true,                     // dark mode',
+    '      &lv_font_montserrat_16);',
+    '  lv_disp_set_theme(NULL, th);',
+    '}',
+    ''
+  ];
+}
+
+function emitEventHandlers(ctx) {
+  if (!ctx.eventWidgets.length) return [];
+  const out = [];
+  out.push('// ---- Event handlers ----');
+  for (const { widget: w } of ctx.eventWidgets) {
+    const custom = (w.props.customLogic || '').trim();
+    const customIndented = custom
+      ? custom.split('\n').map(l => '  ' + l).join('\n')
+      : '';
+    out.push('static void ' + w.name + '_event(lv_event_t * e) {');
+    if (w.type === 'button') {
+      if (w.props.action === 'goto' && w.props.actionTarget) {
+        const target = state.screens.find(s => s.id === w.props.actionTarget);
+        if (target) {
+          out.push('  // Navigate to screen "' + target.name + '"');
+          out.push('  lv_scr_load(scr_' + target.name + ');');
+          if (custom) {
+            out.push('  // --- custom logic ---');
+            out.push(customIndented);
           }
         } else if (custom) {
-          lines.push(customIndented);
+          out.push(customIndented);
         } else {
-          lines.push('  Serial.println("' + w.name + ' pressed");');
+          out.push('  Serial.println("' + w.name + ' pressed");');
         }
-      } else if (w.type === 'slider') {
-        lines.push('  int32_t v = lv_slider_get_value(' + w.name + ');');
-        if (custom) lines.push(customIndented);
-        else lines.push('  Serial.print("' + w.name + ' = "); Serial.println(v);');
-      } else if (w.type === 'switch') {
-        lines.push('  bool on = lv_obj_has_state(' + w.name + ', LV_STATE_CHECKED);');
-        if (custom) lines.push(customIndented);
-        else lines.push('  Serial.print("' + w.name + ' = "); Serial.println(on ? "ON" : "OFF");');
-      } else if (w.type === 'checkbox') {
-        lines.push('  bool on = lv_obj_has_state(' + w.name + ', LV_STATE_CHECKED);');
-        if (custom) lines.push(customIndented);
-        else lines.push('  Serial.print("' + w.name + ' = "); Serial.println(on ? "ON" : "OFF");');
-      } else if (w.type === 'dropdown') {
-        lines.push('  uint16_t sel = lv_dropdown_get_selected(' + w.name + ');');
-        if (custom) lines.push(customIndented);
-        else lines.push('  Serial.print("' + w.name + ' selection = "); Serial.println(sel);');
-      } else if (w.type === 'roller') {
-        lines.push('  uint16_t sel = lv_roller_get_selected(' + w.name + ');');
-        if (custom) lines.push(customIndented);
-        else lines.push('  Serial.print("' + w.name + ' selection = "); Serial.println(sel);');
+      } else if (custom) {
+        out.push(customIndented);
+      } else {
+        out.push('  Serial.println("' + w.name + ' pressed");');
       }
-      lines.push('}');
-      lines.push('');
+    } else if (w.type === 'slider') {
+      out.push('  int32_t v = lv_slider_get_value(' + w.name + ');');
+      if (custom) out.push(customIndented);
+      else out.push('  Serial.print("' + w.name + ' = "); Serial.println(v);');
+    } else if (w.type === 'switch') {
+      out.push('  bool on = lv_obj_has_state(' + w.name + ', LV_STATE_CHECKED);');
+      if (custom) out.push(customIndented);
+      else out.push('  Serial.print("' + w.name + ' = "); Serial.println(on ? "ON" : "OFF");');
+    } else if (w.type === 'checkbox') {
+      out.push('  bool on = lv_obj_has_state(' + w.name + ', LV_STATE_CHECKED);');
+      if (custom) out.push(customIndented);
+      else out.push('  Serial.print("' + w.name + ' = "); Serial.println(on ? "ON" : "OFF");');
+    } else if (w.type === 'dropdown') {
+      out.push('  uint16_t sel = lv_dropdown_get_selected(' + w.name + ');');
+      if (custom) out.push(customIndented);
+      else out.push('  Serial.print("' + w.name + ' selection = "); Serial.println(sel);');
+    } else if (w.type === 'roller') {
+      out.push('  uint16_t sel = lv_roller_get_selected(' + w.name + ');');
+      if (custom) out.push(customIndented);
+      else out.push('  Serial.print("' + w.name + ' selection = "); Serial.println(sel);');
     }
+    out.push('}');
+    out.push('');
   }
+  return out;
+}
 
-  // Per-screen builder functions
+function emitScreenBuilders(ctx) {
+  const out = [];
   for (const s of state.screens) {
-    lines.push('// ---- Build screen: ' + s.name + ' ----');
-    lines.push('static void build_screen_' + s.name + '(void) {');
-    lines.push('  scr_' + s.name + ' = lv_obj_create(NULL);');
-    lines.push('  lv_obj_set_style_bg_color(scr_' + s.name + ', lv_color_hex(0x000000), 0);');
-    lines.push('  lv_obj_set_style_bg_opa(scr_' + s.name + ', LV_OPA_COVER, 0);');
-    lines.push('');
+    out.push('// ---- Build screen: ' + s.name + ' ----');
+    out.push('static void build_screen_' + s.name + '(void) {');
+    out.push('  scr_' + s.name + ' = lv_obj_create(NULL);');
+    out.push('  lv_obj_set_style_bg_color(scr_' + s.name + ', lv_color_hex(0x000000), 0);');
+    out.push('  lv_obj_set_style_bg_opa(scr_' + s.name + ', LV_OPA_COVER, 0);');
+    out.push('');
     for (const w of s.widgets) {
-      lines.push('  // ' + w.type.toUpperCase() + ': ' + w.name);
-      lines.push(...genWidgetCode(w, s).map(l => '  ' + l));
-      lines.push('');
+      out.push('  // ' + w.type.toUpperCase() + ': ' + w.name);
+      for (const l of genWidgetCode(w, s)) out.push('  ' + l);
+      out.push('');
     }
-    lines.push('}');
-    lines.push('');
+    out.push('}');
+    out.push('');
   }
+  return out;
+}
 
-  // Setup and loop
-  const defScreen = defaultScreen();
-  lines.push('void setup() {');
-  lines.push('  Serial.begin(115200);');
-  lines.push('  Display.begin();');
-  lines.push('  TouchDetector.begin();');
-  lines.push('');
-  // Peripheral init calls (before any screen build, so widgets can refer to handles)
-  const peripheralInitCalls = [];
-  if (enabled('microphone')) peripheralInitCalls.push('  init_microphone();');
-  if (enabled('imu'))        peripheralInitCalls.push('  init_imu();');
-  if (enabled('camera'))     peripheralInitCalls.push('  init_camera();');
-  if (enabled('sdcard'))     peripheralInitCalls.push('  init_sdcard();');
-  if (enabled('wifi'))       peripheralInitCalls.push('  init_wifi();');
-  if (enabled('ble'))        peripheralInitCalls.push('  init_ble();');
-  if (enabled('rgbLed'))     peripheralInitCalls.push('  init_rgb_led();');
-  if (enabled('rtc'))        peripheralInitCalls.push('  init_rtc();');
-  if (peripheralInitCalls.length) {
-    lines.push('  // ---- Onboard peripherals ----');
-    for (const c of peripheralInitCalls) lines.push(c);
-    lines.push('');
+function emitSetupFunction(ctx, opts) {
+  const inlineUiInit = opts && opts.inlineUiInit;
+  const out = [];
+  out.push('void setup() {');
+  out.push('  Serial.begin(115200);');
+  for (const ln of ctx.board.setupBegin) out.push('  ' + ln);
+  out.push('');
+  // Peripheral init calls
+  const en = ctx.enabled;
+  const calls = [];
+  if (en('microphone')) calls.push('  init_microphone();');
+  if (en('imu'))        calls.push('  init_imu();');
+  if (en('camera'))     calls.push('  init_camera();');
+  if (en('sdcard'))     calls.push('  init_sdcard();');
+  if (en('wifi'))       calls.push('  init_wifi();');
+  if (en('ble'))        calls.push('  init_ble();');
+  if (en('rgbLed'))     calls.push('  init_rgb_led();');
+  if (en('rtc'))        calls.push('  init_rtc();');
+  if (calls.length) {
+    out.push('  // ---- Onboard peripherals ----');
+    for (const c of calls) out.push(c);
+    out.push('');
   }
-  if (state.theme === 'tradigital') {
-    lines.push('  apply_theme();');
+  if (inlineUiInit) {
+    // Single-file: theme + build screens + load default inline
+    if (state.theme === 'tradigital') out.push('  apply_theme();');
+    for (const s of state.screens) out.push('  build_screen_' + s.name + '();');
+    out.push('');
+    const def = defaultScreen();
+    if (def) out.push('  lv_scr_load(scr_' + def.name + ');');
+  } else {
+    // Split: delegate to ui_init() in ui.cpp
+    out.push('  // ---- UI ----');
+    out.push('  ui_init();');
   }
-  for (const s of state.screens) {
-    lines.push('  build_screen_' + s.name + '();');
-  }
-  lines.push('');
-  if (defScreen) {
-    lines.push('  lv_scr_load(scr_' + defScreen.name + ');');
-  }
-  lines.push('}');
-  lines.push('');
-  lines.push('void loop() {');
-  lines.push('  lv_timer_handler();');
-  lines.push('  delay(5);');
-  lines.push('}');
-  lines.push('');
+  out.push('}');
+  return out;
+}
 
-  return lines.join('\n');
+function emitLoopFunction(ctx) {
+  return [
+    'void loop() {',
+    '  lv_timer_handler();',
+    '  delay(5);',
+    '}'
+  ];
 }
 
 // ----- Peripheral code generation -------------------------
@@ -3847,9 +5872,16 @@ function genPeripheralCode(lines) {
   if (en('wifi')) {
     const w = P.wifi;
     lines.push('// ---- WiFi (Murata 1DX on the Giga mainboard) ----');
-    lines.push('// NOTE: move credentials to arduino_secrets.h before publishing.');
-    lines.push('static const char * WIFI_SSID     = ' + cstr(w.ssid) + ';');
-    lines.push('static const char * WIFI_PASSWORD = ' + cstr(w.password) + ';');
+    if (w.useSecretsFile !== false) {
+      lines.push('// Credentials live in arduino_secrets.h. Ship the .zip from PANELWRIGHT');
+      lines.push('// so the companion file is generated alongside the sketch.');
+      lines.push('static const char * WIFI_SSID     = SECRET_SSID;');
+      lines.push('static const char * WIFI_PASSWORD = SECRET_PASS;');
+    } else {
+      lines.push('// NOTE: move credentials to arduino_secrets.h before publishing.');
+      lines.push('static const char * WIFI_SSID     = ' + cstr(w.ssid) + ';');
+      lines.push('static const char * WIFI_PASSWORD = ' + cstr(w.password) + ';');
+    }
     lines.push('');
     lines.push('static void init_wifi(void) {');
     lines.push('  Serial.print("Connecting to WiFi");');
@@ -3940,10 +5972,10 @@ function genPeripheralCode(lines) {
   }
 }
 
-function genWidgetCode(w, screen) {
+function genWidgetCode(w, screen, parentOverride) {
   const lines = [];
   const N = w.name;
-  const PARENT = 'scr_' + screen.name;
+  const PARENT = parentOverride || ('scr_' + screen.name);
   const cb = (handler) => {
     lines.push(`lv_obj_add_event_cb(${N}, ${N}_event, ${handler}, NULL);`);
   };
@@ -4072,16 +6104,31 @@ function genWidgetCode(w, screen) {
     }
 
     case 'tabview': {
-      const tabs = (w.props.tabs || '').split('\n').filter(s => s.length);
+      // Normalize tabs array (handle legacy unmigrated string form)
+      let tabs = w.props.tabs;
+      if (typeof tabs === 'string') {
+        tabs = tabs.split('\n').filter(s => s.length).map(n => ({ name: n, widgets: [] }));
+      }
+      if (!Array.isArray(tabs)) tabs = [];
       const posMap = { top: 'LV_DIR_TOP', bottom: 'LV_DIR_BOTTOM', left: 'LV_DIR_LEFT', right: 'LV_DIR_RIGHT' };
       lines.push(`${N} = lv_tabview_create(${PARENT}, ${posMap[w.props.tabPosition] || 'LV_DIR_TOP'}, ${w.props.tabSize});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       for (let i = 0; i < tabs.length; i++) {
-        const tname = sanitizeName(tabs[i]);
-        lines.push(`lv_obj_t * ${N}_tab_${i} = lv_tabview_add_tab(${N}, ${cstr(tabs[i])});`);
-        lines.push(`// TODO: add child widgets to ${N}_tab_${i} for the "${tabs[i]}" tab`);
-        lines.push(`(void)${N}_tab_${i};`);
+        const tabHandle = `${N}_tab_${i}`;
+        lines.push(`lv_obj_t * ${tabHandle} = lv_tabview_add_tab(${N}, ${cstr(tabs[i].name || ('Tab ' + (i+1)))});`);
+        const childWidgets = Array.isArray(tabs[i].widgets) ? tabs[i].widgets : [];
+        if (!childWidgets.length) {
+          lines.push(`(void)${tabHandle};`);
+        } else {
+          // Recurse with the tab handle as the parent. Each child's positions
+          // are already tab-local, so genWidgetCode handles them as-is.
+          lines.push(`// ---- Tab "${tabs[i].name}" content ----`);
+          for (const child of childWidgets) {
+            const childLines = genWidgetCode(child, screen, tabHandle);
+            for (const l of childLines) lines.push(l);
+          }
+        }
       }
       break;
     }
@@ -4225,6 +6272,177 @@ function crc32(bytes) {
   return (crc ^ 0xFFFFFFFF) >>> 0;
 }
 
+// ----- Image export (PNG / SVG) ---------------------------
+// Approach: render the active screen's widgets into a clean off-screen
+// container (no edit chrome, no selection, no resize handles), wrap it
+// in an SVG foreignObject with the page's widget CSS inlined, and either
+// download the SVG directly or rasterize it through Image+Canvas.toBlob
+// for PNG. Single-file friendly, no external dependencies.
+
+// Build a self-contained HTML fragment representing one screen as the
+// device would show it. Returns an HTMLDivElement positioned at 0,0 with
+// the canvas dimensions.
+function buildScreenHtml(screen) {
+  const dims = getCanvasDims();
+  const root = document.createElement('div');
+  root.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+  root.style.cssText =
+    'position:relative;width:' + dims.w + 'px;height:' + dims.h + 'px;' +
+    'background:' + (state.theme === 'tradigital' ? '#0e0a06' : '#0a0a0a') + ';' +
+    'overflow:hidden;color:#d3d3d3;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;';
+  function renderInto(arr, parent, ox, oy) {
+    for (const w of arr) {
+      const def = WIDGET_TYPES[w.type];
+      if (!def) continue;
+      const el = def.render(w);
+      // Strip every edit-affordance class
+      el.classList.remove('selected', 'out-of-scope', 'parent-tabview', 'dragging');
+      // Strip the resize handles that get attached by attachResizeHandles
+      el.querySelectorAll('.resize-handle').forEach(h => h.remove());
+      el.style.left = (ox + w.x) + 'px';
+      el.style.top  = (oy + w.y) + 'px';
+      parent.appendChild(el);
+      // Recurse into the visible tab of a tabview
+      if (w.type === 'tabview' && Array.isArray(w.props.tabs) && w.props.tabs.length) {
+        const tabIdx = Math.max(0, Math.min(w.props.tabs.length - 1, w.props.activeTab || 0));
+        const tab = w.props.tabs[tabIdx];
+        if (tab && Array.isArray(tab.widgets) && tab.widgets.length) {
+          const content = tabContentRect(w);
+          renderInto(tab.widgets, parent, ox + content.x, oy + content.y);
+        }
+      }
+    }
+  }
+  renderInto(screen.widgets, root, 0, 0);
+  if (state.theme === 'tradigital') root.classList.add('theme-tradigital');
+  return root;
+}
+
+// Extract the page CSS rules that affect widget rendering. We could embed
+// the entire <style> block, but that adds a few tens of kilobytes per
+// export; this trims to just the rules whose selectors mention widget
+// classes, theme classes, or CSS custom properties used by widgets.
+function extractWidgetCss() {
+  const wanted = [
+    ':root', '*', '.widget', '.lv-', '.theme-', '.shell-banner', '.tab-bar',
+    '.tab-btn', '.tab-content', '.list-item', '.led', '.meter-', '.arc-',
+    '.chart-', '.icon-', '.calendar-', '.keyboard-', '.roller-'
+  ];
+  const out = [];
+  for (const sheet of document.styleSheets) {
+    let rules;
+    try { rules = sheet.cssRules; } catch (e) { continue; }
+    if (!rules) continue;
+    for (const rule of rules) {
+      if (!rule.selectorText) {
+        // @keyframes / @font-face / @media etc; include them whole
+        if (rule.cssText && (rule.cssText.startsWith('@keyframes') ||
+                             rule.cssText.startsWith('@font-face'))) {
+          out.push(rule.cssText);
+        }
+        continue;
+      }
+      const sel = rule.selectorText;
+      if (wanted.some(w => sel.indexOf(w) >= 0)) out.push(rule.cssText);
+    }
+  }
+  return out.join('\n');
+}
+
+// Wrap a rendered screen DIV in an SVG foreignObject with the CSS inlined,
+// returning the SVG source text. The result is a complete standalone SVG
+// that renders the screen in any browser.
+function screenToSvgString(screen, opts) {
+  opts = opts || {};
+  const dims = getCanvasDims();
+  const hostShell = opts.includeShell;
+  // The outer SVG dimensions account for the optional device-shell padding
+  const shellPad = hostShell ? 14 : 0;
+  const bannerH  = hostShell ? 26 : 0;
+  const svgW = dims.w + shellPad * 2;
+  const svgH = dims.h + shellPad * 2 + bannerH;
+
+  const root = buildScreenHtml(screen);
+  // Wrap in a shell if requested
+  let wrapped;
+  if (hostShell) {
+    wrapped = document.createElement('div');
+    wrapped.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    wrapped.style.cssText =
+      'position:relative;padding:' + shellPad + 'px;background:#050505;' +
+      'border:1px solid #3a3f4d;border-radius:6px;' +
+      'box-shadow:0 0 0 1px #2a2e38 inset, 0 20px 50px rgba(0,0,0,0.6);' +
+      'font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;' +
+      'width:fit-content;';
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:absolute;top:-22px;left:0;font-size:9px;' +
+      'letter-spacing:0.18em;color:#585348;text-transform:uppercase;font-family:monospace;';
+    banner.textContent = 'ARDUINO GIGA DISPLAY SHIELD // ' + dims.w + ' x ' + dims.h +
+                         ' // SCREEN: ' + screen.name.toUpperCase();
+    wrapped.appendChild(banner);
+    wrapped.appendChild(root);
+  } else {
+    wrapped = root;
+  }
+
+  const css = extractWidgetCss();
+  // Serialize wrapped via outerHTML, which is XHTML-friendly enough for SVG
+  const inner = new XMLSerializer().serializeToString(wrapped);
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + svgW + '" height="' + svgH +
+    '" viewBox="0 0 ' + svgW + ' ' + svgH + '">' +
+    '<foreignObject x="0" y="' + bannerH + '" width="' + svgW + '" height="' + (svgH - bannerH) + '">' +
+    '<div xmlns="http://www.w3.org/1999/xhtml">' +
+    '<style>' + css + '</style>' +
+    inner +
+    '</div>' +
+    '</foreignObject>' +
+    '</svg>';
+}
+
+// Top-level export entry point. opts: { scope, includeShell }
+// PNG rasterization is intentionally not supported: drawing an SVG that
+// contains a foreignObject onto a canvas taints the canvas, and browsers
+// refuse to export tainted canvases via toBlob or toDataURL. A native
+// SVG renderer set would unlock PNG export and is planned for a future
+// round. For now SVG output is fully sufficient for design documentation,
+// and any user who needs a PNG can convert the SVG with their tool of
+// choice (browser save-as, Inkscape, ImageMagick).
+async function performImageExport(opts) {
+  const { scope, includeShell } = opts;
+  const screens = scope === 'all' ? state.screens : [curScreen()].filter(Boolean);
+  if (!screens.length) return;
+  const savedActiveId = state.activeScreenId;
+  const savedScope = state.editScope;
+  state.editScope = null;
+  const baseName = sanitizeSketchName(state.meta.title || 'panelwright_screen');
+
+  try {
+    if (screens.length === 1) {
+      const svgText = screenToSvgString(screens[0], { includeShell });
+      const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+      downloadBlob(blob, baseName + '_' + screens[0].name + '.svg');
+    } else {
+      // Multi-screen: pack into a zip
+      const enc = new TextEncoder();
+      const files = [];
+      for (const screen of screens) {
+        state.activeScreenId = screen.id;
+        const svgText = screenToSvgString(screen, { includeShell });
+        files.push({
+          name: baseName + '/' + screen.name + '.svg',
+          data: enc.encode(svgText)
+        });
+      }
+      const zipBytes = buildZip(files);
+      downloadBlob(new Blob([zipBytes], { type: 'application/zip' }),
+                   baseName + '_screens.zip');
+    }
+  } finally {
+    state.activeScreenId = savedActiveId;
+    state.editScope = savedScope;
+  }
+}
+
 function buildZip(files) {
   const enc = new TextEncoder();
   const parts = [];
@@ -4335,10 +6553,37 @@ const $codeModal = document.getElementById('code-modal');
 const $codeOutput = document.getElementById('code-output');
 
 document.getElementById('btn-code').addEventListener('click', () => {
+  const issues = validateProject();
+  const errors = issues.filter(i => i.severity === 'error');
+  if (errors.length) {
+    showValidationModal(issues);
+    return;
+  }
   const code = generateCode();
   $codeOutput.innerHTML = highlightCpp(code);
   $codeOutput.dataset.raw = code;
   $codeModal.classList.add('open');
+  // Warnings (not errors): surface inline at top of code modal
+  const warnings = issues.filter(i => i.severity === 'warning');
+  showCodeModalWarnings(warnings);
+  // Split-mode hint: the preview always shows the single-file form because
+  // it's the most readable representation of the whole project. The .zip
+  // download is what actually emits ui.h + ui.cpp.
+  const existing = document.getElementById('code-split-hint');
+  if (existing) existing.remove();
+  if (state.meta && state.meta.splitFiles) {
+    const box = document.createElement('div');
+    box.id = 'code-split-hint';
+    box.className = 'code-warning-banner';
+    box.style.borderColor = 'var(--teal, #6FB5A8)';
+    box.style.background = 'rgba(111, 181, 168, 0.08)';
+    box.innerHTML = '<div class="code-warning-header" style="color: #6FB5A8;">Split layout active</div>' +
+      '<div class="code-warning-row">Preview shows the combined single-file form. ' +
+      'Click <strong>Download .zip</strong> to get the split: ' +
+      '<code>&lt;sketch&gt;.ino</code> + <code>ui.h</code> + <code>ui.cpp</code>.</div>';
+    const codeBox = document.querySelector('.code-modal .box');
+    codeBox.insertBefore(box, codeBox.querySelector('pre'));
+  }
 });
 document.getElementById('code-close').addEventListener('click', () => $codeModal.classList.remove('open'));
 $codeModal.addEventListener('click', e => { if (e.target === $codeModal) $codeModal.classList.remove('open'); });
@@ -4360,11 +6605,35 @@ document.getElementById('code-download').addEventListener('click', () => {
 
 document.getElementById('code-download-zip').addEventListener('click', () => {
   const sketchName = sanitizeSketchName(document.getElementById('sketch-name').value);
-  const code = $codeOutput.dataset.raw;
   const enc = new TextEncoder();
-  const zipBytes = buildZip([
-    { name: sketchName + '/' + sketchName + '.ino', data: enc.encode(code) }
-  ]);
+  const files = [];
+  if (state.meta && state.meta.splitFiles) {
+    // Split layout: <sketch>.ino + ui.h + ui.cpp
+    const split = generateSplitCode();
+    files.push({ name: sketchName + '/' + sketchName + '.ino', data: enc.encode(split.ino) });
+    files.push({ name: sketchName + '/ui.h',   data: enc.encode(split.header) });
+    files.push({ name: sketchName + '/ui.cpp', data: enc.encode(split.cpp) });
+  } else {
+    // Single .ino layout
+    const code = $codeOutput.dataset.raw;
+    files.push({ name: sketchName + '/' + sketchName + '.ino', data: enc.encode(code) });
+  }
+  // If WiFi is enabled with useSecretsFile, write the companion header.
+  const wifi = state.peripherals.wifi;
+  if (wifi && wifi.enabled && wifi.useSecretsFile !== false) {
+    const secrets =
+      '// arduino_secrets.h\n' +
+      '// PANELWRIGHT generated. Keep this file out of version control.\n' +
+      '//\n' +
+      '#define SECRET_SSID ' + JSON.stringify(wifi.ssid || '') + '\n' +
+      '#define SECRET_PASS ' + JSON.stringify(wifi.password || '') + '\n';
+    files.push({ name: sketchName + '/arduino_secrets.h', data: enc.encode(secrets) });
+    // Also drop a tiny .gitignore so the secret stays local if the user
+    // initializes a repo inside the sketch folder.
+    files.push({ name: sketchName + '/.gitignore',
+                 data: enc.encode('arduino_secrets.h\n') });
+  }
+  const zipBytes = buildZip(files);
   const blob = new Blob([zipBytes], { type: 'application/zip' });
   downloadBlob(blob, sketchName + '.zip');
   const btn = document.getElementById('code-download-zip');
@@ -4435,12 +6704,14 @@ addWidget('slider', 40, 220);
 addWidget('switch', 280, 215);
 addWidget('arc', 600, 140);
 
-state.selectedId = null;
+clearSelection();
 applyOrientation();
 redrawAll();
 state.history = [];
 state.historyIdx = -1;
 pushHistory();
+// Seed project is the starting "clean" state, not dirty
+markClean();
 
 })();
 </script>
