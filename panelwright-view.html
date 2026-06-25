@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PANELWRIGHT VIEW // FI-042 // Project Viewer</title>
+<style>
+/*
+  PANELWRIGHT VIEW
+  Companion to Field Instrument 042 (PANELWRIGHT).
+  Loads a project JSON exported by PANELWRIGHT and renders the screens
+  as a clickable mockup. Buttons with goto actions navigate between
+  screens. Useful for walking through a UI before flashing the board.
+  License: GPL-3.0
+*/
+
+:root {
+  --bg: #0e0f12;
+  --panel: #16181d;
+  --panel-2: #1d2027;
+  --border: #2a2e38;
+  --border-hot: #3a3f4d;
+  --ink: #e8dfd0;
+  --ink-dim: #8a8579;
+  --ink-mute: #585348;
+  --amber: #d4a574;
+  --amber-bright: #f0c896;
+  --teal: #6fb5a8;
+  --rust: #b9684a;
+  --mono: 'JetBrains Mono', 'IBM Plex Mono', 'Menlo', 'Consolas', monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  overflow: hidden;
+}
+#app { display: grid; grid-template-rows: 38px 1fr 28px; height: 100vh; }
+
+header.topbar {
+  display: flex; align-items: center; padding: 0 14px;
+  background: var(--panel); border-bottom: 1px solid var(--border); gap: 16px;
+}
+header .brand {
+  font-weight: 700; letter-spacing: 0.18em;
+  color: var(--amber); font-size: 13px;
+}
+header .brand .sub {
+  color: var(--ink-mute); font-weight: 400; margin-left: 8px;
+  letter-spacing: 0.08em; font-size: 10px;
+}
+header .toolbar { display: flex; gap: 6px; margin-left: auto; align-items: center; }
+header .toolbar button {
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--ink); padding: 4px 10px; cursor: pointer;
+  text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px;
+  font-family: inherit;
+}
+header .toolbar button:hover { background: var(--border); color: var(--amber-bright); }
+header .toolbar button.primary {
+  background: var(--amber); color: var(--bg); border-color: var(--amber); font-weight: 600;
+}
+header .toolbar .back-link {
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--ink); padding: 4px 10px; cursor: pointer;
+  text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px;
+  font-family: inherit; text-decoration: none; display: inline-block;
+}
+header .toolbar .back-link:hover { background: var(--border); color: var(--amber-bright); }
+header .toolbar .info {
+  color: var(--ink-dim); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+header .toolbar .info b { color: var(--amber); font-weight: 600; }
+
+.stage {
+  position: relative; overflow: auto;
+  background:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+    var(--bg);
+  background-size: 20px 20px;
+  padding: 40px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.device-shell {
+  position: relative;
+  background: #050505;
+  padding: 14px;
+  border: 1px solid var(--border-hot);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--border) inset, 0 20px 50px rgba(0,0,0,0.6);
+  width: fit-content;
+}
+.device-shell .shell-banner {
+  position: absolute; top: -22px; left: 0;
+  font-size: 9px; letter-spacing: 0.18em;
+  color: var(--ink-mute); text-transform: uppercase;
+}
+.device-shell::after {
+  content: ''; position: absolute; bottom: -8px; left: 50%;
+  transform: translateX(-50%); width: 28px; height: 4px;
+  background: var(--ink-mute); border-radius: 2px; opacity: 0.4;
+}
+
+#canvas {
+  position: relative; background: #0a0a0a; overflow: hidden;
+  color: #d3d3d3; font-family: var(--sans); user-select: none;
+}
+#canvas.theme-tradigital { background: #0e0a06; }
+
+footer.status {
+  background: var(--panel); border-top: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 14px;
+  gap: 14px; font-size: 10px; color: var(--ink-dim);
+  letter-spacing: 0.06em;
+}
+footer.status .item { display: flex; gap: 4px; }
+footer.status .item .k { color: var(--ink-mute); text-transform: uppercase; }
+footer.status .item .v { color: var(--ink); }
+footer.status .spacer { flex: 1; }
+
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 16px; color: var(--ink-dim);
+  text-align: center; padding: 40px;
+}
+.empty-state h2 {
+  color: var(--amber); letter-spacing: 0.16em;
+  text-transform: uppercase; font-size: 13px;
+}
+.empty-state p { max-width: 480px; line-height: 1.6; font-size: 11px; }
+.empty-state .drop-zone {
+  border: 1px dashed var(--border-hot); padding: 30px;
+  width: 320px; cursor: pointer; transition: all 0.12s;
+}
+.empty-state .drop-zone:hover, .empty-state .drop-zone.over {
+  border-color: var(--amber); background: var(--panel);
+}
+
+/* Widget rendering: identical visual rules to panelwright.html */
+.widget {
+  position: absolute;
+  box-sizing: border-box;
+}
+.widget.clickable { cursor: pointer; }
+.widget.clickable:active { transform: translateY(1px); }
+
+.lv-label { display: flex; align-items: center; padding: 2px; white-space: pre; overflow: hidden; }
+.lv-btn {
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, #2e6cda, #1f4ea0);
+  color: white; border-radius: 5px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+  font-weight: 500; text-shadow: 0 1px 1px rgba(0,0,0,0.4);
+}
+.lv-slider { display: flex; align-items: center; position: relative; }
+.lv-slider .track { width: 100%; height: 6px; background: #404750; border-radius: 3px; position: relative; }
+.lv-slider .fill { height: 100%; background: linear-gradient(180deg, #2e6cda, #1f4ea0); border-radius: 3px; }
+.lv-slider .knob {
+  position: absolute; top: 50%; width: 18px; height: 18px;
+  background: linear-gradient(180deg, #4a85e8, #2a5cb8);
+  border-radius: 50%; transform: translate(-50%, -50%);
+  border: 1px solid #1a3a78; box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+.lv-switch { background: #404750; border-radius: 999px; position: relative; }
+.lv-switch.checked { background: linear-gradient(180deg, #2e6cda, #1f4ea0); }
+.lv-switch .knob {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: #d8d8d8; border-radius: 50%; transition: left 0.15s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+.lv-checkbox { display: flex; align-items: center; gap: 6px; color: #d3d3d3; }
+.lv-checkbox .box {
+  width: 18px; height: 18px; border: 2px solid #707880;
+  border-radius: 3px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.lv-checkbox.checked .box {
+  background: linear-gradient(180deg, #2e6cda, #1f4ea0); border-color: #1f4ea0;
+}
+.lv-checkbox.checked .box::after { content: '\2713'; color: white; font-size: 12px; font-weight: bold; }
+.lv-bar { background: #404750; border-radius: 4px; overflow: hidden; position: relative; }
+.lv-bar .fill { height: 100%; background: linear-gradient(180deg, #2e6cda, #1f4ea0); }
+.lv-dropdown {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #2a2f37; border: 1px solid #4a525c; border-radius: 4px;
+  padding: 0 10px; color: #d3d3d3;
+}
+.lv-dropdown .caret { font-size: 10px; color: #888; }
+.lv-textarea {
+  background: #1a1d22; border: 1px solid #4a525c; border-radius: 4px;
+  padding: 6px 8px; color: #d3d3d3; overflow: hidden;
+}
+.lv-textarea.placeholder { color: #6a7078; font-style: italic; }
+.lv-roller {
+  background: #2a2f37; border-radius: 4px; padding: 4px 8px; color: #d3d3d3;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; overflow: hidden; line-height: 1.3; font-size: 13px;
+}
+.lv-roller .dim { color: #6a7078; }
+.lv-roller .sel { color: #4a85e8; font-weight: 600; }
+.lv-tabview {
+  background: #1a1d22; border: 1px solid #4a525c; border-radius: 4px;
+  display: flex; flex-direction: column; overflow: hidden;
+  width: 100%; height: 100%;
+}
+.lv-tabview.tab-bottom { flex-direction: column-reverse; }
+.lv-tabview.tab-left { flex-direction: row; }
+.lv-tabview.tab-right { flex-direction: row-reverse; }
+.lv-tabview .tab-bar {
+  display: flex; background: #2a2f37;
+  border-bottom: 1px solid #4a525c; overflow: hidden; flex-shrink: 0;
+}
+.lv-tabview.tab-bottom .tab-bar { border-bottom: none; border-top: 1px solid #4a525c; }
+.lv-tabview.tab-left .tab-bar, .lv-tabview.tab-right .tab-bar {
+  flex-direction: column; border-bottom: none;
+}
+.lv-tabview.tab-left .tab-bar { border-right: 1px solid #4a525c; }
+.lv-tabview.tab-right .tab-bar { border-left: 1px solid #4a525c; }
+.lv-tabview .tab-btn {
+  padding: 8px 14px; color: #888; font-size: 12px; white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+.lv-tabview .tab-btn.active {
+  color: #4a85e8; border-bottom-color: #4a85e8; background: #1a1d22;
+}
+.lv-tabview .tab-content {
+  flex: 1; padding: 8px; color: #888; font-size: 11px;
+  font-style: italic; display: flex; align-items: center;
+  justify-content: center; overflow: hidden;
+}
+.lv-list {
+  background: #1a1d22; border: 1px solid #4a525c; border-radius: 4px;
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.lv-list .list-item {
+  padding: 8px 12px; border-bottom: 1px solid #2a2f37;
+  color: #d3d3d3; font-size: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.lv-list .list-item.header {
+  background: #2a2f37; color: #888; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+}
+.lv-list .list-item:last-child { border-bottom: none; }
+.lv-list .list-item .icon {
+  width: 14px; height: 14px; background: #4a85e8;
+  border-radius: 2px; flex-shrink: 0; opacity: 0.6;
+}
+.lv-chart {
+  background: #1a1d22; border: 1px solid #4a525c;
+  border-radius: 4px; position: relative; overflow: hidden;
+}
+
+.theme-tradigital .lv-btn {
+  background: linear-gradient(180deg, #d4a574, #a07a4f);
+  color: #1a1208; text-shadow: none; box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+}
+.theme-tradigital .lv-slider .fill,
+.theme-tradigital .lv-bar .fill { background: linear-gradient(180deg, #d4a574, #a07a4f); }
+.theme-tradigital .lv-slider .knob {
+  background: linear-gradient(180deg, #f0c896, #d4a574); border-color: #7a5a35;
+}
+.theme-tradigital .lv-switch.checked { background: linear-gradient(180deg, #d4a574, #a07a4f); }
+.theme-tradigital .lv-checkbox.checked .box {
+  background: linear-gradient(180deg, #d4a574, #a07a4f); border-color: #a07a4f;
+}
+.theme-tradigital .lv-tabview .tab-btn.active {
+  color: #d4a574; border-bottom-color: #d4a574;
+}
+.theme-tradigital .lv-list .list-item .icon { background: #d4a574; }
+.theme-tradigital .lv-roller .sel { color: #d4a574; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hot); }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+<header class="topbar">
+  <div class="brand">FI-042 // PANELWRIGHT VIEW <span class="sub">// PROJECT VIEWER</span></div>
+  <div class="toolbar">
+    <span class="info" id="info-screen"></span>
+    <a href="../" class="back-link">\u2190 Editor</a>
+    <button id="btn-load" class="primary">Open .json</button>
+    <input type="file" id="file-input" accept=".json" style="display:none">
+    <button id="btn-reset" style="display:none;">Reset to default</button>
+  </div>
+</header>
+
+<div class="stage" id="stage">
+  <div class="empty-state" id="empty-state">
+    <h2>// PROJECT VIEWER</h2>
+    <p>
+      Drop a PANELWRIGHT project JSON below, or click to choose one. Buttons
+      with navigation actions will switch between screens just like they will
+      on the board. Useful for walking through a UI design before you flash.
+    </p>
+    <div class="drop-zone" id="drop-zone">Drop .json here or click to browse</div>
+  </div>
+  <div class="device-shell" id="device-shell" style="display:none;">
+    <div class="shell-banner" id="shell-banner">ARDUINO GIGA DISPLAY SHIELD</div>
+    <div id="canvas"></div>
+  </div>
+</div>
+
+<footer class="status">
+  <div class="item"><span class="k">Project</span><span class="v" id="status-project">none</span></div>
+  <div class="item"><span class="k">Screen</span><span class="v" id="status-screen">--</span></div>
+  <div class="item"><span class="k">Theme</span><span class="v" id="status-theme">--</span></div>
+  <div class="spacer"></div>
+  <div class="item"><span class="k">PANELWRIGHT VIEW // FI-042</span></div>
+</footer>
+
+</div>
+
+<script>
+/* ===========================================================
+   PANELWRIGHT VIEW
+   Companion viewer for Field Instrument 042 projects.
+   Renders a saved project JSON and lets you click through it.
+   GPL-3.0
+   =========================================================== */
+(function(){
+'use strict';
+
+const LV_SYMBOLS = {
+  audio: { ch: '\u266A' }, video: { ch: '\u25B6' }, list: { ch: '\u2630' },
+  ok: { ch: '\u2713' }, close: { ch: '\u2715' }, power: { ch: '\u23FB' },
+  settings: { ch: '\u2699' }, home: { ch: '\u2302' }, download: { ch: '\u2B07' },
+  refresh: { ch: '\u27F2' }, prev: { ch: '\u23EE' }, play: { ch: '\u25B6' },
+  pause: { ch: '\u23F8' }, stop: { ch: '\u25A0' }, next: { ch: '\u23ED' },
+  left: { ch: '\u2190' }, right: { ch: '\u2192' }, up: { ch: '\u2191' },
+  down: { ch: '\u2193' }, plus: { ch: '+' }, minus: { ch: '\u2212' },
+  warning: { ch: '\u26A0' }, call: { ch: '\u260E' }, charge: { ch: '\u26A1' },
+  keyboard: { ch: '\u2328' }, backspace: { ch: '\u232B' }, new_line: { ch: '\u21B5' },
+  wifi: { ch: '\u25B0' }, bell: { ch: '\u2407' }, trash: { ch: '\u2421' },
+  edit: { ch: '\u270E' }, save: { ch: '\u26C1' }, upload: { ch: '\u2B06' },
+  cut: { ch: '\u2702' }, copy: { ch: '\u29C9' }, paste: { ch: '\u270D' },
+  eye_open: { ch: '\u25CE' }, eye_close: { ch: '\u25CB' }, shuffle: { ch: '\u21C4' },
+  loop: { ch: '\u21BB' }, directory: { ch: '\u25B8' }, file: { ch: '\u2399' },
+  image: { ch: '\u25A4' }, gps: { ch: '\u2316' }, bluetooth: { ch: '\u269D' },
+  usb: { ch: '\u2A22' }, battery_full: { ch: '\u2588' }, battery_3: { ch: '\u2587' },
+  battery_2: { ch: '\u2585' }, battery_1: { ch: '\u2583' }, battery_empty: { ch: '\u2581' }
+};
+
+const state = { project: null, activeScreenId: null, defaultScreenId: null };
+
+const $canvas = document.getElementById('canvas');
+const $shell = document.getElementById('device-shell');
+const $shellBanner = document.getElementById('shell-banner');
+const $empty = document.getElementById('empty-state');
+const $infoScreen = document.getElementById('info-screen');
+const $statusProject = document.getElementById('status-project');
+const $statusScreen = document.getElementById('status-screen');
+const $statusTheme = document.getElementById('status-theme');
+const $btnReset = document.getElementById('btn-reset');
+
+// Color helpers (same as the editor)
+function hexToRgb(h) {
+  h = h.replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c+c).join('');
+  return { r: parseInt(h.slice(0,2), 16), g: parseInt(h.slice(2,4), 16), b: parseInt(h.slice(4,6), 16) };
+}
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+}
+function darken(hex, amt) { const c = hexToRgb(hex); return rgbToHex(c.r * (1 - amt), c.g * (1 - amt), c.b * (1 - amt)); }
+function lighten(hex, amt) { const c = hexToRgb(hex); return rgbToHex(c.r + (255 - c.r) * amt, c.g + (255 - c.g) * amt, c.b + (255 - c.b) * amt); }
+
+function arcPath(cx, cy, r, a1, a2) {
+  const rad = Math.PI / 180;
+  let sweep = ((a2 - a1 + 360) % 360);
+  if (sweep < 0.001) sweep = 0.001;
+  const large = sweep > 180 ? 1 : 0;
+  const x1 = cx + r * Math.cos(a1 * rad);
+  const y1 = cy + r * Math.sin(a1 * rad);
+  const x2 = cx + r * Math.cos(a2 * rad);
+  const y2 = cy + r * Math.sin(a2 * rad);
+  return 'M ' + x1 + ' ' + y1 + ' A ' + r + ' ' + r + ' 0 ' + large + ' 1 ' + x2 + ' ' + y2;
+}
+
+function renderBase(w) {
+  const el = document.createElement('div');
+  el.className = 'widget';
+  el.dataset.id = w.id;
+  el.style.left = w.x + 'px'; el.style.top = w.y + 'px';
+  el.style.width = w.w + 'px'; el.style.height = w.h + 'px';
+  return el;
+}
+
+// Widget render functions (mirrors panelwright.html). Kept compact.
+const RENDERERS = {
+  label(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-label';
+    i.style.cssText = 'width:100%;height:100%';
+    i.style.color = w.props.color;
+    i.style.fontSize = w.props.fontSize + 'px';
+    i.style.justifyContent = w.props.align === 'center' ? 'center' :
+                            (w.props.align === 'right' ? 'flex-end' : 'flex-start');
+    i.textContent = w.props.text || '';
+    el.appendChild(i); return el;
+  },
+  button(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-btn';
+    i.style.cssText = 'width:100%;height:100%';
+    i.style.background = 'linear-gradient(180deg, ' + w.props.bgColor + ', ' + darken(w.props.bgColor, 0.3) + ')';
+    i.style.color = w.props.textColor;
+    i.style.borderRadius = w.props.radius + 'px';
+    i.textContent = w.props.text || '';
+    el.appendChild(i); return el;
+  },
+  slider(w) {
+    const el = renderBase(w);
+    el.style.display = 'flex'; el.style.alignItems = 'center';
+    const wrap = document.createElement('div');
+    wrap.className = 'lv-slider';
+    wrap.style.width = '100%'; wrap.style.height = w.h + 'px';
+    wrap.style.alignItems = 'center'; wrap.style.display = 'flex';
+    const track = document.createElement('div'); track.className = 'track';
+    const fill = document.createElement('div'); fill.className = 'fill';
+    const pct = (w.props.value - w.props.min) / (w.props.max - w.props.min);
+    fill.style.width = (pct * 100) + '%';
+    fill.style.background = 'linear-gradient(180deg, ' + w.props.color + ', ' + darken(w.props.color, 0.3) + ')';
+    const knob = document.createElement('div'); knob.className = 'knob';
+    knob.style.left = (pct * 100) + '%';
+    knob.style.background = 'linear-gradient(180deg, ' + lighten(w.props.color, 0.2) + ', ' + w.props.color + ')';
+    track.appendChild(fill); track.appendChild(knob); wrap.appendChild(track); el.appendChild(wrap);
+    return el;
+  },
+  switch(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-switch' + (w.props.checked ? ' checked' : '');
+    i.style.cssText = 'width:100%;height:100%';
+    if (w.props.checked) i.style.background = 'linear-gradient(180deg, ' + w.props.color + ', ' + darken(w.props.color, 0.3) + ')';
+    const k = document.createElement('div');
+    k.className = 'knob';
+    const ks = w.h - 6;
+    k.style.width = ks + 'px'; k.style.height = ks + 'px';
+    k.style.left = w.props.checked ? (w.w - ks - 3) + 'px' : '3px';
+    i.appendChild(k); el.appendChild(i); return el;
+  },
+  checkbox(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-checkbox' + (w.props.checked ? ' checked' : '');
+    i.style.cssText = 'width:100%;height:100%';
+    const b = document.createElement('div'); b.className = 'box';
+    if (w.props.checked) {
+      b.style.background = 'linear-gradient(180deg, ' + w.props.color + ', ' + darken(w.props.color, 0.3) + ')';
+      b.style.borderColor = darken(w.props.color, 0.3);
+    }
+    i.appendChild(b);
+    const t = document.createElement('span'); t.textContent = w.props.text || '';
+    i.appendChild(t); el.appendChild(i); return el;
+  },
+  bar(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-bar'; i.style.cssText = 'width:100%;height:100%';
+    const f = document.createElement('div'); f.className = 'fill';
+    const pct = (w.props.value - w.props.min) / (w.props.max - w.props.min);
+    f.style.width = (pct * 100) + '%';
+    f.style.background = 'linear-gradient(180deg, ' + w.props.color + ', ' + darken(w.props.color, 0.3) + ')';
+    i.appendChild(f); el.appendChild(i); return el;
+  },
+  arc(w) {
+    const el = renderBase(w);
+    const size = Math.min(w.w, w.h);
+    const cx = w.w / 2, cy = w.h / 2, r = size / 2 - 8;
+    const stroke = 8, startAngle = 135, endAngle = 45;
+    const pct = (w.props.value - w.props.min) / (w.props.max - w.props.min);
+    const sweep = ((endAngle - startAngle + 360) % 360);
+    const valAngle = startAngle + sweep * pct;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', w.w); svg.setAttribute('height', w.h);
+    svg.style.position = 'absolute'; svg.style.inset = '0';
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    bg.setAttribute('d', arcPath(cx, cy, r, startAngle, endAngle));
+    bg.setAttribute('stroke', '#404750'); bg.setAttribute('stroke-width', stroke);
+    bg.setAttribute('fill', 'none'); bg.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(bg);
+    if (pct > 0.001) {
+      const fg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      fg.setAttribute('d', arcPath(cx, cy, r, startAngle, valAngle));
+      fg.setAttribute('stroke', w.props.color); fg.setAttribute('stroke-width', stroke);
+      fg.setAttribute('fill', 'none'); fg.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(fg);
+    }
+    el.appendChild(svg); return el;
+  },
+  meter(w) {
+    const el = renderBase(w);
+    const size = Math.min(w.w, w.h);
+    const cx = w.w / 2, cy = w.h / 2, r = size / 2 - 6, stroke = 6;
+    const startAngle = w.props.angleStart, endAngle = w.props.angleEnd;
+    const sweep = ((endAngle - startAngle + 360) % 360) || 360;
+    const pct = (w.props.value - w.props.min) / (w.props.max - w.props.min);
+    const valAngle = startAngle + sweep * Math.max(0, Math.min(1, pct));
+    const major = Math.max(2, w.props.majorTicks);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', w.w); svg.setAttribute('height', w.h);
+    svg.style.position = 'absolute'; svg.style.inset = '0';
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    bg.setAttribute('d', arcPath(cx, cy, r, startAngle, endAngle));
+    bg.setAttribute('stroke', '#404750'); bg.setAttribute('stroke-width', stroke);
+    bg.setAttribute('fill', 'none'); bg.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(bg);
+    if (pct > 0.001) {
+      const fg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      fg.setAttribute('d', arcPath(cx, cy, r, startAngle, valAngle));
+      fg.setAttribute('stroke', w.props.color); fg.setAttribute('stroke-width', stroke);
+      fg.setAttribute('fill', 'none'); fg.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(fg);
+    }
+    for (let i = 0; i < major; i++) {
+      const ang = startAngle + (sweep * i) / (major - 1);
+      const rad = ang * Math.PI / 180;
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      t.setAttribute('x1', cx + (r - stroke / 2 - 2) * Math.cos(rad));
+      t.setAttribute('y1', cy + (r - stroke / 2 - 2) * Math.sin(rad));
+      t.setAttribute('x2', cx + (r - stroke / 2 - 10) * Math.cos(rad));
+      t.setAttribute('y2', cy + (r - stroke / 2 - 10) * Math.sin(rad));
+      t.setAttribute('stroke', '#888'); t.setAttribute('stroke-width', 1.5);
+      svg.appendChild(t);
+    }
+    const nrad = valAngle * Math.PI / 180, nlen = r - stroke;
+    const n = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    n.setAttribute('x1', cx); n.setAttribute('y1', cy);
+    n.setAttribute('x2', cx + nlen * Math.cos(nrad));
+    n.setAttribute('y2', cy + nlen * Math.sin(nrad));
+    n.setAttribute('stroke', w.props.needleColor); n.setAttribute('stroke-width', 3);
+    n.setAttribute('stroke-linecap', 'round'); svg.appendChild(n);
+    const hub = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    hub.setAttribute('cx', cx); hub.setAttribute('cy', cy); hub.setAttribute('r', 6);
+    hub.setAttribute('fill', '#888'); svg.appendChild(hub);
+    el.appendChild(svg); return el;
+  },
+  dropdown(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-dropdown'; i.style.cssText = 'width:100%;height:100%';
+    const opts = (w.props.options || '').split('\n').filter(s => s.length);
+    const t = document.createElement('span');
+    t.textContent = opts[w.props.selected] || opts[0] || '';
+    const c = document.createElement('span'); c.className = 'caret'; c.textContent = '\u25BC';
+    i.appendChild(t); i.appendChild(c); el.appendChild(i); return el;
+  },
+  textarea(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-textarea' + (w.props.text ? '' : ' placeholder');
+    i.style.cssText = 'width:100%;height:100%';
+    i.textContent = w.props.text || w.props.placeholder || '';
+    if (w.props.oneLine) { i.style.whiteSpace = 'nowrap'; i.style.textOverflow = 'ellipsis'; }
+    else i.style.whiteSpace = 'pre-wrap';
+    el.appendChild(i); return el;
+  },
+  roller(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-roller'; i.style.cssText = 'width:100%;height:100%';
+    const opts = (w.props.options || '').split('\n').filter(s => s.length);
+    const sel = Math.min(w.props.selected || 0, opts.length - 1);
+    for (let k = -1; k <= 1; k++) {
+      const idx = sel + k;
+      const span = document.createElement('div');
+      span.className = k === 0 ? 'sel' : 'dim';
+      span.textContent = opts[idx] || '\u00A0';
+      i.appendChild(span);
+    }
+    el.appendChild(i); return el;
+  },
+  tabview(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-tabview tab-' + w.props.tabPosition;
+    i.style.cssText = 'width:100%;height:100%';
+    const tabs = (w.props.tabs || '').split('\n').filter(s => s.length);
+    const bar = document.createElement('div'); bar.className = 'tab-bar';
+    for (let k = 0; k < tabs.length; k++) {
+      const btn = document.createElement('div');
+      btn.className = 'tab-btn' + (k === 0 ? ' active' : '');
+      btn.textContent = tabs[k];
+      bar.appendChild(btn);
+    }
+    const c = document.createElement('div'); c.className = 'tab-content';
+    c.textContent = '(tab content set in your sketch)';
+    i.appendChild(bar); i.appendChild(c); el.appendChild(i); return el;
+  },
+  list(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-list'; i.style.cssText = 'width:100%;height:100%';
+    const lns = (w.props.items || '').split('\n');
+    for (const ln of lns) {
+      if (!ln) continue;
+      const item = document.createElement('div');
+      if (ln.startsWith('#')) {
+        item.className = 'list-item header';
+        item.textContent = ln.slice(1).trim();
+      } else {
+        item.className = 'list-item';
+        const ic = document.createElement('div'); ic.className = 'icon';
+        const lbl = document.createElement('span'); lbl.textContent = ln.trim();
+        item.appendChild(ic); item.appendChild(lbl);
+      }
+      i.appendChild(item);
+    }
+    el.appendChild(i); return el;
+  },
+  chart(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.className = 'lv-chart'; i.style.cssText = 'width:100%;height:100%';
+    const padding = 10, cw = w.w - padding * 2, ch = w.h - padding * 2;
+    const points = w.props.pointCount;
+    const series = Math.max(1, Math.min(3, w.props.seriesCount));
+    const colors = [w.props.color1, w.props.color2, w.props.color3];
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', w.w); svg.setAttribute('height', w.h);
+    svg.style.position = 'absolute'; svg.style.inset = '0';
+    function sample(s, k) { return 0.5 + 0.4 * Math.sin((k / points) * Math.PI * 2 + s * 0.7); }
+    if (w.props.chartType === 'bar') {
+      const barW = cw / (points * series + (series - 1));
+      for (let s = 0; s < series; s++) {
+        for (let k = 0; k < points; k++) {
+          const v = sample(s, k), h = v * ch;
+          const x = padding + k * series * barW + s * barW + k * (barW * 0.1);
+          const y = padding + ch - h;
+          const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          r.setAttribute('x', x); r.setAttribute('y', y);
+          r.setAttribute('width', barW * 0.9); r.setAttribute('height', h);
+          r.setAttribute('fill', colors[s]); r.setAttribute('opacity', 0.85);
+          svg.appendChild(r);
+        }
+      }
+    } else if (w.props.chartType === 'scatter') {
+      for (let s = 0; s < series; s++) {
+        for (let k = 0; k < points; k++) {
+          const v = sample(s, k);
+          const x = padding + (k / (points - 1)) * cw;
+          const y = padding + ch - v * ch;
+          const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          c.setAttribute('cx', x); c.setAttribute('cy', y); c.setAttribute('r', 2.5);
+          c.setAttribute('fill', colors[s]);
+          svg.appendChild(c);
+        }
+      }
+    } else {
+      for (let s = 0; s < series; s++) {
+        let d = '';
+        for (let k = 0; k < points; k++) {
+          const v = sample(s, k);
+          const x = padding + (k / (points - 1)) * cw;
+          const y = padding + ch - v * ch;
+          d += (k === 0 ? 'M ' : ' L ') + x + ' ' + y;
+        }
+        const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        p.setAttribute('d', d); p.setAttribute('stroke', colors[s]);
+        p.setAttribute('stroke-width', 2); p.setAttribute('fill', 'none');
+        p.setAttribute('stroke-linejoin', 'round');
+        svg.appendChild(p);
+      }
+    }
+    i.appendChild(svg); el.appendChild(i); return el;
+  },
+  led(w) {
+    const el = renderBase(w);
+    const size = Math.min(w.w, w.h);
+    const cx = w.w / 2, cy = w.h / 2, r = size / 2 - 2;
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', w.w); svg.setAttribute('height', w.h);
+    svg.style.position = 'absolute'; svg.style.inset = '0';
+    const off = darken(w.props.color, 0.7);
+    const lit = w.props.on;
+    const alpha = lit ? Math.max(0.15, w.props.brightness / 255) : 0.4;
+    if (lit) {
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      g.setAttribute('cx', cx); g.setAttribute('cy', cy); g.setAttribute('r', r + 4);
+      g.setAttribute('fill', w.props.color); g.setAttribute('opacity', alpha * 0.4);
+      svg.appendChild(g);
+    }
+    const body = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    body.setAttribute('cx', cx); body.setAttribute('cy', cy); body.setAttribute('r', r);
+    body.setAttribute('fill', lit ? w.props.color : off);
+    body.setAttribute('opacity', lit ? alpha : 0.6);
+    body.setAttribute('stroke', '#2a2f37'); body.setAttribute('stroke-width', 1);
+    svg.appendChild(body);
+    if (lit) {
+      const hi = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      hi.setAttribute('cx', cx - r * 0.3); hi.setAttribute('cy', cy - r * 0.3);
+      hi.setAttribute('r', r * 0.25); hi.setAttribute('fill', lighten(w.props.color, 0.5));
+      hi.setAttribute('opacity', 0.7); svg.appendChild(hi);
+    }
+    el.appendChild(svg); return el;
+  },
+  icon(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;line-height:1';
+    i.style.color = w.props.color;
+    i.style.fontSize = w.props.fontSize + 'px';
+    const sym = LV_SYMBOLS[w.props.symbol] || LV_SYMBOLS.wifi;
+    i.textContent = sym.ch;
+    el.appendChild(i); return el;
+  },
+  keyboard(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.style.cssText = 'width:100%;height:100%;background:#1a1d22;border:1px solid #4a525c;border-radius:4px;padding:4px;display:flex;flex-direction:column;gap:3px;overflow:hidden';
+    let rows;
+    if (w.props.mode === 'number') rows = ['1 2 3', '4 5 6', '7 8 9', 'OK 0 \u232B'];
+    else if (w.props.mode === 'special') rows = ['! @ # $ % ^ & *', '( ) - _ = + [ ]', '< > / \\ : ; \" \'', 'abc 123 SP \u232B'];
+    else if (w.props.mode === 'text_upper') rows = ['Q W E R T Y U I O P', 'A S D F G H J K L', '\u21E7 Z X C V B N M \u232B', '123 SP \u21B5'];
+    else rows = ['q w e r t y u i o p', 'a s d f g h j k l', '\u21E7 z x c v b n m \u232B', '123 SP \u21B5'];
+    for (const r of rows) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;flex:1;gap:3px';
+      const keys = r.split(' ');
+      for (const k of keys) {
+        const key = document.createElement('div');
+        key.style.cssText = 'flex:' + (k === 'SP' ? '4' : '1') + ';background:#2a2f37;color:#d3d3d3;border:1px solid #404750;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:10px';
+        key.textContent = k === 'SP' ? '' : k;
+        row.appendChild(key);
+      }
+      i.appendChild(row);
+    }
+    el.appendChild(i); return el;
+  },
+  calendar(w) {
+    const el = renderBase(w);
+    const i = document.createElement('div');
+    i.style.cssText = 'width:100%;height:100%;background:#1a1d22;border:1px solid #4a525c;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:3px;overflow:hidden;color:#d3d3d3;font-size:10px';
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+    const y = w.props.year, m = w.props.month - 1, today = w.props.day;
+    const first = new Date(y, m, 1).getDay();
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const h = document.createElement('div');
+    h.style.cssText = 'text-align:center;font-weight:bold;color:#d4a574;margin-bottom:2px';
+    h.textContent = monthNames[m] + ' ' + y;
+    i.appendChild(h);
+    const dh = document.createElement('div');
+    dh.style.cssText = 'display:grid;grid-template-columns:repeat(7, 1fr);gap:1px';
+    for (const d of dayNames) {
+      const c = document.createElement('div');
+      c.textContent = d;
+      c.style.cssText = 'text-align:center;color:#888;font-size:8px';
+      dh.appendChild(c);
+    }
+    i.appendChild(dh);
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(7, 1fr);gap:1px;flex:1';
+    for (let k = 0; k < first; k++) grid.appendChild(document.createElement('div'));
+    for (let d = 1; d <= daysInMonth; d++) {
+      const c = document.createElement('div');
+      c.style.cssText = 'text-align:center;padding:2px 0;font-size:9px';
+      c.textContent = d;
+      if (d === today) { c.style.background = '#2e6cda'; c.style.color = '#fff'; c.style.borderRadius = '2px'; }
+      grid.appendChild(c);
+    }
+    i.appendChild(grid); el.appendChild(i); return el;
+  }
+};
+
+function renderScreen(screenId) {
+  const screen = state.project.screens.find(s => s.id === screenId);
+  if (!screen) return;
+  state.activeScreenId = screenId;
+  $canvas.innerHTML = '';
+  $canvas.classList.toggle('theme-tradigital', state.project.theme === 'tradigital');
+
+  for (const w of screen.widgets) {
+    const r = RENDERERS[w.type];
+    if (!r) continue;
+    const el = r(w);
+    // Navigation: buttons with goto action become clickable
+    if (w.type === 'button' && w.props.action === 'goto' && w.props.actionTarget) {
+      el.classList.add('clickable');
+      el.addEventListener('click', () => renderScreen(w.props.actionTarget));
+    }
+    $canvas.appendChild(el);
+  }
+  const dims = (state.project.orientation === 'portrait') ? { w: 480, h: 800 } : { w: 800, h: 480 };
+  $canvas.style.width = dims.w + 'px';
+  $canvas.style.height = dims.h + 'px';
+  $shellBanner.textContent = 'ARDUINO GIGA DISPLAY SHIELD // ' + dims.w + ' x ' + dims.h +
+                             ' // SCREEN: ' + screen.name.toUpperCase();
+  $infoScreen.innerHTML = 'Screen: <b>' + escapeHtml(screen.name) + '</b>';
+  $statusScreen.textContent = screen.name;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function loadProject(data) {
+  // Migrate v1 → v2 just like the editor does
+  if (data.version === 1 || (!data.screens && Array.isArray(data.widgets))) {
+    data.screens = [{ id: 'scr_1', name: 'main', widgets: data.widgets || [], isDefault: true }];
+  }
+  data.orientation = data.orientation || 'landscape';
+  data.theme = data.theme || 'lvgl_default';
+  state.project = data;
+  const def = (data.screens.find(s => s.isDefault) || data.screens[0]);
+  state.defaultScreenId = def ? def.id : null;
+  $empty.style.display = 'none';
+  $shell.style.display = '';
+  $btnReset.style.display = '';
+  $statusProject.textContent = data.tool || 'PANELWRIGHT';
+  $statusTheme.textContent = data.theme;
+  renderScreen(state.defaultScreenId);
+}
+
+function handleFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      loadProject(data);
+    } catch (err) {
+      alert('Could not parse file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('btn-load').addEventListener('click', () =>
+  document.getElementById('file-input').click());
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+  e.target.value = '';
+});
+$btnReset.addEventListener('click', () => {
+  if (state.defaultScreenId) renderScreen(state.defaultScreenId);
+});
+
+// Drop zone for direct file drop
+const $dropZone = document.getElementById('drop-zone');
+$dropZone.addEventListener('click', () => document.getElementById('file-input').click());
+['dragenter', 'dragover'].forEach(ev => {
+  $dropZone.addEventListener(ev, e => { e.preventDefault(); $dropZone.classList.add('over'); });
+});
+['dragleave', 'drop'].forEach(ev => {
+  $dropZone.addEventListener(ev, e => { e.preventDefault(); $dropZone.classList.remove('over'); });
+});
+$dropZone.addEventListener('drop', e => {
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+// Also accept drops on the whole stage once a project is loaded
+document.getElementById('stage').addEventListener('dragover', e => e.preventDefault());
+document.getElementById('stage').addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+// Auto-load a project the editor handed us via sessionStorage.
+// This is how the "Open Viewer" button in the editor passes the current
+// project to the viewer without a download / upload round trip.
+try {
+  const stashed = sessionStorage.getItem('panelwright_preview_project');
+  if (stashed) {
+    sessionStorage.removeItem('panelwright_preview_project');
+    loadProject(JSON.parse(stashed));
+  }
+} catch (err) {
+  // sessionStorage unavailable; fall through to empty state
+}
+
+})();
+</script>
+</body>
+</html>

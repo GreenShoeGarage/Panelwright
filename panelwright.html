@@ -90,14 +90,12 @@ input[type=color] {
   padding: 0;
   cursor: pointer;
 }
-input[type=checkbox] {
-  accent-color: var(--amber);
-}
+input[type=checkbox] { accent-color: var(--amber); }
 
 /* === Layout === */
 #app {
   display: grid;
-  grid-template-rows: 38px 1fr;
+  grid-template-rows: 38px 34px 1fr;
   height: 100vh;
 }
 
@@ -134,11 +132,77 @@ header.topbar .toolbar .sep {
   background: var(--border);
   margin: 0 4px;
 }
-header.topbar label.orient-toggle {
+header.topbar label.opt {
   display: flex;
   align-items: center;
   gap: 6px;
   color: var(--ink-dim);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+header.topbar label.opt select { width: auto; }
+
+/* === Screens strip === */
+.screens-strip {
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: stretch;
+  padding: 0 8px;
+  overflow-x: auto;
+}
+.screens-strip .screen-tab {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-right: 1px solid var(--border);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  cursor: pointer;
+  gap: 8px;
+  user-select: none;
+  white-space: nowrap;
+  position: relative;
+}
+.screens-strip .screen-tab:hover { background: var(--bg); color: var(--ink); }
+.screens-strip .screen-tab.active {
+  background: var(--bg);
+  color: var(--amber);
+  box-shadow: inset 0 -2px 0 var(--amber);
+}
+.screens-strip .screen-tab .default-mark {
+  color: var(--amber);
+  font-size: 9px;
+}
+.screens-strip .screen-tab.active .default-mark { color: var(--amber-bright); }
+.screens-strip .screen-tab .close {
+  color: var(--ink-mute);
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+.screens-strip .screen-tab .close:hover { color: var(--rust); background: var(--panel); }
+.screens-strip .add-screen {
+  background: transparent;
+  border: none;
+  padding: 0 14px;
+  color: var(--ink-dim);
+  font-size: 16px;
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+}
+.screens-strip .add-screen:hover { color: var(--amber); background: var(--bg); }
+.screens-strip .strip-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 6px;
+  color: var(--ink-mute);
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -155,10 +219,7 @@ aside.palette, aside.props {
   border-right: 1px solid var(--border);
   overflow-y: auto;
 }
-aside.props {
-  border-right: none;
-  border-left: 1px solid var(--border);
-}
+aside.props { border-right: none; border-left: 1px solid var(--border); }
 
 .panel-section {
   border-bottom: 1px solid var(--border);
@@ -200,7 +261,7 @@ aside.props {
 .palette-item:active { cursor: grabbing; }
 .palette-item .glyph {
   display: block;
-  font-size: 18px;
+  font-size: 16px;
   margin-bottom: 4px;
   color: var(--ink);
   font-family: var(--mono);
@@ -235,8 +296,7 @@ aside.props {
   box-shadow: 0 0 0 1px var(--border) inset, 0 20px 50px rgba(0,0,0,0.6);
   width: fit-content;
 }
-.device-shell::before {
-  content: 'ARDUINO GIGA DISPLAY SHIELD // 800 x 480';
+.device-shell .shell-banner {
   position: absolute;
   top: -22px;
   left: 0;
@@ -262,7 +322,6 @@ aside.props {
   position: relative;
   background: var(--canvas-bg);
   overflow: hidden;
-  /* LVGL default theme tones */
   color: #d3d3d3;
   font-family: var(--sans);
   user-select: none;
@@ -272,6 +331,15 @@ aside.props {
     linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
   background-size: 10px 10px, 10px 10px;
+}
+/* Tradigital theme tint on canvas background */
+#canvas.theme-tradigital {
+  background: #0e0a06;
+}
+#canvas.theme-tradigital.grid-on {
+  background-image:
+    linear-gradient(rgba(212,165,116,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(212,165,116,0.05) 1px, transparent 1px);
 }
 
 /* Widget visual representations on canvas */
@@ -320,134 +388,181 @@ aside.props {
   font-weight: 500;
   text-shadow: 0 1px 1px rgba(0,0,0,0.4);
 }
-.lv-slider {
-  display: flex;
-  align-items: center;
-  position: relative;
-}
-.lv-slider .track {
-  width: 100%;
-  height: 6px;
-  background: #404750;
-  border-radius: 3px;
-  position: relative;
-  overflow: visible;
-}
-.lv-slider .fill {
-  height: 100%;
-  background: linear-gradient(180deg, #2e6cda, #1f4ea0);
-  border-radius: 3px;
-}
+.lv-slider { display: flex; align-items: center; position: relative; }
+.lv-slider .track { width: 100%; height: 6px; background: #404750; border-radius: 3px; position: relative; overflow: visible; }
+.lv-slider .fill { height: 100%; background: linear-gradient(180deg, #2e6cda, #1f4ea0); border-radius: 3px; }
 .lv-slider .knob {
-  position: absolute;
-  top: 50%;
-  width: 18px;
-  height: 18px;
+  position: absolute; top: 50%;
+  width: 18px; height: 18px;
   background: linear-gradient(180deg, #4a85e8, #2a5cb8);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   border: 1px solid #1a3a78;
   box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
-.lv-switch {
-  background: #404750;
-  border-radius: 999px;
-  position: relative;
-}
+.lv-switch { background: #404750; border-radius: 999px; position: relative; }
 .lv-switch.checked { background: linear-gradient(180deg, #2e6cda, #1f4ea0); }
 .lv-switch .knob {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: #d8d8d8;
-  border-radius: 50%;
-  transition: left 0.15s;
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: #d8d8d8; border-radius: 50%; transition: left 0.15s;
   box-shadow: 0 1px 2px rgba(0,0,0,0.4);
 }
-.lv-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #d3d3d3;
-}
+.lv-checkbox { display: flex; align-items: center; gap: 6px; color: #d3d3d3; }
 .lv-checkbox .box {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #707880;
-  border-radius: 3px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 18px; height: 18px; border: 2px solid #707880;
+  border-radius: 3px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
 }
 .lv-checkbox.checked .box {
   background: linear-gradient(180deg, #2e6cda, #1f4ea0);
   border-color: #1f4ea0;
 }
-.lv-checkbox.checked .box::after {
-  content: '\2713';
-  color: white;
-  font-size: 12px;
-  font-weight: bold;
-}
-.lv-bar {
-  background: #404750;
-  border-radius: 4px;
-  overflow: hidden;
-  position: relative;
-}
-.lv-bar .fill {
-  height: 100%;
-  background: linear-gradient(180deg, #2e6cda, #1f4ea0);
-}
-.lv-arc {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+.lv-checkbox.checked .box::after { content: '\2713'; color: white; font-size: 12px; font-weight: bold; }
+.lv-bar { background: #404750; border-radius: 4px; overflow: hidden; position: relative; }
+.lv-bar .fill { height: 100%; background: linear-gradient(180deg, #2e6cda, #1f4ea0); }
+.lv-arc { position: relative; display: flex; align-items: center; justify-content: center; }
 .lv-dropdown {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #2a2f37;
-  border: 1px solid #4a525c;
-  border-radius: 4px;
-  padding: 0 10px;
-  color: #d3d3d3;
+  display: flex; align-items: center; justify-content: space-between;
+  background: #2a2f37; border: 1px solid #4a525c; border-radius: 4px;
+  padding: 0 10px; color: #d3d3d3;
 }
-.lv-dropdown .caret {
-  font-size: 10px;
-  color: #888;
-}
+.lv-dropdown .caret { font-size: 10px; color: #888; }
 .lv-textarea {
-  background: #1a1d22;
-  border: 1px solid #4a525c;
-  border-radius: 4px;
-  padding: 6px 8px;
-  color: #d3d3d3;
-  overflow: hidden;
+  background: #1a1d22; border: 1px solid #4a525c; border-radius: 4px;
+  padding: 6px 8px; color: #d3d3d3; overflow: hidden;
 }
-.lv-textarea.placeholder {
-  color: #6a7078;
-  font-style: italic;
-}
+.lv-textarea.placeholder { color: #6a7078; font-style: italic; }
 .lv-roller {
-  background: #2a2f37;
-  border-radius: 4px;
-  padding: 4px 8px;
-  color: #d3d3d3;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  overflow: hidden;
-  line-height: 1.3;
-  font-size: 13px;
+  background: #2a2f37; border-radius: 4px; padding: 4px 8px; color: #d3d3d3;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; overflow: hidden; line-height: 1.3; font-size: 13px;
 }
 .lv-roller .dim { color: #6a7078; }
 .lv-roller .sel { color: #4a85e8; font-weight: 600; }
+
+/* New widgets */
+.lv-tabview {
+  background: #1a1d22;
+  border: 1px solid #4a525c;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+.lv-tabview.tab-bottom { flex-direction: column-reverse; }
+.lv-tabview.tab-left { flex-direction: row; }
+.lv-tabview.tab-right { flex-direction: row-reverse; }
+.lv-tabview .tab-bar {
+  display: flex;
+  background: #2a2f37;
+  border-bottom: 1px solid #4a525c;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.lv-tabview.tab-bottom .tab-bar { border-bottom: none; border-top: 1px solid #4a525c; }
+.lv-tabview.tab-left .tab-bar, .lv-tabview.tab-right .tab-bar {
+  flex-direction: column;
+  border-bottom: none;
+}
+.lv-tabview.tab-left .tab-bar { border-right: 1px solid #4a525c; }
+.lv-tabview.tab-right .tab-bar { border-left: 1px solid #4a525c; }
+.lv-tabview .tab-btn {
+  padding: 8px 14px;
+  color: #888;
+  font-size: 12px;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+.lv-tabview .tab-btn.active {
+  color: #4a85e8;
+  border-bottom-color: #4a85e8;
+  background: #1a1d22;
+}
+.lv-tabview .tab-content {
+  flex: 1;
+  padding: 8px;
+  color: #888;
+  font-size: 11px;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.lv-list {
+  background: #1a1d22;
+  border: 1px solid #4a525c;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.lv-list .list-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #2a2f37;
+  color: #d3d3d3;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lv-list .list-item.header {
+  background: #2a2f37;
+  color: #888;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.lv-list .list-item:last-child { border-bottom: none; }
+.lv-list .list-item .icon {
+  width: 14px;
+  height: 14px;
+  background: #4a85e8;
+  border-radius: 2px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.lv-chart {
+  background: #1a1d22;
+  border: 1px solid #4a525c;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.lv-meter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Theme variants for default widget colors */
+.theme-tradigital .lv-btn {
+  background: linear-gradient(180deg, #d4a574, #a07a4f);
+  color: #1a1208;
+  text-shadow: none;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.4);
+}
+.theme-tradigital .lv-slider .fill,
+.theme-tradigital .lv-bar .fill { background: linear-gradient(180deg, #d4a574, #a07a4f); }
+.theme-tradigital .lv-slider .knob { background: linear-gradient(180deg, #f0c896, #d4a574); border-color: #7a5a35; }
+.theme-tradigital .lv-switch.checked { background: linear-gradient(180deg, #d4a574, #a07a4f); }
+.theme-tradigital .lv-checkbox.checked .box {
+  background: linear-gradient(180deg, #d4a574, #a07a4f);
+  border-color: #a07a4f;
+}
+.theme-tradigital .lv-tabview .tab-btn.active {
+  color: #d4a574;
+  border-bottom-color: #d4a574;
+}
+.theme-tradigital .lv-list .list-item .icon { background: #d4a574; }
+.theme-tradigital .lv-roller .sel { color: #d4a574; }
 
 /* Status bar */
 .status-bar {
@@ -492,26 +607,12 @@ aside.props {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-.prop-row.full {
-  grid-template-columns: 1fr;
-}
-.prop-grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-.prop-grid-2 .prop-row {
-  display: block;
-}
-.prop-grid-2 .prop-row label {
-  display: block;
-  margin-bottom: 3px;
-}
+.prop-row.full { grid-template-columns: 1fr; }
+.prop-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.prop-grid-2 .prop-row { display: block; }
+.prop-grid-2 .prop-row label { display: block; margin-bottom: 3px; }
 
-.widget-list {
-  max-height: 180px;
-  overflow-y: auto;
-}
+.widget-list { max-height: 180px; overflow-y: auto; }
 .widget-list .item {
   display: flex;
   align-items: center;
@@ -614,7 +715,6 @@ aside.props {
   margin-left: auto;
 }
 
-/* Code syntax highlighting (very light) */
 .tok-kw { color: #6fb5a8; }
 .tok-str { color: #d4a574; }
 .tok-num { color: #b9684a; }
@@ -622,7 +722,6 @@ aside.props {
 .tok-pp { color: #a78bfa; }
 .tok-fn { color: #e0e0e0; }
 
-/* Scrollbars */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border: 2px solid var(--bg); }
@@ -645,6 +744,8 @@ aside.props {
   padding: 30px 40px;
   max-width: 580px;
   width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 .help-overlay h2 {
   color: var(--amber);
@@ -699,6 +800,45 @@ aside.props {
   opacity: 0.9;
   transform: translate(-50%, -50%);
 }
+
+/* Alignment guides */
+.align-guide {
+  position: absolute;
+  background: var(--amber);
+  pointer-events: none;
+  z-index: 250;
+  opacity: 0.65;
+  box-shadow: 0 0 4px var(--amber);
+}
+.align-guide.v { width: 1px; top: 0; bottom: 0; }
+.align-guide.h { height: 1px; left: 0; right: 0; }
+
+/* Modal for renaming screens */
+.prompt-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+}
+.prompt-modal.open { display: flex; }
+.prompt-modal .box {
+  background: var(--panel);
+  border: 1px solid var(--border-hot);
+  padding: 20px;
+  width: 360px;
+}
+.prompt-modal h3 {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 10px;
+}
+.prompt-modal input { margin-bottom: 12px; }
+.prompt-modal .actions { display: flex; gap: 6px; justify-content: flex-end; }
 </style>
 </head>
 <body>
@@ -708,20 +848,24 @@ aside.props {
 <header class="topbar">
   <div class="brand">FI-042 // PANELWRIGHT <span class="sub">// GIGA DISPLAY SHIELD UI DESIGNER</span></div>
   <div class="toolbar">
-    <label class="orient-toggle">
-      <span>Orientation</span>
+    <label class="opt">
+      <span>Orient</span>
       <select id="orient-select">
         <option value="landscape">Landscape 800 x 480</option>
         <option value="portrait">Portrait 480 x 800</option>
       </select>
     </label>
+    <label class="opt">
+      <span>Theme</span>
+      <select id="theme-select">
+        <option value="lvgl_default">LVGL Default</option>
+        <option value="tradigital">Tradigital</option>
+      </select>
+    </label>
+    <button id="btn-apply-theme" title="Recolor all widgets to match the current theme">Apply</button>
     <span class="sep"></span>
-    <label class="orient-toggle">
-      <input type="checkbox" id="grid-toggle" checked> Grid
-    </label>
-    <label class="orient-toggle">
-      <input type="checkbox" id="snap-toggle" checked> Snap
-    </label>
+    <label class="opt"><input type="checkbox" id="grid-toggle" checked> Grid</label>
+    <label class="opt"><input type="checkbox" id="snap-toggle" checked> Snap</label>
     <span class="sep"></span>
     <button id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
     <button id="btn-redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
@@ -732,30 +876,32 @@ aside.props {
     <input type="file" id="file-input" accept=".json" style="display:none">
     <span class="sep"></span>
     <button id="btn-code" class="primary">Generate Code</button>
+    <button id="btn-viewer" title="Preview current project in the viewer (opens in a new tab)">Open Viewer \u2197</button>
     <button id="btn-help">?</button>
   </div>
 </header>
+
+<div class="screens-strip" id="screens-strip">
+  <!-- populated by JS -->
+</div>
 
 <main class="workbench">
 
   <aside class="palette">
     <div class="panel-section">
       <h3>Widgets</h3>
-      <div class="palette-list" id="palette-list">
-        <!-- populated by JS -->
-      </div>
+      <div class="palette-list" id="palette-list"></div>
     </div>
     <div class="panel-section">
       <h3>Hierarchy</h3>
-      <div class="widget-list" id="widget-list">
-        <div style="color: var(--ink-mute); font-size: 10px; text-align: center; padding: 10px;">No widgets yet</div>
-      </div>
+      <div class="widget-list" id="widget-list"></div>
     </div>
     <div class="panel-section">
       <h3>About</h3>
       <p style="font-size: 10px; color: var(--ink-mute); line-height: 1.6;">
         Drag widgets to the canvas. Click to select, drag to move, corners to resize.
-        Generate compiles against Arduino_H7_Video plus lvgl on the Giga Display Shield.
+        Add screens above to build multi-screen UIs. Generate emits an Arduino LVGL
+        sketch ready to flash to the Giga Display Shield.
       </p>
     </div>
   </aside>
@@ -763,24 +909,21 @@ aside.props {
   <section class="canvas-region">
     <div class="canvas-frame" id="canvas-frame">
       <div class="device-shell" id="device-shell">
+        <div class="shell-banner" id="shell-banner">ARDUINO GIGA DISPLAY SHIELD // 800 x 480</div>
         <div id="canvas" class="grid-on" style="width: 800px; height: 480px;"></div>
       </div>
     </div>
     <div class="status-bar">
       <div class="item"><span class="key">Cursor</span><span class="val" id="status-cursor">0, 0</span></div>
       <div class="item"><span class="key">Selected</span><span class="val" id="status-selected">none</span></div>
+      <div class="item"><span class="key">Screen</span><span class="val" id="status-screen">main</span></div>
       <div class="item"><span class="key">Widgets</span><span class="val" id="status-count">0</span></div>
       <div class="spacer"></div>
       <div class="item"><span class="key">Display</span><span class="val" id="status-display">800 x 480</span></div>
     </div>
   </section>
 
-  <aside class="props" id="props-panel">
-    <div class="props-empty">
-      <span class="glyph">+</span>
-      Select a widget on the canvas or drag one from the palette.
-    </div>
-  </aside>
+  <aside class="props" id="props-panel"></aside>
 
 </main>
 
@@ -808,14 +951,42 @@ aside.props {
   </div>
 </div>
 
+<!-- Rename prompt -->
+<div class="prompt-modal" id="prompt-modal">
+  <div class="box">
+    <h3 id="prompt-title">Rename screen</h3>
+    <input type="text" id="prompt-input">
+    <div class="actions">
+      <button id="prompt-cancel">Cancel</button>
+      <button id="prompt-ok" class="primary">OK</button>
+    </div>
+  </div>
+</div>
+
 <!-- Help modal -->
 <div class="help-overlay" id="help-overlay">
   <div class="box">
     <h2>FI-042 // PANELWRIGHT // Quick Reference</h2>
     <p>
-      Design touch UIs for the Arduino Giga Display Shield. Drag widgets from the left palette
-      onto the canvas, edit properties on the right, then click Generate Code to produce a complete
-      Arduino sketch using LVGL.
+      Design touch UIs for the Arduino Giga Display Shield. Drag widgets from the
+      left palette onto the canvas, edit properties on the right, then click
+      Generate Code to produce a complete Arduino sketch using LVGL.
+    </p>
+
+    <h3>Multi-screen</h3>
+    <p>
+      The tab strip below the toolbar lists all screens. Click a tab to switch.
+      Click the + to add a screen. The screen marked with an asterisk is the
+      default screen loaded on boot. Buttons can navigate between screens by
+      setting their Action property.
+    </p>
+
+    <h3>Theme</h3>
+    <p>
+      The Theme selector switches between LVGL's default look and a Tradigital
+      preset (amber primary, teal secondary, dark mode on). The choice is
+      saved with the project and applied to the generated sketch via
+      lv_theme_default_init.
     </p>
 
     <h3>Keyboard</h3>
@@ -854,6 +1025,64 @@ aside.props {
 (function(){
 'use strict';
 
+// ----- LV_SYMBOL_* table for the icon widget ---------------
+// Each entry maps a friendly name to a preview character (for the canvas)
+// and the LVGL macro to emit in the generated sketch.
+
+const LV_SYMBOLS = {
+  audio:       { ch: '\u266A',   name: 'LV_SYMBOL_AUDIO' },
+  video:       { ch: '\u25B6',   name: 'LV_SYMBOL_VIDEO' },
+  list:        { ch: '\u2630',   name: 'LV_SYMBOL_LIST' },
+  ok:          { ch: '\u2713',   name: 'LV_SYMBOL_OK' },
+  close:       { ch: '\u2715',   name: 'LV_SYMBOL_CLOSE' },
+  power:       { ch: '\u23FB',   name: 'LV_SYMBOL_POWER' },
+  settings:    { ch: '\u2699',   name: 'LV_SYMBOL_SETTINGS' },
+  home:        { ch: '\u2302',   name: 'LV_SYMBOL_HOME' },
+  download:    { ch: '\u2B07',   name: 'LV_SYMBOL_DOWNLOAD' },
+  refresh:     { ch: '\u27F2',   name: 'LV_SYMBOL_REFRESH' },
+  prev:        { ch: '\u23EE',   name: 'LV_SYMBOL_PREV' },
+  play:        { ch: '\u25B6',   name: 'LV_SYMBOL_PLAY' },
+  pause:       { ch: '\u23F8',   name: 'LV_SYMBOL_PAUSE' },
+  stop:        { ch: '\u25A0',   name: 'LV_SYMBOL_STOP' },
+  next:        { ch: '\u23ED',   name: 'LV_SYMBOL_NEXT' },
+  left:        { ch: '\u2190',   name: 'LV_SYMBOL_LEFT' },
+  right:       { ch: '\u2192',   name: 'LV_SYMBOL_RIGHT' },
+  up:          { ch: '\u2191',   name: 'LV_SYMBOL_UP' },
+  down:        { ch: '\u2193',   name: 'LV_SYMBOL_DOWN' },
+  plus:        { ch: '+',        name: 'LV_SYMBOL_PLUS' },
+  minus:       { ch: '\u2212',   name: 'LV_SYMBOL_MINUS' },
+  warning:     { ch: '\u26A0',   name: 'LV_SYMBOL_WARNING' },
+  call:        { ch: '\u260E',   name: 'LV_SYMBOL_CALL' },
+  charge:      { ch: '\u26A1',   name: 'LV_SYMBOL_CHARGE' },
+  keyboard:    { ch: '\u2328',   name: 'LV_SYMBOL_KEYBOARD' },
+  backspace:   { ch: '\u232B',   name: 'LV_SYMBOL_BACKSPACE' },
+  new_line:    { ch: '\u21B5',   name: 'LV_SYMBOL_NEW_LINE' },
+  wifi:        { ch: '\u25B0',   name: 'LV_SYMBOL_WIFI' },
+  bell:        { ch: '\u2407',   name: 'LV_SYMBOL_BELL' },
+  trash:       { ch: '\u2421',   name: 'LV_SYMBOL_TRASH' },
+  edit:        { ch: '\u270E',   name: 'LV_SYMBOL_EDIT' },
+  save:        { ch: '\u26C1',   name: 'LV_SYMBOL_SAVE' },
+  upload:      { ch: '\u2B06',   name: 'LV_SYMBOL_UPLOAD' },
+  cut:         { ch: '\u2702',   name: 'LV_SYMBOL_CUT' },
+  copy:        { ch: '\u29C9',   name: 'LV_SYMBOL_COPY' },
+  paste:       { ch: '\u270D',   name: 'LV_SYMBOL_PASTE' },
+  eye_open:    { ch: '\u25CE',   name: 'LV_SYMBOL_EYE_OPEN' },
+  eye_close:   { ch: '\u25CB',   name: 'LV_SYMBOL_EYE_CLOSE' },
+  shuffle:     { ch: '\u21C4',   name: 'LV_SYMBOL_SHUFFLE' },
+  loop:        { ch: '\u21BB',   name: 'LV_SYMBOL_LOOP' },
+  directory:   { ch: '\u25B8',   name: 'LV_SYMBOL_DIRECTORY' },
+  file:        { ch: '\u2399',   name: 'LV_SYMBOL_FILE' },
+  image:       { ch: '\u25A4',   name: 'LV_SYMBOL_IMAGE' },
+  gps:         { ch: '\u2316',   name: 'LV_SYMBOL_GPS' },
+  bluetooth:   { ch: '\u269D',   name: 'LV_SYMBOL_BLUETOOTH' },
+  usb:         { ch: '\u2A22',   name: 'LV_SYMBOL_USB' },
+  battery_full:  { ch: '\u2588',  name: 'LV_SYMBOL_BATTERY_FULL' },
+  battery_3:     { ch: '\u2587',  name: 'LV_SYMBOL_BATTERY_3' },
+  battery_2:     { ch: '\u2585',  name: 'LV_SYMBOL_BATTERY_2' },
+  battery_1:     { ch: '\u2583',  name: 'LV_SYMBOL_BATTERY_1' },
+  battery_empty: { ch: '\u2581',  name: 'LV_SYMBOL_BATTERY_EMPTY' }
+};
+
 // ----- Widget definitions ---------------------------------
 
 const WIDGET_TYPES = {
@@ -881,49 +1110,64 @@ const WIDGET_TYPES = {
     label: 'Button', glyph: '\u25A0',
     defaultSize: { w: 140, h: 50 },
     defaultName: 'btn',
-    defaultProps: { text: 'BUTTON', bgColor: '#2e6cda', textColor: '#ffffff', radius: 5 },
+    defaultProps: {
+      text: 'BUTTON', bgColor: '#2e6cda', textColor: '#ffffff', radius: 5,
+      action: 'none', actionTarget: '', customLogic: ''
+    },
     render: renderButton,
     properties: [
       { key: 'text', label: 'Label', type: 'text' },
       { key: 'bgColor', label: 'BG', type: 'color' },
       { key: 'textColor', label: 'Text', type: 'color' },
-      { key: 'radius', label: 'Radius', type: 'number', min: 0, max: 100 }
+      { key: 'radius', label: 'Radius', type: 'number', min: 0, max: 100 },
+      { key: 'action', label: 'On Click', type: 'select', options: [
+          { v: 'none', l: 'None' }, { v: 'goto', l: 'Go to screen' }
+      ]},
+      { key: 'actionTarget', label: 'Target', type: 'screen_select', showIf: w => w.props.action === 'goto' },
+      { key: 'customLogic', label: 'Event Code', type: 'textarea',
+        hint: 'C++ inserted into the event handler' }
     ]
   },
   slider: {
     label: 'Slider', glyph: '\u2500\u25CF\u2500',
     defaultSize: { w: 200, h: 20 },
     defaultName: 'sld',
-    defaultProps: { min: 0, max: 100, value: 50, color: '#2e6cda' },
+    defaultProps: { min: 0, max: 100, value: 50, color: '#2e6cda', customLogic: '' },
     render: renderSlider,
     properties: [
       { key: 'min', label: 'Min', type: 'number' },
       { key: 'max', label: 'Max', type: 'number' },
       { key: 'value', label: 'Value', type: 'number' },
-      { key: 'color', label: 'Color', type: 'color' }
+      { key: 'color', label: 'Color', type: 'color' },
+      { key: 'customLogic', label: 'Event Code', type: 'textarea',
+        hint: 'C++ inserted into the value-changed handler' }
     ]
   },
   switch: {
     label: 'Switch', glyph: '\u25CB\u2500',
     defaultSize: { w: 50, h: 28 },
     defaultName: 'sw',
-    defaultProps: { checked: false, color: '#2e6cda' },
+    defaultProps: { checked: false, color: '#2e6cda', customLogic: '' },
     render: renderSwitch,
     properties: [
       { key: 'checked', label: 'On', type: 'boolean' },
-      { key: 'color', label: 'Color', type: 'color' }
+      { key: 'color', label: 'Color', type: 'color' },
+      { key: 'customLogic', label: 'Event Code', type: 'textarea',
+        hint: 'C++ inserted into the value-changed handler' }
     ]
   },
   checkbox: {
     label: 'Checkbox', glyph: '\u2611',
     defaultSize: { w: 140, h: 24 },
     defaultName: 'chk',
-    defaultProps: { text: 'Option', checked: false, color: '#2e6cda' },
+    defaultProps: { text: 'Option', checked: false, color: '#2e6cda', customLogic: '' },
     render: renderCheckbox,
     properties: [
       { key: 'text', label: 'Label', type: 'text' },
       { key: 'checked', label: 'Checked', type: 'boolean' },
-      { key: 'color', label: 'Color', type: 'color' }
+      { key: 'color', label: 'Color', type: 'color' },
+      { key: 'customLogic', label: 'Event Code', type: 'textarea',
+        hint: 'C++ inserted into the value-changed handler' }
     ]
   },
   bar: {
@@ -952,15 +1196,35 @@ const WIDGET_TYPES = {
       { key: 'color', label: 'Color', type: 'color' }
     ]
   },
+  meter: {
+    label: 'Meter', glyph: '\u25D4',
+    defaultSize: { w: 160, h: 160 },
+    defaultName: 'mtr',
+    defaultProps: { min: 0, max: 100, value: 70, color: '#2e6cda', needleColor: '#ff8050',
+                    angleStart: 135, angleEnd: 45, majorTicks: 8 },
+    render: renderMeter,
+    properties: [
+      { key: 'min', label: 'Min', type: 'number' },
+      { key: 'max', label: 'Max', type: 'number' },
+      { key: 'value', label: 'Value', type: 'number' },
+      { key: 'color', label: 'Arc', type: 'color' },
+      { key: 'needleColor', label: 'Needle', type: 'color' },
+      { key: 'angleStart', label: 'Start', type: 'number' },
+      { key: 'angleEnd', label: 'End', type: 'number' },
+      { key: 'majorTicks', label: 'Ticks', type: 'number', min: 2, max: 20 }
+    ]
+  },
   dropdown: {
     label: 'Dropdown', glyph: '\u25BC',
     defaultSize: { w: 160, h: 36 },
     defaultName: 'dd',
-    defaultProps: { options: 'Option 1\nOption 2\nOption 3', selected: 0 },
+    defaultProps: { options: 'Option 1\nOption 2\nOption 3', selected: 0, customLogic: '' },
     render: renderDropdown,
     properties: [
       { key: 'options', label: 'Options', type: 'textarea', hint: 'One per line' },
-      { key: 'selected', label: 'Default', type: 'number' }
+      { key: 'selected', label: 'Default', type: 'number' },
+      { key: 'customLogic', label: 'Event Code', type: 'textarea',
+        hint: 'C++ inserted into the value-changed handler' }
     ]
   },
   textarea: {
@@ -976,29 +1240,141 @@ const WIDGET_TYPES = {
     ]
   },
   roller: {
-    label: 'Roller', glyph: '\u2261',
+    label: 'Roller', glyph: '\u2630',
     defaultSize: { w: 100, h: 120 },
     defaultName: 'rl',
-    defaultProps: { options: 'One\nTwo\nThree\nFour\nFive', selected: 0, mode: 'normal' },
+    defaultProps: { options: 'One\nTwo\nThree\nFour\nFive', selected: 0, mode: 'normal', customLogic: '' },
     render: renderRoller,
     properties: [
       { key: 'options', label: 'Options', type: 'textarea', hint: 'One per line' },
       { key: 'selected', label: 'Default', type: 'number' },
       { key: 'mode', label: 'Mode', type: 'select', options: [
           { v: 'normal', l: 'Normal' }, { v: 'infinite', l: 'Infinite' }
+      ]},
+      { key: 'customLogic', label: 'Event Code', type: 'textarea',
+        hint: 'C++ inserted into the value-changed handler' }
+    ]
+  },
+  tabview: {
+    label: 'Tabview', glyph: '\u25A1\u25A1',
+    defaultSize: { w: 360, h: 220 },
+    defaultName: 'tv',
+    defaultProps: { tabs: 'Tab 1\nTab 2\nTab 3', tabPosition: 'top', tabSize: 50 },
+    render: renderTabview,
+    properties: [
+      { key: 'tabs', label: 'Tabs', type: 'textarea', hint: 'One per line' },
+      { key: 'tabPosition', label: 'Position', type: 'select', options: [
+          { v: 'top', l: 'Top' }, { v: 'bottom', l: 'Bottom' },
+          { v: 'left', l: 'Left' }, { v: 'right', l: 'Right' }
+      ]},
+      { key: 'tabSize', label: 'Tab Size', type: 'number', min: 20, max: 200 }
+    ]
+  },
+  list: {
+    label: 'List', glyph: '\u2630',
+    defaultSize: { w: 220, h: 200 },
+    defaultName: 'lst',
+    defaultProps: { items: '# Group\nItem One\nItem Two\nItem Three' },
+    render: renderList,
+    properties: [
+      { key: 'items', label: 'Items', type: 'textarea',
+        hint: 'One per line. Prefix with # for header' }
+    ]
+  },
+  chart: {
+    label: 'Chart', glyph: '\u2261\u2197',
+    defaultSize: { w: 280, h: 160 },
+    defaultName: 'cht',
+    defaultProps: {
+      chartType: 'line', pointCount: 16, seriesCount: 1,
+      color1: '#2e6cda', color2: '#d4a574', color3: '#6fb5a8'
+    },
+    render: renderChart,
+    properties: [
+      { key: 'chartType', label: 'Type', type: 'select', options: [
+          { v: 'line', l: 'Line' }, { v: 'bar', l: 'Bar' }, { v: 'scatter', l: 'Scatter' }
+      ]},
+      { key: 'pointCount', label: 'Points', type: 'number', min: 2, max: 100 },
+      { key: 'seriesCount', label: 'Series', type: 'number', min: 1, max: 3 },
+      { key: 'color1', label: 'Series 1', type: 'color' },
+      { key: 'color2', label: 'Series 2', type: 'color' },
+      { key: 'color3', label: 'Series 3', type: 'color' }
+    ]
+  },
+  led: {
+    label: 'LED', glyph: '\u25CF',
+    defaultSize: { w: 30, h: 30 },
+    defaultName: 'led',
+    defaultProps: { color: '#ff6040', brightness: 220, on: true },
+    render: renderLed,
+    properties: [
+      { key: 'color', label: 'Color', type: 'color' },
+      { key: 'brightness', label: 'Bright', type: 'number', min: 0, max: 255 },
+      { key: 'on', label: 'On', type: 'boolean' }
+    ]
+  },
+  icon: {
+    label: 'Icon', glyph: '\u2605',
+    defaultSize: { w: 40, h: 40 },
+    defaultName: 'icn',
+    defaultProps: { symbol: 'wifi', color: '#d3d3d3', fontSize: 24 },
+    render: renderIcon,
+    properties: [
+      { key: 'symbol', label: 'Symbol', type: 'symbol_select' },
+      { key: 'color', label: 'Color', type: 'color' },
+      { key: 'fontSize', label: 'Size', type: 'select', options: [
+          { v: 14, l: '14 px' }, { v: 16, l: '16 px' }, { v: 18, l: '18 px' },
+          { v: 20, l: '20 px' }, { v: 24, l: '24 px' }, { v: 28, l: '28 px' },
+          { v: 32, l: '32 px' }, { v: 36, l: '36 px' }, { v: 40, l: '40 px' },
+          { v: 48, l: '48 px' }
       ]}
     ]
+  },
+  keyboard: {
+    label: 'Keyboard', glyph: '\u2328',
+    defaultSize: { w: 600, h: 200 },
+    defaultName: 'kbd',
+    defaultProps: { mode: 'text_lower', textareaTarget: '' },
+    render: renderKeyboard,
+    properties: [
+      { key: 'mode', label: 'Mode', type: 'select', options: [
+          { v: 'text_lower', l: 'Text Lower' }, { v: 'text_upper', l: 'Text Upper' },
+          { v: 'special', l: 'Special' }, { v: 'number', l: 'Number' }
+      ]},
+      { key: 'textareaTarget', label: 'TextArea', type: 'widget_select', filterType: 'textarea' }
+    ]
+  },
+  calendar: {
+    label: 'Calendar', glyph: '\u25A4',
+    defaultSize: { w: 240, h: 220 },
+    defaultName: 'cal',
+    defaultProps: { year: 2026, month: 6, day: 25 },
+    render: renderCalendar,
+    properties: [
+      { key: 'year',  label: 'Year',  type: 'number', min: 2000, max: 2099 },
+      { key: 'month', label: 'Month', type: 'number', min: 1, max: 12 },
+      { key: 'day',   label: 'Day',   type: 'number', min: 1, max: 31 }
+    ]
   }
+};
+
+// Default theme accents (used for new widgets when theme is active)
+const THEME_DEFAULTS = {
+  lvgl_default: { primary: '#2e6cda', secondary: '#6fb5a8' },
+  tradigital:   { primary: '#d4a574', secondary: '#6fb5a8' }
 };
 
 // ----- Application state ----------------------------------
 
 const state = {
-  widgets: [],            // array of widget objects
+  screens: [],            // array of screens
+  activeScreenId: null,
   selectedId: null,
   nextId: 1,
+  nextScreenId: 1,
   nameCounts: {},         // type -> counter for auto names
   orientation: 'landscape',
+  theme: 'lvgl_default',
   grid: true,
   snap: true,
   gridSize: 10,
@@ -1006,6 +1382,17 @@ const state = {
   historyIdx: -1,
   historyMax: 50
 };
+
+function curScreen() {
+  return state.screens.find(s => s.id === state.activeScreenId);
+}
+function curWidgets() {
+  const s = curScreen();
+  return s ? s.widgets : [];
+}
+function defaultScreen() {
+  return state.screens.find(s => s.isDefault) || state.screens[0];
+}
 
 // ----- Widget rendering on canvas -------------------------
 
@@ -1028,7 +1415,8 @@ function renderLabel(w) {
   inner.style.height = '100%';
   inner.style.color = w.props.color;
   inner.style.fontSize = w.props.fontSize + 'px';
-  inner.style.justifyContent = w.props.align === 'center' ? 'center' : (w.props.align === 'right' ? 'flex-end' : 'flex-start');
+  inner.style.justifyContent = w.props.align === 'center' ? 'center' :
+                              (w.props.align === 'right' ? 'flex-end' : 'flex-start');
   inner.textContent = w.props.text || '';
   el.appendChild(inner);
   return el;
@@ -1044,6 +1432,21 @@ function renderButton(w) {
   inner.style.color = w.props.textColor;
   inner.style.borderRadius = w.props.radius + 'px';
   inner.textContent = w.props.text || '';
+  // Visual hint for navigation buttons
+  if (w.props.action === 'goto' && w.props.actionTarget) {
+    const tag = document.createElement('span');
+    tag.style.position = 'absolute';
+    tag.style.right = '4px';
+    tag.style.bottom = '2px';
+    tag.style.fontSize = '8px';
+    tag.style.opacity = '0.5';
+    tag.style.letterSpacing = '0.1em';
+    const tgt = state.screens.find(s => s.id === w.props.actionTarget);
+    tag.textContent = '\u2192 ' + (tgt ? tgt.name : '?');
+    el.style.position = 'absolute';
+    inner.style.position = 'relative';
+    inner.appendChild(tag);
+  }
   el.appendChild(inner);
   return el;
 }
@@ -1168,8 +1571,6 @@ function renderArc(w) {
     fg.setAttribute('stroke-linecap', 'round');
     svg.appendChild(fg);
   }
-
-  // Knob
   const knobX = cx + r * Math.cos(valAngle * Math.PI / 180);
   const knobY = cy + r * Math.sin(valAngle * Math.PI / 180);
   const knob = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -1178,6 +1579,88 @@ function renderArc(w) {
   knob.setAttribute('r', stroke / 2 + 2);
   knob.setAttribute('fill', lighten(w.props.color, 0.2));
   svg.appendChild(knob);
+  el.appendChild(svg);
+  return el;
+}
+
+function renderMeter(w) {
+  const el = renderBase(w);
+  const size = Math.min(w.w, w.h);
+  const cx = w.w / 2;
+  const cy = w.h / 2;
+  const r = size / 2 - 6;
+  const stroke = 6;
+  const startAngle = w.props.angleStart;
+  const endAngle = w.props.angleEnd;
+  const sweep = ((endAngle - startAngle + 360) % 360) || 360;
+  const pct = (w.props.value - w.props.min) / (w.props.max - w.props.min);
+  const valAngle = startAngle + sweep * Math.max(0, Math.min(1, pct));
+  const major = Math.max(2, w.props.majorTicks);
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', w.w);
+  svg.setAttribute('height', w.h);
+  svg.style.position = 'absolute';
+  svg.style.inset = '0';
+
+  // Track arc
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  bg.setAttribute('d', arcPath(cx, cy, r, startAngle, endAngle));
+  bg.setAttribute('stroke', '#404750');
+  bg.setAttribute('stroke-width', stroke);
+  bg.setAttribute('fill', 'none');
+  bg.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(bg);
+
+  // Filled arc
+  if (pct > 0.001) {
+    const fg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    fg.setAttribute('d', arcPath(cx, cy, r, startAngle, valAngle));
+    fg.setAttribute('stroke', w.props.color);
+    fg.setAttribute('stroke-width', stroke);
+    fg.setAttribute('fill', 'none');
+    fg.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(fg);
+  }
+
+  // Major ticks
+  for (let i = 0; i < major; i++) {
+    const ang = startAngle + (sweep * i) / (major - 1);
+    const rad = ang * Math.PI / 180;
+    const x1 = cx + (r - stroke / 2 - 2) * Math.cos(rad);
+    const y1 = cy + (r - stroke / 2 - 2) * Math.sin(rad);
+    const x2 = cx + (r - stroke / 2 - 10) * Math.cos(rad);
+    const y2 = cy + (r - stroke / 2 - 10) * Math.sin(rad);
+    const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    tick.setAttribute('x1', x1);
+    tick.setAttribute('y1', y1);
+    tick.setAttribute('x2', x2);
+    tick.setAttribute('y2', y2);
+    tick.setAttribute('stroke', '#888');
+    tick.setAttribute('stroke-width', 1.5);
+    svg.appendChild(tick);
+  }
+
+  // Needle
+  const nrad = valAngle * Math.PI / 180;
+  const nlen = r - stroke;
+  const needle = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  needle.setAttribute('x1', cx);
+  needle.setAttribute('y1', cy);
+  needle.setAttribute('x2', cx + nlen * Math.cos(nrad));
+  needle.setAttribute('y2', cy + nlen * Math.sin(nrad));
+  needle.setAttribute('stroke', w.props.needleColor);
+  needle.setAttribute('stroke-width', 3);
+  needle.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(needle);
+
+  // Center hub
+  const hub = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  hub.setAttribute('cx', cx);
+  hub.setAttribute('cy', cy);
+  hub.setAttribute('r', 6);
+  hub.setAttribute('fill', '#888');
+  svg.appendChild(hub);
 
   el.appendChild(svg);
   return el;
@@ -1238,16 +1721,359 @@ function renderRoller(w) {
   inner.style.height = '100%';
   const opts = (w.props.options || '').split('\n').filter(s => s.length);
   const sel = Math.min(w.props.selected || 0, opts.length - 1);
-  // Show items around selected
-  const visibleSlots = 3;
   for (let i = -1; i <= 1; i++) {
     const idx = sel + i;
     const span = document.createElement('div');
-    if (i === 0) span.className = 'sel';
-    else span.className = 'dim';
+    span.className = i === 0 ? 'sel' : 'dim';
     span.textContent = opts[idx] || '\u00A0';
     inner.appendChild(span);
   }
+  el.appendChild(inner);
+  return el;
+}
+
+function renderTabview(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-tabview tab-' + w.props.tabPosition;
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  const tabs = (w.props.tabs || '').split('\n').filter(s => s.length);
+  const bar = document.createElement('div');
+  bar.className = 'tab-bar';
+  for (let i = 0; i < tabs.length; i++) {
+    const btn = document.createElement('div');
+    btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
+    btn.textContent = tabs[i];
+    bar.appendChild(btn);
+  }
+  const content = document.createElement('div');
+  content.className = 'tab-content';
+  content.textContent = '(tab content set in your sketch)';
+  inner.appendChild(bar);
+  inner.appendChild(content);
+  el.appendChild(inner);
+  return el;
+}
+
+function renderList(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-list';
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  const lines = (w.props.items || '').split('\n');
+  for (const line of lines) {
+    if (!line) continue;
+    const item = document.createElement('div');
+    if (line.startsWith('#')) {
+      item.className = 'list-item header';
+      item.textContent = line.slice(1).trim();
+    } else {
+      item.className = 'list-item';
+      const ic = document.createElement('div');
+      ic.className = 'icon';
+      const lbl = document.createElement('span');
+      lbl.textContent = line.trim();
+      item.appendChild(ic);
+      item.appendChild(lbl);
+    }
+    inner.appendChild(item);
+  }
+  el.appendChild(inner);
+  return el;
+}
+
+function renderChart(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-chart';
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+
+  const padding = 10;
+  const cw = w.w - padding * 2;
+  const ch = w.h - padding * 2;
+  const points = w.props.pointCount;
+  const series = Math.max(1, Math.min(3, w.props.seriesCount));
+  const colors = [w.props.color1, w.props.color2, w.props.color3];
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', w.w);
+  svg.setAttribute('height', w.h);
+  svg.style.position = 'absolute';
+  svg.style.inset = '0';
+
+  // Background grid lines
+  for (let i = 1; i < 4; i++) {
+    const y = padding + (ch * i) / 4;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', padding);
+    line.setAttribute('x2', padding + cw);
+    line.setAttribute('y1', y);
+    line.setAttribute('y2', y);
+    line.setAttribute('stroke', '#2a2f37');
+    line.setAttribute('stroke-width', 1);
+    svg.appendChild(line);
+  }
+
+  // Sample data: sin waves at different phases
+  function sample(s, i) {
+    const phase = s * 0.7;
+    return 0.5 + 0.4 * Math.sin((i / points) * Math.PI * 2 + phase);
+  }
+
+  if (w.props.chartType === 'bar') {
+    const barW = cw / (points * series + (series - 1));
+    for (let s = 0; s < series; s++) {
+      for (let i = 0; i < points; i++) {
+        const v = sample(s, i);
+        const h = v * ch;
+        const x = padding + i * series * barW + s * barW + i * (barW * 0.1);
+        const y = padding + ch - h;
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', barW * 0.9);
+        rect.setAttribute('height', h);
+        rect.setAttribute('fill', colors[s]);
+        rect.setAttribute('opacity', 0.85);
+        svg.appendChild(rect);
+      }
+    }
+  } else if (w.props.chartType === 'scatter') {
+    for (let s = 0; s < series; s++) {
+      for (let i = 0; i < points; i++) {
+        const v = sample(s, i);
+        const x = padding + (i / (points - 1)) * cw;
+        const y = padding + ch - v * ch;
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', x);
+        c.setAttribute('cy', y);
+        c.setAttribute('r', 2.5);
+        c.setAttribute('fill', colors[s]);
+        svg.appendChild(c);
+      }
+    }
+  } else {
+    // line
+    for (let s = 0; s < series; s++) {
+      let d = '';
+      for (let i = 0; i < points; i++) {
+        const v = sample(s, i);
+        const x = padding + (i / (points - 1)) * cw;
+        const y = padding + ch - v * ch;
+        d += (i === 0 ? 'M ' : ' L ') + x + ' ' + y;
+      }
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('stroke', colors[s]);
+      path.setAttribute('stroke-width', 2);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linejoin', 'round');
+      svg.appendChild(path);
+    }
+  }
+
+  inner.appendChild(svg);
+  el.appendChild(inner);
+  return el;
+}
+
+function renderLed(w) {
+  const el = renderBase(w);
+  const size = Math.min(w.w, w.h);
+  const cx = w.w / 2, cy = w.h / 2, r = size / 2 - 2;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', w.w);
+  svg.setAttribute('height', w.h);
+  svg.style.position = 'absolute';
+  svg.style.inset = '0';
+
+  const off = darken(w.props.color, 0.7);
+  const lit = w.props.on;
+  const alpha = lit ? Math.max(0.15, w.props.brightness / 255) : 0.4;
+
+  if (lit) {
+    const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    glow.setAttribute('cx', cx); glow.setAttribute('cy', cy);
+    glow.setAttribute('r', r + 4);
+    glow.setAttribute('fill', w.props.color);
+    glow.setAttribute('opacity', alpha * 0.4);
+    svg.appendChild(glow);
+  }
+  const body = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  body.setAttribute('cx', cx); body.setAttribute('cy', cy); body.setAttribute('r', r);
+  body.setAttribute('fill', lit ? w.props.color : off);
+  body.setAttribute('opacity', lit ? alpha : 0.6);
+  body.setAttribute('stroke', '#2a2f37');
+  body.setAttribute('stroke-width', 1);
+  svg.appendChild(body);
+  if (lit) {
+    const hi = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    hi.setAttribute('cx', cx - r * 0.3);
+    hi.setAttribute('cy', cy - r * 0.3);
+    hi.setAttribute('r', r * 0.25);
+    hi.setAttribute('fill', lighten(w.props.color, 0.5));
+    hi.setAttribute('opacity', 0.7);
+    svg.appendChild(hi);
+  }
+  el.appendChild(svg);
+  return el;
+}
+
+function renderIcon(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  inner.style.display = 'flex';
+  inner.style.alignItems = 'center';
+  inner.style.justifyContent = 'center';
+  inner.style.color = w.props.color;
+  inner.style.fontSize = w.props.fontSize + 'px';
+  inner.style.lineHeight = '1';
+  const sym = LV_SYMBOLS[w.props.symbol] || LV_SYMBOLS.wifi;
+  inner.textContent = sym.ch;
+  el.appendChild(inner);
+  return el;
+}
+
+function renderKeyboard(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  inner.style.background = '#1a1d22';
+  inner.style.border = '1px solid #4a525c';
+  inner.style.borderRadius = '4px';
+  inner.style.padding = '4px';
+  inner.style.display = 'flex';
+  inner.style.flexDirection = 'column';
+  inner.style.gap = '3px';
+  inner.style.overflow = 'hidden';
+
+  let rows;
+  if (w.props.mode === 'number') {
+    rows = ['1 2 3', '4 5 6', '7 8 9', 'OK 0 \u232B'];
+  } else if (w.props.mode === 'special') {
+    rows = ['! @ # $ % ^ & *', '( ) - _ = + [ ]', '< > / \\ : ; \" \'', 'abc 123 SP \u232B'];
+  } else if (w.props.mode === 'text_upper') {
+    rows = ['Q W E R T Y U I O P', 'A S D F G H J K L', '\u21E7 Z X C V B N M \u232B', '123 SP \u21B5'];
+  } else {
+    rows = ['q w e r t y u i o p', 'a s d f g h j k l', '\u21E7 z x c v b n m \u232B', '123 SP \u21B5'];
+  }
+  for (const r of rows) {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.flex = '1';
+    row.style.gap = '3px';
+    const keys = r.split(' ');
+    for (const k of keys) {
+      const key = document.createElement('div');
+      key.style.flex = k === 'SP' ? '4' : '1';
+      key.style.background = '#2a2f37';
+      key.style.color = '#d3d3d3';
+      key.style.border = '1px solid #404750';
+      key.style.borderRadius = '2px';
+      key.style.display = 'flex';
+      key.style.alignItems = 'center';
+      key.style.justifyContent = 'center';
+      key.style.fontSize = '10px';
+      key.textContent = k === 'SP' ? '' : k;
+      row.appendChild(key);
+    }
+    inner.appendChild(row);
+  }
+  // Indicate binding
+  if (w.props.textareaTarget) {
+    const screen = curScreen();
+    const ta = screen ? screen.widgets.find(x => x.id === w.props.textareaTarget) : null;
+    if (ta) {
+      const tag = document.createElement('div');
+      tag.style.position = 'absolute';
+      tag.style.right = '4px';
+      tag.style.top = '2px';
+      tag.style.fontSize = '8px';
+      tag.style.color = '#888';
+      tag.style.letterSpacing = '0.08em';
+      tag.textContent = '\u2192 ' + ta.name;
+      inner.style.position = 'relative';
+      inner.appendChild(tag);
+    }
+  }
+  el.appendChild(inner);
+  return el;
+}
+
+function renderCalendar(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  inner.style.background = '#1a1d22';
+  inner.style.border = '1px solid #4a525c';
+  inner.style.borderRadius = '4px';
+  inner.style.padding = '6px';
+  inner.style.display = 'flex';
+  inner.style.flexDirection = 'column';
+  inner.style.gap = '3px';
+  inner.style.overflow = 'hidden';
+  inner.style.color = '#d3d3d3';
+  inner.style.fontSize = '10px';
+
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const y = w.props.year, m = w.props.month - 1, today = w.props.day;
+  const first = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  const header = document.createElement('div');
+  header.style.textAlign = 'center';
+  header.style.fontWeight = 'bold';
+  header.style.color = '#d4a574';
+  header.style.marginBottom = '2px';
+  header.textContent = monthNames[m] + ' ' + y;
+  inner.appendChild(header);
+
+  const dh = document.createElement('div');
+  dh.style.display = 'grid';
+  dh.style.gridTemplateColumns = 'repeat(7, 1fr)';
+  dh.style.gap = '1px';
+  for (const d of dayNames) {
+    const c = document.createElement('div');
+    c.textContent = d;
+    c.style.textAlign = 'center';
+    c.style.color = '#888';
+    c.style.fontSize = '8px';
+    dh.appendChild(c);
+  }
+  inner.appendChild(dh);
+
+  const grid = document.createElement('div');
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = 'repeat(7, 1fr)';
+  grid.style.gap = '1px';
+  grid.style.flex = '1';
+  for (let i = 0; i < first; i++) {
+    const c = document.createElement('div');
+    grid.appendChild(c);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const c = document.createElement('div');
+    c.style.textAlign = 'center';
+    c.style.padding = '2px 0';
+    c.style.fontSize = '9px';
+    c.textContent = d;
+    if (d === today) {
+      c.style.background = '#2e6cda';
+      c.style.color = '#fff';
+      c.style.borderRadius = '2px';
+    }
+    grid.appendChild(c);
+  }
+  inner.appendChild(grid);
+
   el.appendChild(inner);
   return el;
 }
@@ -1286,11 +2112,15 @@ const $widgetList = document.getElementById('widget-list');
 const $propsPanel = document.getElementById('props-panel');
 const $statusCursor = document.getElementById('status-cursor');
 const $statusSelected = document.getElementById('status-selected');
+const $statusScreen = document.getElementById('status-screen');
 const $statusCount = document.getElementById('status-count');
 const $statusDisplay = document.getElementById('status-display');
 const $orientSelect = document.getElementById('orient-select');
+const $themeSelect = document.getElementById('theme-select');
 const $gridToggle = document.getElementById('grid-toggle');
 const $snapToggle = document.getElementById('snap-toggle');
+const $screensStrip = document.getElementById('screens-strip');
+const $shellBanner = document.getElementById('shell-banner');
 
 // ----- Populate palette -----------------------------------
 
@@ -1366,21 +2196,28 @@ function addWidget(type, x, y) {
     x: x, y: y, w: w, h: h,
     props: JSON.parse(JSON.stringify(def.defaultProps))
   };
+  // Apply theme accent to new widgets
+  const accent = THEME_DEFAULTS[state.theme].primary;
+  if ('bgColor' in widget.props) widget.props.bgColor = accent;
+  if ('color' in widget.props && type !== 'label' && type !== 'textarea')
+    widget.props.color = accent;
+
   pushHistory();
-  state.widgets.push(widget);
+  curWidgets().push(widget);
   state.selectedId = widget.id;
   redrawAll();
 }
 
 function deleteWidget(id) {
   pushHistory();
-  state.widgets = state.widgets.filter(w => w.id !== id);
+  const cs = curScreen();
+  cs.widgets = cs.widgets.filter(w => w.id !== id);
   if (state.selectedId === id) state.selectedId = null;
   redrawAll();
 }
 
 function duplicateWidget(id) {
-  const src = state.widgets.find(w => w.id === id);
+  const src = curWidgets().find(w => w.id === id);
   if (!src) return;
   pushHistory();
   const copy = JSON.parse(JSON.stringify(src));
@@ -1388,13 +2225,13 @@ function duplicateWidget(id) {
   copy.name = autoName(src.type);
   copy.x = Math.min(src.x + 20, getCanvasDims().w - copy.w);
   copy.y = Math.min(src.y + 20, getCanvasDims().h - copy.h);
-  state.widgets.push(copy);
+  curWidgets().push(copy);
   state.selectedId = copy.id;
   redrawAll();
 }
 
 function moveSelected(dx, dy) {
-  const w = state.widgets.find(w => w.id === state.selectedId);
+  const w = curWidgets().find(w => w.id === state.selectedId);
   if (!w) return;
   const dims = getCanvasDims();
   w.x = Math.max(0, Math.min(dims.w - w.w, w.x + dx));
@@ -1406,11 +2243,146 @@ function getCanvasDims() {
   return state.orientation === 'landscape' ? { w: 800, h: 480 } : { w: 480, h: 800 };
 }
 
+// ----- Screens management ---------------------------------
+
+function addScreen(name) {
+  pushHistory();
+  const id = 'scr_' + (state.nextScreenId++);
+  const screenName = sanitizeName(name || ('screen_' + state.screens.length));
+  const screen = {
+    id: id,
+    name: screenName,
+    widgets: [],
+    isDefault: state.screens.length === 0
+  };
+  state.screens.push(screen);
+  state.activeScreenId = id;
+  state.selectedId = null;
+  redrawAll();
+}
+
+function deleteScreen(id) {
+  if (state.screens.length <= 1) {
+    alert('Cannot delete the last screen.');
+    return;
+  }
+  const target = state.screens.find(s => s.id === id);
+  if (!confirm(`Delete screen "${target.name}" and all its widgets?`)) return;
+  pushHistory();
+  state.screens = state.screens.filter(s => s.id !== id);
+  // If deleted screen was default, mark first remaining as default
+  if (target.isDefault && state.screens.length) state.screens[0].isDefault = true;
+  // Clear navigation targets pointing to deleted screen
+  for (const s of state.screens) {
+    for (const w of s.widgets) {
+      if (w.props.actionTarget === id) {
+        w.props.actionTarget = '';
+        w.props.action = 'none';
+      }
+    }
+  }
+  if (state.activeScreenId === id) {
+    state.activeScreenId = state.screens[0].id;
+  }
+  state.selectedId = null;
+  redrawAll();
+}
+
+function renameScreen(id, newName) {
+  const s = state.screens.find(x => x.id === id);
+  if (!s) return;
+  pushHistory();
+  s.name = sanitizeName(newName);
+  redrawAll();
+}
+
+function setDefaultScreen(id) {
+  pushHistory();
+  for (const s of state.screens) s.isDefault = (s.id === id);
+  redrawAll();
+}
+
+function switchToScreen(id) {
+  state.activeScreenId = id;
+  state.selectedId = null;
+  redrawAll();
+}
+
+function renderScreensStrip() {
+  $screensStrip.innerHTML = '';
+  for (const s of state.screens) {
+    const tab = document.createElement('div');
+    tab.className = 'screen-tab' + (s.id === state.activeScreenId ? ' active' : '');
+    tab.title = s.name + (s.isDefault ? ' (default screen)' : '');
+
+    const lbl = document.createElement('span');
+    lbl.textContent = s.name;
+    lbl.addEventListener('click', () => switchToScreen(s.id));
+
+    const mark = document.createElement('span');
+    mark.className = 'default-mark';
+    mark.textContent = s.isDefault ? '\u2605' : '';
+    mark.title = 'Default screen';
+    mark.addEventListener('click', e => {
+      e.stopPropagation();
+      setDefaultScreen(s.id);
+    });
+
+    const dbl = document.createElement('span');
+    dbl.textContent = '\u270E';
+    dbl.style.fontSize = '10px';
+    dbl.style.opacity = '0.4';
+    dbl.style.cursor = 'pointer';
+    dbl.title = 'Rename';
+    dbl.addEventListener('click', e => {
+      e.stopPropagation();
+      promptInput('Rename screen', s.name, val => {
+        if (val) renameScreen(s.id, val);
+      });
+    });
+
+    const close = document.createElement('span');
+    close.className = 'close';
+    close.textContent = '\u00D7';
+    close.title = 'Delete screen';
+    close.addEventListener('click', e => {
+      e.stopPropagation();
+      deleteScreen(s.id);
+    });
+
+    tab.appendChild(lbl);
+    tab.appendChild(mark);
+    tab.appendChild(dbl);
+    tab.appendChild(close);
+    $screensStrip.appendChild(tab);
+  }
+  const add = document.createElement('button');
+  add.className = 'add-screen';
+  add.textContent = '+';
+  add.title = 'Add screen';
+  add.addEventListener('click', () => {
+    promptInput('New screen name', 'screen_' + state.screens.length, val => {
+      if (val) addScreen(val);
+    });
+  });
+  $screensStrip.appendChild(add);
+
+  const info = document.createElement('div');
+  info.className = 'strip-actions';
+  info.innerHTML = '<span>\u2605 Default</span><span>\u270E Rename</span>';
+  $screensStrip.appendChild(info);
+}
+
 // ----- Redraw ---------------------------------------------
 
 function redrawAll() {
   $canvas.innerHTML = '';
-  for (const w of state.widgets) {
+  $canvas.classList.toggle('theme-tradigital', state.theme === 'tradigital');
+  $shellBanner.textContent = 'ARDUINO GIGA DISPLAY SHIELD // ' +
+    getCanvasDims().w + ' x ' + getCanvasDims().h +
+    ' // SCREEN: ' + (curScreen() ? curScreen().name.toUpperCase() : '');
+
+  for (const w of curWidgets()) {
     const def = WIDGET_TYPES[w.type];
     const el = def.render(w);
     if (w.id === state.selectedId) {
@@ -1420,6 +2392,7 @@ function redrawAll() {
     el.addEventListener('pointerdown', e => beginWidgetDrag(e, w));
     $canvas.appendChild(el);
   }
+  renderScreensStrip();
   renderHierarchy();
   renderPropsPanel();
   updateStatus();
@@ -1436,9 +2409,10 @@ function attachResizeHandles(el, w) {
 }
 
 function updateStatus() {
-  const sel = state.widgets.find(w => w.id === state.selectedId);
+  const sel = curWidgets().find(w => w.id === state.selectedId);
   $statusSelected.textContent = sel ? `${sel.name} (${sel.type})` : 'none';
-  $statusCount.textContent = state.widgets.length;
+  $statusScreen.textContent = curScreen() ? curScreen().name : 'none';
+  $statusCount.textContent = curWidgets().length;
   const dims = getCanvasDims();
   $statusDisplay.textContent = `${dims.w} x ${dims.h}`;
 }
@@ -1451,7 +2425,6 @@ function beginWidgetDrag(e, w) {
   state.selectedId = w.id;
   redrawAll();
 
-  const rect = $canvas.getBoundingClientRect();
   const startX = e.clientX;
   const startY = e.clientY;
   const startWX = w.x;
@@ -1467,16 +2440,124 @@ function beginWidgetDrag(e, w) {
     const dx = ev.clientX - startX;
     const dy = ev.clientY - startY;
     const dims = getCanvasDims();
-    w.x = Math.max(0, Math.min(dims.w - w.w, snap(startWX + dx)));
-    w.y = Math.max(0, Math.min(dims.h - w.h, snap(startWY + dy)));
+    let nx = Math.max(0, Math.min(dims.w - w.w, snap(startWX + dx)));
+    let ny = Math.max(0, Math.min(dims.h - w.h, snap(startWY + dy)));
+
+    // Alignment snapping against other widgets on this screen
+    const align = findAlignment(w, nx, ny);
+    w.x = align.x;
+    w.y = align.y;
+    showGuides(align.guides);
     redrawAll();
   }
   function onUp() {
+    hideGuides();
     document.removeEventListener('pointermove', onMove);
     document.removeEventListener('pointerup', onUp);
   }
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
+}
+
+// Snap candidate position to the nearest widget edges or centers, within
+// a small tolerance. Returns final (x, y) plus the guide lines to draw.
+function findAlignment(w, candX, candY) {
+  const tol = 5;
+  const others = curWidgets().filter(x => x.id !== w.id);
+  if (!others.length) return { x: candX, y: candY, guides: [] };
+  const dims = getCanvasDims();
+
+  // Edges of the moving widget at the candidate position
+  let x = candX, y = candY;
+  const guides = [];
+
+  // Vertical alignment (X axis): check left, center, right against others
+  const xCandidates = [
+    { v: x,            kind: 'left'   },
+    { v: x + w.w / 2,  kind: 'center' },
+    { v: x + w.w,      kind: 'right'  }
+  ];
+  let bestX = null;
+  for (const cand of xCandidates) {
+    for (const o of others) {
+      const targets = [o.x, o.x + o.w / 2, o.x + o.w];
+      for (const t of targets) {
+        const d = Math.abs(cand.v - t);
+        if (d < tol && (bestX === null || d < bestX.dist)) {
+          bestX = { dist: d, target: t, kind: cand.kind };
+        }
+      }
+    }
+  }
+  // Also snap to canvas center and edges
+  const canvasXTargets = [0, dims.w / 2, dims.w];
+  for (const cand of xCandidates) {
+    for (const t of canvasXTargets) {
+      const d = Math.abs(cand.v - t);
+      if (d < tol && (bestX === null || d < bestX.dist)) {
+        bestX = { dist: d, target: t, kind: cand.kind };
+      }
+    }
+  }
+  if (bestX) {
+    if (bestX.kind === 'left')   x = bestX.target;
+    if (bestX.kind === 'center') x = bestX.target - w.w / 2;
+    if (bestX.kind === 'right')  x = bestX.target - w.w;
+    guides.push({ orient: 'v', pos: bestX.target });
+  }
+
+  const yCandidates = [
+    { v: y,            kind: 'top'    },
+    { v: y + w.h / 2,  kind: 'middle' },
+    { v: y + w.h,      kind: 'bottom' }
+  ];
+  let bestY = null;
+  for (const cand of yCandidates) {
+    for (const o of others) {
+      const targets = [o.y, o.y + o.h / 2, o.y + o.h];
+      for (const t of targets) {
+        const d = Math.abs(cand.v - t);
+        if (d < tol && (bestY === null || d < bestY.dist)) {
+          bestY = { dist: d, target: t, kind: cand.kind };
+        }
+      }
+    }
+  }
+  const canvasYTargets = [0, dims.h / 2, dims.h];
+  for (const cand of yCandidates) {
+    for (const t of canvasYTargets) {
+      const d = Math.abs(cand.v - t);
+      if (d < tol && (bestY === null || d < bestY.dist)) {
+        bestY = { dist: d, target: t, kind: cand.kind };
+      }
+    }
+  }
+  if (bestY) {
+    if (bestY.kind === 'top')    y = bestY.target;
+    if (bestY.kind === 'middle') y = bestY.target - w.h / 2;
+    if (bestY.kind === 'bottom') y = bestY.target - w.h;
+    guides.push({ orient: 'h', pos: bestY.target });
+  }
+
+  // Clamp
+  x = Math.max(0, Math.min(dims.w - w.w, x));
+  y = Math.max(0, Math.min(dims.h - w.h, y));
+  return { x, y, guides };
+}
+
+function showGuides(guides) {
+  hideGuides();
+  for (const g of guides) {
+    const el = document.createElement('div');
+    el.className = 'align-guide ' + g.orient;
+    if (g.orient === 'v') el.style.left = g.pos + 'px';
+    else el.style.top = g.pos + 'px';
+    el.dataset.guide = '1';
+    $canvas.appendChild(el);
+  }
+}
+function hideGuides() {
+  $canvas.querySelectorAll('[data-guide]').forEach(el => el.remove());
 }
 
 function beginResize(e, w, dir) {
@@ -1495,14 +2576,8 @@ function beginResize(e, w, dir) {
 
     if (dir.includes('e')) nw = Math.max(20, snap(sW + dx));
     if (dir.includes('s')) nh = Math.max(20, snap(sH + dy));
-    if (dir.includes('w')) {
-      nw = Math.max(20, snap(sW - dx));
-      nx = sX + (sW - nw);
-    }
-    if (dir.includes('n')) {
-      nh = Math.max(20, snap(sH - dy));
-      ny = sY + (sH - nh);
-    }
+    if (dir.includes('w')) { nw = Math.max(20, snap(sW - dx)); nx = sX + (sW - nw); }
+    if (dir.includes('n')) { nh = Math.max(20, snap(sH - dy)); ny = sY + (sH - nh); }
     if (nx < 0) { nw += nx; nx = 0; }
     if (ny < 0) { nh += ny; ny = 0; }
     if (nx + nw > dims.w) nw = dims.w - nx;
@@ -1518,7 +2593,6 @@ function beginResize(e, w, dir) {
   document.addEventListener('pointerup', onUp);
 }
 
-// Click canvas empty space to deselect
 $canvas.addEventListener('pointerdown', e => {
   if (e.target === $canvas) {
     state.selectedId = null;
@@ -1526,7 +2600,6 @@ $canvas.addEventListener('pointerdown', e => {
   }
 });
 
-// Cursor tracking
 $canvas.addEventListener('pointermove', e => {
   const rect = $canvas.getBoundingClientRect();
   const x = Math.round(e.clientX - rect.left);
@@ -1537,13 +2610,14 @@ $canvas.addEventListener('pointermove', e => {
 // ----- Hierarchy panel ------------------------------------
 
 function renderHierarchy() {
-  if (state.widgets.length === 0) {
-    $widgetList.innerHTML = '<div style="color: var(--ink-mute); font-size: 10px; text-align: center; padding: 10px;">No widgets yet</div>';
+  const ws = curWidgets();
+  if (ws.length === 0) {
+    $widgetList.innerHTML = '<div style="color: var(--ink-mute); font-size: 10px; text-align: center; padding: 10px;">No widgets on this screen</div>';
     return;
   }
   $widgetList.innerHTML = '';
-  for (let i = state.widgets.length - 1; i >= 0; i--) {
-    const w = state.widgets[i];
+  for (let i = ws.length - 1; i >= 0; i--) {
+    const w = ws[i];
     const item = document.createElement('div');
     item.className = 'item' + (w.id === state.selectedId ? ' selected' : '');
     item.innerHTML = `<span>${escapeHtml(w.name)}</span><span class="type">${w.type}</span>`;
@@ -1558,7 +2632,7 @@ function renderHierarchy() {
 // ----- Properties panel -----------------------------------
 
 function renderPropsPanel() {
-  const w = state.widgets.find(x => x.id === state.selectedId);
+  const w = curWidgets().find(x => x.id === state.selectedId);
   if (!w) {
     $propsPanel.innerHTML = `
       <div class="props-empty">
@@ -1591,6 +2665,7 @@ function renderPropsPanel() {
       <h3>Properties</h3>
   `;
   for (const p of def.properties) {
+    if (p.showIf && !p.showIf(w)) continue;
     html += renderPropInput(w, p);
   }
   html += `
@@ -1614,7 +2689,6 @@ function renderPropsPanel() {
   `;
   $propsPanel.innerHTML = html;
 
-  // Wire up inputs
   $propsPanel.querySelector('#prop-name').addEventListener('change', e => {
     pushHistory();
     w.name = sanitizeName(e.target.value);
@@ -1697,19 +2771,43 @@ function renderPropInput(w, p) {
     const opts = p.options.map(o => `<option value="${o.v}"${o.v == val ? ' selected' : ''}>${o.l}</option>`).join('');
     return `<div class="prop-row"><label>${p.label}</label><select data-prop="${p.key}">${opts}</select></div>`;
   }
+  if (p.type === 'screen_select') {
+    const opts = state.screens
+      .filter(s => s.id !== state.activeScreenId)
+      .map(s => `<option value="${s.id}"${s.id === val ? ' selected' : ''}>${escapeHtml(s.name)}</option>`)
+      .join('');
+    return `<div class="prop-row"><label>${p.label}</label><select data-prop="${p.key}"><option value="">--</option>${opts}</select></div>`;
+  }
+  if (p.type === 'symbol_select') {
+    const opts = Object.entries(LV_SYMBOLS)
+      .map(([k, sym]) => `<option value="${k}"${k === val ? ' selected' : ''}>${sym.ch}  ${k.replace(/_/g, ' ')}</option>`)
+      .join('');
+    return `<div class="prop-row"><label>${p.label}</label><select data-prop="${p.key}">${opts}</select></div>`;
+  }
+  if (p.type === 'widget_select') {
+    const screen = curScreen();
+    const candidates = screen ? screen.widgets.filter(x =>
+      x.type === p.filterType && x.id !== state.selectedId
+    ) : [];
+    const opts = candidates
+      .map(c => `<option value="${c.id}"${c.id === val ? ' selected' : ''}>${escapeHtml(c.name)}</option>`)
+      .join('');
+    return `<div class="prop-row"><label>${p.label}</label><select data-prop="${p.key}"><option value="">--</option>${opts}</select></div>`;
+  }
   return '';
 }
 
 function zOrder(id, dir) {
   pushHistory();
-  const i = state.widgets.findIndex(w => w.id === id);
+  const ws = curWidgets();
+  const i = ws.findIndex(w => w.id === id);
   if (i < 0) return;
-  const w = state.widgets.splice(i, 1)[0];
-  if (dir === 'front') state.widgets.push(w);
-  else if (dir === 'back') state.widgets.unshift(w);
+  const w = ws.splice(i, 1)[0];
+  if (dir === 'front') ws.push(w);
+  else if (dir === 'back') ws.unshift(w);
   else {
-    const ni = Math.max(0, Math.min(state.widgets.length, i + dir));
-    state.widgets.splice(ni, 0, w);
+    const ni = Math.max(0, Math.min(ws.length, i + dir));
+    ws.splice(ni, 0, w);
   }
   redrawAll();
 }
@@ -1748,21 +2846,29 @@ document.addEventListener('keydown', e => {
 
 function snapshot() {
   return JSON.stringify({
-    widgets: state.widgets,
+    screens: state.screens,
+    activeScreenId: state.activeScreenId,
     selectedId: state.selectedId,
     nextId: state.nextId,
+    nextScreenId: state.nextScreenId,
     nameCounts: state.nameCounts,
-    orientation: state.orientation
+    orientation: state.orientation,
+    theme: state.theme
   });
 }
 
 function restore(snap) {
   const obj = JSON.parse(snap);
-  state.widgets = obj.widgets;
+  state.screens = obj.screens;
+  state.activeScreenId = obj.activeScreenId;
   state.selectedId = obj.selectedId;
   state.nextId = obj.nextId;
+  state.nextScreenId = obj.nextScreenId;
   state.nameCounts = obj.nameCounts;
   state.orientation = obj.orientation;
+  state.theme = obj.theme;
+  $orientSelect.value = state.orientation;
+  $themeSelect.value = state.theme;
   applyOrientation();
   redrawAll();
 }
@@ -1792,31 +2898,29 @@ document.getElementById('btn-redo').addEventListener('click', redo);
 // ----- Toolbar --------------------------------------------
 
 document.getElementById('btn-new').addEventListener('click', () => {
-  if (state.widgets.length && !confirm('Clear all widgets?')) return;
+  if (state.screens.some(s => s.widgets.length) && !confirm('Discard the entire project?')) return;
   pushHistory();
-  state.widgets = [];
+  state.screens = [];
   state.selectedId = null;
   state.nameCounts = {};
   state.nextId = 1;
-  redrawAll();
+  state.nextScreenId = 1;
+  addScreen('main');
 });
 
 document.getElementById('btn-save').addEventListener('click', () => {
   const data = {
-    version: 1,
+    version: 2,
     tool: 'PANELWRIGHT',
     orientation: state.orientation,
-    widgets: state.widgets,
+    theme: state.theme,
+    screens: state.screens,
     nextId: state.nextId,
+    nextScreenId: state.nextScreenId,
     nameCounts: state.nameCounts
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'panelwright-project.json';
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, 'panelwright-project.json');
 });
 
 document.getElementById('btn-load').addEventListener('click', () => {
@@ -1831,12 +2935,27 @@ document.getElementById('file-input').addEventListener('change', e => {
     try {
       const data = JSON.parse(ev.target.result);
       pushHistory();
-      state.widgets = data.widgets || [];
+      // Migration: v1 had single widgets array, no screens
+      if (data.version === 1 || (!data.screens && Array.isArray(data.widgets))) {
+        state.screens = [{
+          id: 'scr_1',
+          name: 'main',
+          widgets: data.widgets || [],
+          isDefault: true
+        }];
+        state.nextScreenId = 2;
+      } else {
+        state.screens = data.screens || [];
+        state.nextScreenId = data.nextScreenId || (state.screens.length + 1);
+      }
       state.orientation = data.orientation || 'landscape';
+      state.theme = data.theme || 'lvgl_default';
       state.nextId = data.nextId || 1;
       state.nameCounts = data.nameCounts || {};
+      state.activeScreenId = (state.screens[0] || {}).id;
       state.selectedId = null;
       $orientSelect.value = state.orientation;
+      $themeSelect.value = state.theme;
       applyOrientation();
       redrawAll();
     } catch (err) {
@@ -1851,15 +2970,79 @@ $orientSelect.addEventListener('change', () => {
   pushHistory();
   state.orientation = $orientSelect.value;
   applyOrientation();
-  // Clamp widgets to new bounds
   const dims = getCanvasDims();
-  for (const w of state.widgets) {
-    w.w = Math.min(w.w, dims.w);
-    w.h = Math.min(w.h, dims.h);
-    w.x = Math.min(w.x, dims.w - w.w);
-    w.y = Math.min(w.y, dims.h - w.h);
+  for (const s of state.screens) {
+    for (const w of s.widgets) {
+      w.w = Math.min(w.w, dims.w);
+      w.h = Math.min(w.h, dims.h);
+      w.x = Math.min(w.x, dims.w - w.w);
+      w.y = Math.min(w.y, dims.h - w.h);
+    }
   }
   redrawAll();
+});
+
+$themeSelect.addEventListener('change', () => {
+  pushHistory();
+  state.theme = $themeSelect.value;
+  redrawAll();
+});
+
+document.getElementById('btn-apply-theme').addEventListener('click', () => {
+  const primary = THEME_DEFAULTS[state.theme].primary;
+  const secondary = THEME_DEFAULTS[state.theme].secondary;
+  if (!confirm('Recolor every widget on every screen to the ' + state.theme + ' theme palette? This cannot be undone except via undo.')) return;
+  pushHistory();
+  for (const s of state.screens) {
+    for (const w of s.widgets) {
+      // Buttons: bgColor goes primary, textColor goes dark on tradigital
+      if (w.type === 'button') {
+        w.props.bgColor = primary;
+        w.props.textColor = state.theme === 'tradigital' ? '#1a1208' : '#ffffff';
+      }
+      // Widgets with a single "color" channel: primary
+      else if ('color' in w.props && w.type !== 'label' && w.type !== 'textarea' && w.type !== 'icon' && w.type !== 'led') {
+        w.props.color = primary;
+      }
+      // Chart series: rotate the three theme colors
+      if (w.type === 'chart') {
+        w.props.color1 = primary;
+        w.props.color2 = secondary;
+        w.props.color3 = state.theme === 'tradigital' ? '#b9684a' : '#d4a574';
+      }
+      // Meter has two colors: arc gets primary, needle gets a contrasting warm
+      if (w.type === 'meter') {
+        w.props.color = primary;
+        w.props.needleColor = state.theme === 'tradigital' ? '#b9684a' : '#ff8050';
+      }
+    }
+  }
+  redrawAll();
+});
+
+// ----- Open in Viewer -------------------------------------
+// Stash a snapshot of the current project in sessionStorage and pop the
+// viewer in a new tab. The viewer reads sessionStorage on load and renders
+// the project automatically when present. Falls back to opening the viewer
+// empty if storage is unavailable.
+document.getElementById('btn-viewer').addEventListener('click', () => {
+  const data = {
+    version: 2,
+    tool: 'PANELWRIGHT',
+    orientation: state.orientation,
+    theme: state.theme,
+    screens: state.screens,
+    nextId: state.nextId,
+    nextScreenId: state.nextScreenId,
+    nameCounts: state.nameCounts
+  };
+  try {
+    sessionStorage.setItem('panelwright_preview_project', JSON.stringify(data));
+  } catch (err) {
+    // sessionStorage might be disabled or quota-exceeded; viewer will just open empty
+    console.warn('Could not stash project for viewer:', err);
+  }
+  window.open('viewer/', '_blank');
 });
 
 function applyOrientation() {
@@ -1878,17 +3061,49 @@ $snapToggle.addEventListener('change', () => {
   state.snap = $snapToggle.checked;
 });
 
+// ----- Prompt modal ---------------------------------------
+
+const $promptModal = document.getElementById('prompt-modal');
+const $promptTitle = document.getElementById('prompt-title');
+const $promptInput = document.getElementById('prompt-input');
+let promptCallback = null;
+
+function promptInput(title, initial, callback) {
+  $promptTitle.textContent = title;
+  $promptInput.value = initial || '';
+  promptCallback = callback;
+  $promptModal.classList.add('open');
+  setTimeout(() => { $promptInput.focus(); $promptInput.select(); }, 0);
+}
+
+document.getElementById('prompt-cancel').addEventListener('click', () => {
+  $promptModal.classList.remove('open');
+  promptCallback = null;
+});
+document.getElementById('prompt-ok').addEventListener('click', () => {
+  const val = $promptInput.value;
+  $promptModal.classList.remove('open');
+  if (promptCallback) promptCallback(val);
+  promptCallback = null;
+});
+$promptInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('prompt-ok').click();
+  if (e.key === 'Escape') document.getElementById('prompt-cancel').click();
+});
+
 // ----- Code generation ------------------------------------
 
 function generateCode() {
   const dims = getCanvasDims();
   const lines = [];
+  const interactiveTypes = new Set(['button', 'slider', 'switch', 'checkbox', 'dropdown', 'roller']);
 
   lines.push('// =====================================================================');
   lines.push('// Arduino Giga Display Shield sketch');
   lines.push('// Generated by PANELWRIGHT (Field Instrument 042)');
-  lines.push('// Display: ' + dims.w + ' x ' + dims.h + '  (' + state.orientation + ')');
-  lines.push('// Widgets: ' + state.widgets.length);
+  lines.push('// Display:  ' + dims.w + ' x ' + dims.h + '  (' + state.orientation + ')');
+  lines.push('// Screens:  ' + state.screens.length);
+  lines.push('// Theme:    ' + state.theme);
   lines.push('// =====================================================================');
   lines.push('');
   lines.push('#include "Arduino_H7_Video.h"');
@@ -1899,75 +3114,147 @@ function generateCode() {
   lines.push('Arduino_GigaDisplayTouch  TouchDetector;');
   lines.push('');
 
-  // Forward decls for widget handles if interactive
-  const interactiveTypes = new Set(['button', 'slider', 'switch', 'checkbox', 'dropdown', 'roller']);
-  const handles = [];
-  for (const w of state.widgets) {
-    handles.push(w.name);
-    if (w.type === 'button') handles.push(w.name + '_label');
+  // Screen handles
+  lines.push('// ---- Screen handles ----');
+  for (const s of state.screens) {
+    lines.push('static lv_obj_t * scr_' + s.name + ';');
   }
-  if (handles.length) {
-    lines.push('// Widget handles');
-    for (const h of handles) {
-      lines.push('static lv_obj_t * ' + h + ';');
+  lines.push('');
+
+  // Widget handles (across all screens)
+  const allHandles = [];
+  for (const s of state.screens) {
+    for (const w of s.widgets) {
+      allHandles.push(w.name);
+      if (w.type === 'button') allHandles.push(w.name + '_label');
+      if (w.type === 'meter') {
+        allHandles.push(w.name + '_scale');
+        allHandles.push(w.name + '_indic');
+      }
     }
+  }
+  if (allHandles.length) {
+    lines.push('// ---- Widget handles ----');
+    for (const h of allHandles) lines.push('static lv_obj_t * ' + h + ';');
     lines.push('');
   }
 
-  // Event handlers for interactive widgets (stubs)
-  const interactive = state.widgets.filter(w => interactiveTypes.has(w.type));
-  if (interactive.length) {
-    lines.push('// ---- Event handler stubs ----');
-    for (const w of interactive) {
+  // Forward decls for screen builders
+  for (const s of state.screens) {
+    lines.push('static void build_screen_' + s.name + '(void);');
+  }
+  lines.push('');
+
+  // Theme application
+  if (state.theme === 'tradigital') {
+    lines.push('// ---- Tradigital theme ----');
+    lines.push('static void apply_theme(void) {');
+    lines.push('  lv_theme_t * th = lv_theme_default_init(');
+    lines.push('      NULL,');
+    lines.push('      lv_color_hex(0xD4A574),   // primary: amber');
+    lines.push('      lv_color_hex(0x6FB5A8),   // secondary: teal');
+    lines.push('      true,                     // dark mode');
+    lines.push('      &lv_font_montserrat_16);');
+    lines.push('  lv_disp_set_theme(NULL, th);');
+    lines.push('}');
+    lines.push('');
+  }
+
+  // Event handler stubs (interactive widgets and navigation)
+  const eventWidgets = [];
+  for (const s of state.screens) {
+    for (const w of s.widgets) {
+      if (interactiveTypes.has(w.type)) eventWidgets.push({ widget: w, screen: s });
+    }
+  }
+  if (eventWidgets.length) {
+    lines.push('// ---- Event handlers ----');
+    for (const { widget: w } of eventWidgets) {
+      const custom = (w.props.customLogic || '').trim();
+      const customIndented = custom
+        ? custom.split('\n').map(l => '  ' + l).join('\n')
+        : '';
       lines.push('static void ' + w.name + '_event(lv_event_t * e) {');
       if (w.type === 'button') {
-        lines.push('  // Pressed: ' + w.name);
-        lines.push('  Serial.println("' + w.name + ' pressed");');
+        if (w.props.action === 'goto' && w.props.actionTarget) {
+          const target = state.screens.find(s => s.id === w.props.actionTarget);
+          if (target) {
+            lines.push('  // Navigate to screen "' + target.name + '"');
+            lines.push('  lv_scr_load(scr_' + target.name + ');');
+            if (custom) {
+              lines.push('  // --- custom logic ---');
+              lines.push(customIndented);
+            }
+          } else if (custom) {
+            lines.push(customIndented);
+          } else {
+            lines.push('  Serial.println("' + w.name + ' pressed");');
+          }
+        } else if (custom) {
+          lines.push(customIndented);
+        } else {
+          lines.push('  Serial.println("' + w.name + ' pressed");');
+        }
       } else if (w.type === 'slider') {
         lines.push('  int32_t v = lv_slider_get_value(' + w.name + ');');
-        lines.push('  Serial.print("' + w.name + ' = "); Serial.println(v);');
+        if (custom) lines.push(customIndented);
+        else lines.push('  Serial.print("' + w.name + ' = "); Serial.println(v);');
       } else if (w.type === 'switch') {
         lines.push('  bool on = lv_obj_has_state(' + w.name + ', LV_STATE_CHECKED);');
-        lines.push('  Serial.print("' + w.name + ' = "); Serial.println(on ? "ON" : "OFF");');
+        if (custom) lines.push(customIndented);
+        else lines.push('  Serial.print("' + w.name + ' = "); Serial.println(on ? "ON" : "OFF");');
       } else if (w.type === 'checkbox') {
         lines.push('  bool on = lv_obj_has_state(' + w.name + ', LV_STATE_CHECKED);');
-        lines.push('  Serial.print("' + w.name + ' = "); Serial.println(on ? "ON" : "OFF");');
+        if (custom) lines.push(customIndented);
+        else lines.push('  Serial.print("' + w.name + ' = "); Serial.println(on ? "ON" : "OFF");');
       } else if (w.type === 'dropdown') {
         lines.push('  uint16_t sel = lv_dropdown_get_selected(' + w.name + ');');
-        lines.push('  Serial.print("' + w.name + ' selection = "); Serial.println(sel);');
+        if (custom) lines.push(customIndented);
+        else lines.push('  Serial.print("' + w.name + ' selection = "); Serial.println(sel);');
       } else if (w.type === 'roller') {
         lines.push('  uint16_t sel = lv_roller_get_selected(' + w.name + ');');
-        lines.push('  Serial.print("' + w.name + ' selection = "); Serial.println(sel);');
+        if (custom) lines.push(customIndented);
+        else lines.push('  Serial.print("' + w.name + ' selection = "); Serial.println(sel);');
       }
       lines.push('}');
       lines.push('');
     }
   }
 
-  // Build UI function
-  lines.push('// ---- UI construction ----');
-  lines.push('static void build_ui(void) {');
-  lines.push('  lv_obj_t * scr = lv_scr_act();');
-  lines.push('  lv_obj_set_style_bg_color(scr, lv_color_hex(0x000000), 0);');
-  lines.push('  lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);');
-  lines.push('');
-
-  for (const w of state.widgets) {
-    lines.push('  // ' + w.type.toUpperCase() + ': ' + w.name);
-    lines.push(...genWidgetCode(w).map(l => '  ' + l));
+  // Per-screen builder functions
+  for (const s of state.screens) {
+    lines.push('// ---- Build screen: ' + s.name + ' ----');
+    lines.push('static void build_screen_' + s.name + '(void) {');
+    lines.push('  scr_' + s.name + ' = lv_obj_create(NULL);');
+    lines.push('  lv_obj_set_style_bg_color(scr_' + s.name + ', lv_color_hex(0x000000), 0);');
+    lines.push('  lv_obj_set_style_bg_opa(scr_' + s.name + ', LV_OPA_COVER, 0);');
+    lines.push('');
+    for (const w of s.widgets) {
+      lines.push('  // ' + w.type.toUpperCase() + ': ' + w.name);
+      lines.push(...genWidgetCode(w, s).map(l => '  ' + l));
+      lines.push('');
+    }
+    lines.push('}');
     lines.push('');
   }
 
-  lines.push('}');
-  lines.push('');
-
   // Setup and loop
+  const defScreen = defaultScreen();
   lines.push('void setup() {');
   lines.push('  Serial.begin(115200);');
   lines.push('  Display.begin();');
   lines.push('  TouchDetector.begin();');
   lines.push('');
-  lines.push('  build_ui();');
+  if (state.theme === 'tradigital') {
+    lines.push('  apply_theme();');
+  }
+  for (const s of state.screens) {
+    lines.push('  build_screen_' + s.name + '();');
+  }
+  lines.push('');
+  if (defScreen) {
+    lines.push('  lv_scr_load(scr_' + defScreen.name + ');');
+  }
   lines.push('}');
   lines.push('');
   lines.push('void loop() {');
@@ -1979,16 +3266,17 @@ function generateCode() {
   return lines.join('\n');
 }
 
-function genWidgetCode(w) {
+function genWidgetCode(w, screen) {
   const lines = [];
   const N = w.name;
+  const PARENT = 'scr_' + screen.name;
   const cb = (handler) => {
     lines.push(`lv_obj_add_event_cb(${N}, ${N}_event, ${handler}, NULL);`);
   };
 
   switch (w.type) {
     case 'label':
-      lines.push(`${N} = lv_label_create(scr);`);
+      lines.push(`${N} = lv_label_create(${PARENT});`);
       lines.push(`lv_label_set_text(${N}, ${cstr(w.props.text)});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
@@ -2000,8 +3288,8 @@ function genWidgetCode(w) {
         lines.push(`lv_obj_set_style_text_align(${N}, LV_TEXT_ALIGN_RIGHT, 0);`);
       break;
 
-    case 'button': {
-      lines.push(`${N} = lv_btn_create(scr);`);
+    case 'button':
+      lines.push(`${N} = lv_btn_create(${PARENT});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       lines.push(`lv_obj_set_style_bg_color(${N}, lv_color_hex(${hexToLvHex(w.props.bgColor)}), 0);`);
@@ -2012,10 +3300,9 @@ function genWidgetCode(w) {
       lines.push(`lv_obj_center(${N}_label);`);
       cb('LV_EVENT_CLICKED');
       break;
-    }
 
     case 'slider':
-      lines.push(`${N} = lv_slider_create(scr);`);
+      lines.push(`${N} = lv_slider_create(${PARENT});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       lines.push(`lv_slider_set_range(${N}, ${w.props.min}, ${w.props.max});`);
@@ -2026,7 +3313,7 @@ function genWidgetCode(w) {
       break;
 
     case 'switch':
-      lines.push(`${N} = lv_switch_create(scr);`);
+      lines.push(`${N} = lv_switch_create(${PARENT});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       if (w.props.checked) lines.push(`lv_obj_add_state(${N}, LV_STATE_CHECKED);`);
@@ -2035,7 +3322,7 @@ function genWidgetCode(w) {
       break;
 
     case 'checkbox':
-      lines.push(`${N} = lv_checkbox_create(scr);`);
+      lines.push(`${N} = lv_checkbox_create(${PARENT});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_checkbox_set_text(${N}, ${cstr(w.props.text)});`);
       if (w.props.checked) lines.push(`lv_obj_add_state(${N}, LV_STATE_CHECKED);`);
@@ -2044,7 +3331,7 @@ function genWidgetCode(w) {
       break;
 
     case 'bar':
-      lines.push(`${N} = lv_bar_create(scr);`);
+      lines.push(`${N} = lv_bar_create(${PARENT});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       lines.push(`lv_bar_set_range(${N}, ${w.props.min}, ${w.props.max});`);
@@ -2053,7 +3340,7 @@ function genWidgetCode(w) {
       break;
 
     case 'arc':
-      lines.push(`${N} = lv_arc_create(scr);`);
+      lines.push(`${N} = lv_arc_create(${PARENT});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       lines.push(`lv_arc_set_range(${N}, ${w.props.min}, ${w.props.max});`);
@@ -2061,9 +3348,26 @@ function genWidgetCode(w) {
       lines.push(`lv_obj_set_style_arc_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR);`);
       break;
 
+    case 'meter':
+      lines.push(`${N} = lv_meter_create(${PARENT});`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`{`);
+      lines.push(`  lv_meter_scale_t * sc = lv_meter_add_scale(${N});`);
+      lines.push(`  lv_meter_set_scale_ticks(${N}, sc, 41, 2, 10, lv_palette_main(LV_PALETTE_GREY));`);
+      lines.push(`  lv_meter_set_scale_major_ticks(${N}, sc, ${Math.max(2, Math.floor(40 / Math.max(1, w.props.majorTicks - 1)))}, 4, 15, lv_color_white(), 10);`);
+      lines.push(`  lv_meter_set_scale_range(${N}, sc, ${w.props.min}, ${w.props.max}, ${normalizeAngle(w.props.angleStart, w.props.angleEnd)}, ${w.props.angleStart});`);
+      lines.push(`  lv_meter_indicator_t * arc_ind = lv_meter_add_arc(${N}, sc, 6, lv_color_hex(${hexToLvHex(w.props.color)}), 0);`);
+      lines.push(`  lv_meter_set_indicator_start_value(${N}, arc_ind, ${w.props.min});`);
+      lines.push(`  lv_meter_set_indicator_end_value(${N}, arc_ind, ${w.props.value});`);
+      lines.push(`  lv_meter_indicator_t * ndl = lv_meter_add_needle_line(${N}, sc, 4, lv_color_hex(${hexToLvHex(w.props.needleColor)}), -10);`);
+      lines.push(`  lv_meter_set_indicator_value(${N}, ndl, ${w.props.value});`);
+      lines.push(`}`);
+      break;
+
     case 'dropdown': {
       const opts = (w.props.options || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
-      lines.push(`${N} = lv_dropdown_create(scr);`);
+      lines.push(`${N} = lv_dropdown_create(${PARENT});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       lines.push(`lv_dropdown_set_options(${N}, "${opts}");`);
@@ -2073,7 +3377,7 @@ function genWidgetCode(w) {
     }
 
     case 'textarea':
-      lines.push(`${N} = lv_textarea_create(scr);`);
+      lines.push(`${N} = lv_textarea_create(${PARENT});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       if (w.props.text) lines.push(`lv_textarea_set_text(${N}, ${cstr(w.props.text)});`);
@@ -2084,7 +3388,7 @@ function genWidgetCode(w) {
     case 'roller': {
       const opts = (w.props.options || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
       const mode = w.props.mode === 'infinite' ? 'LV_ROLLER_MODE_INFINITE' : 'LV_ROLLER_MODE_NORMAL';
-      lines.push(`${N} = lv_roller_create(scr);`);
+      lines.push(`${N} = lv_roller_create(${PARENT});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       lines.push(`lv_roller_set_options(${N}, "${opts}", ${mode});`);
@@ -2092,8 +3396,123 @@ function genWidgetCode(w) {
       cb('LV_EVENT_VALUE_CHANGED');
       break;
     }
+
+    case 'tabview': {
+      const tabs = (w.props.tabs || '').split('\n').filter(s => s.length);
+      const posMap = { top: 'LV_DIR_TOP', bottom: 'LV_DIR_BOTTOM', left: 'LV_DIR_LEFT', right: 'LV_DIR_RIGHT' };
+      lines.push(`${N} = lv_tabview_create(${PARENT}, ${posMap[w.props.tabPosition] || 'LV_DIR_TOP'}, ${w.props.tabSize});`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      for (let i = 0; i < tabs.length; i++) {
+        const tname = sanitizeName(tabs[i]);
+        lines.push(`lv_obj_t * ${N}_tab_${i} = lv_tabview_add_tab(${N}, ${cstr(tabs[i])});`);
+        lines.push(`// TODO: add child widgets to ${N}_tab_${i} for the "${tabs[i]}" tab`);
+        lines.push(`(void)${N}_tab_${i};`);
+      }
+      break;
+    }
+
+    case 'list': {
+      lines.push(`${N} = lv_list_create(${PARENT});`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      const lns = (w.props.items || '').split('\n');
+      for (const ln of lns) {
+        if (!ln) continue;
+        if (ln.startsWith('#')) {
+          lines.push(`lv_list_add_text(${N}, ${cstr(ln.slice(1).trim())});`);
+        } else {
+          // LV_SYMBOL_RIGHT is a safe default icon constant
+          lines.push(`lv_list_add_btn(${N}, LV_SYMBOL_RIGHT, ${cstr(ln.trim())});`);
+        }
+      }
+      break;
+    }
+
+    case 'chart': {
+      const typeMap = { line: 'LV_CHART_TYPE_LINE', bar: 'LV_CHART_TYPE_BAR', scatter: 'LV_CHART_TYPE_SCATTER' };
+      const series = Math.max(1, Math.min(3, w.props.seriesCount));
+      const points = Math.max(2, w.props.pointCount);
+      const colors = [w.props.color1, w.props.color2, w.props.color3];
+      lines.push(`${N} = lv_chart_create(${PARENT});`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_chart_set_type(${N}, ${typeMap[w.props.chartType] || 'LV_CHART_TYPE_LINE'});`);
+      lines.push(`lv_chart_set_point_count(${N}, ${points});`);
+      lines.push(`lv_chart_set_range(${N}, LV_CHART_AXIS_PRIMARY_Y, 0, 100);`);
+      for (let s = 0; s < series; s++) {
+        const v = `${N}_ser${s + 1}`;
+        lines.push(`lv_chart_series_t * ${v} = lv_chart_add_series(${N}, lv_color_hex(${hexToLvHex(colors[s])}), LV_CHART_AXIS_PRIMARY_Y);`);
+        // Provide a sample sine pattern at runtime
+        lines.push(`for (int i = 0; i < ${points}; i++) {`);
+        lines.push(`  float t = (float)i / ${points} * 6.28318f + ${(s * 0.7).toFixed(3)}f;`);
+        lines.push(`  lv_chart_set_next_value(${N}, ${v}, (lv_coord_t)(50.0f + 40.0f * sinf(t)));`);
+        lines.push(`}`);
+      }
+      lines.push(`lv_chart_refresh(${N});`);
+      break;
+    }
+
+    case 'led':
+      lines.push(`${N} = lv_led_create(${PARENT});`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_led_set_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}));`);
+      lines.push(`lv_led_set_brightness(${N}, ${w.props.brightness});`);
+      lines.push(`lv_led_${w.props.on ? 'on' : 'off'}(${N});`);
+      break;
+
+    case 'icon': {
+      const sym = LV_SYMBOLS[w.props.symbol] || LV_SYMBOLS.wifi;
+      lines.push(`${N} = lv_label_create(${PARENT});`);
+      lines.push(`lv_label_set_text(${N}, ${sym.name});`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_obj_set_style_text_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), 0);`);
+      lines.push(`lv_obj_set_style_text_font(${N}, &lv_font_montserrat_${nearestFont(w.props.fontSize)}, 0);`);
+      lines.push(`lv_obj_set_style_text_align(${N}, LV_TEXT_ALIGN_CENTER, 0);`);
+      break;
+    }
+
+    case 'keyboard': {
+      const modeMap = {
+        text_lower: 'LV_KEYBOARD_MODE_TEXT_LOWER',
+        text_upper: 'LV_KEYBOARD_MODE_TEXT_UPPER',
+        special:    'LV_KEYBOARD_MODE_SPECIAL',
+        number:     'LV_KEYBOARD_MODE_NUMBER'
+      };
+      lines.push(`${N} = lv_keyboard_create(${PARENT});`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_keyboard_set_mode(${N}, ${modeMap[w.props.mode] || 'LV_KEYBOARD_MODE_TEXT_LOWER'});`);
+      if (w.props.textareaTarget) {
+        const ta = screen.widgets.find(x => x.id === w.props.textareaTarget);
+        if (ta) lines.push(`lv_keyboard_set_textarea(${N}, ${ta.name});`);
+      }
+      break;
+    }
+
+    case 'calendar':
+      lines.push(`${N} = lv_calendar_create(${PARENT});`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`{`);
+      lines.push(`  lv_calendar_date_t today_d = { ${w.props.year}, ${w.props.month}, ${w.props.day} };`);
+      lines.push(`  lv_calendar_set_today_date(${N}, today_d.year, today_d.month, today_d.day);`);
+      lines.push(`  lv_calendar_set_showed_date(${N}, today_d.year, today_d.month);`);
+      lines.push(`}`);
+      break;
   }
   return lines;
+}
+
+// Translate canvas-style angles (0 = east, clockwise) to lv_meter angles.
+// LVGL's lv_meter_set_scale_range takes (angle, rotation). For the common
+// case of a top-arc gauge, angle=270 rotation=135 covers the full bottom arc.
+function normalizeAngle(start, end) {
+  let sweep = ((end - start + 360) % 360);
+  if (sweep === 0) sweep = 360;
+  return sweep;
 }
 
 function cstr(s) {
@@ -2103,7 +3522,6 @@ function cstr(s) {
 }
 
 function nearestFont(size) {
-  // LVGL ships these Montserrat sizes by default in many builds
   const available = [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48];
   let best = available[0];
   let bestDelta = Infinity;
@@ -2114,9 +3532,6 @@ function nearestFont(size) {
 }
 
 // ----- ZIP writer (stored, no compression) ---------------
-// Minimal ZIP implementation. Sufficient for shipping a .ino plus README
-// as a proper Arduino sketch folder. Implements PKZIP local file headers,
-// central directory, and end-of-central-directory record per APPNOTE.TXT.
 
 const CRC_TABLE = (() => {
   const t = new Uint32Array(256);
@@ -2137,13 +3552,10 @@ function crc32(bytes) {
 }
 
 function buildZip(files) {
-  // files: array of { name: string, data: Uint8Array }
-  // Stored (no compression). Returns Uint8Array.
   const enc = new TextEncoder();
   const parts = [];
   const central = [];
   let offset = 0;
-
   const now = new Date();
   const dosTime = ((now.getHours() & 31) << 11) |
                   ((now.getMinutes() & 63) << 5) |
@@ -2157,44 +3569,42 @@ function buildZip(files) {
     const data = f.data;
     const crc = crc32(data);
 
-    // Local file header (30 bytes fixed plus filename)
     const lh = new ArrayBuffer(30);
     const lv = new DataView(lh);
-    lv.setUint32(0,  0x04034b50, true);   // signature
-    lv.setUint16(4,  20, true);           // version needed
-    lv.setUint16(6,  0, true);            // flags
-    lv.setUint16(8,  0, true);            // method: stored
+    lv.setUint32(0,  0x04034b50, true);
+    lv.setUint16(4,  20, true);
+    lv.setUint16(6,  0, true);
+    lv.setUint16(8,  0, true);
     lv.setUint16(10, dosTime, true);
     lv.setUint16(12, dosDate, true);
     lv.setUint32(14, crc, true);
-    lv.setUint32(18, data.length, true);  // compressed size
-    lv.setUint32(22, data.length, true);  // uncompressed size
+    lv.setUint32(18, data.length, true);
+    lv.setUint32(22, data.length, true);
     lv.setUint16(26, nameBytes.length, true);
-    lv.setUint16(28, 0, true);            // extra field length
+    lv.setUint16(28, 0, true);
     parts.push(new Uint8Array(lh));
     parts.push(nameBytes);
     parts.push(data);
 
-    // Central directory entry (46 bytes fixed plus filename)
     const cd = new ArrayBuffer(46);
     const cv = new DataView(cd);
-    cv.setUint32(0,  0x02014b50, true);   // signature
-    cv.setUint16(4,  20, true);           // version made by
-    cv.setUint16(6,  20, true);           // version needed
-    cv.setUint16(8,  0, true);            // flags
-    cv.setUint16(10, 0, true);            // method
+    cv.setUint32(0,  0x02014b50, true);
+    cv.setUint16(4,  20, true);
+    cv.setUint16(6,  20, true);
+    cv.setUint16(8,  0, true);
+    cv.setUint16(10, 0, true);
     cv.setUint16(12, dosTime, true);
     cv.setUint16(14, dosDate, true);
     cv.setUint32(16, crc, true);
     cv.setUint32(20, data.length, true);
     cv.setUint32(24, data.length, true);
     cv.setUint16(28, nameBytes.length, true);
-    cv.setUint16(30, 0, true);            // extra
-    cv.setUint16(32, 0, true);            // comment
-    cv.setUint16(34, 0, true);            // disk number
-    cv.setUint16(36, 0, true);            // internal attrs
-    cv.setUint32(38, 0, true);            // external attrs
-    cv.setUint32(42, offset, true);       // local header offset
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
     central.push({ header: new Uint8Array(cd), name: nameBytes });
 
     offset += 30 + nameBytes.length + data.length;
@@ -2208,7 +3618,6 @@ function buildZip(files) {
     cdSize += e.header.length + e.name.length;
   }
 
-  // End of central directory record
   const eo = new ArrayBuffer(22);
   const ev = new DataView(eo);
   ev.setUint32(0,  0x06054b50, true);
@@ -2221,7 +3630,6 @@ function buildZip(files) {
   ev.setUint16(20, 0, true);
   parts.push(new Uint8Array(eo));
 
-  // Concatenate
   let total = 0;
   for (const p of parts) total += p.length;
   const out = new Uint8Array(total);
@@ -2231,8 +3639,6 @@ function buildZip(files) {
 }
 
 function sanitizeSketchName(s) {
-  // Arduino sketch folder rules: letters, digits, underscore, hyphen.
-  // Cannot begin with a digit or hyphen.
   let clean = (s || '').trim().replace(/[^a-zA-Z0-9_\-]/g, '_');
   clean = clean.replace(/^[0-9\-]+/, '');
   return clean || 'panelwright_ui';
@@ -2271,6 +3677,7 @@ document.getElementById('code-copy').addEventListener('click', () => {
     setTimeout(() => btn.textContent = old, 1200);
   });
 });
+
 document.getElementById('code-download').addEventListener('click', () => {
   const sketchName = sanitizeSketchName(document.getElementById('sketch-name').value);
   const blob = new Blob([$codeOutput.dataset.raw], { type: 'text/x-arduino' });
@@ -2281,8 +3688,6 @@ document.getElementById('code-download-zip').addEventListener('click', () => {
   const sketchName = sanitizeSketchName(document.getElementById('sketch-name').value);
   const code = $codeOutput.dataset.raw;
   const enc = new TextEncoder();
-  // Arduino convention: the .ino must live in a folder of the same name.
-  // Build a zip containing  sketchName/sketchName.ino
   const zipBytes = buildZip([
     { name: sketchName + '/' + sketchName + '.ino', data: enc.encode(code) }
   ]);
@@ -2294,33 +3699,24 @@ document.getElementById('code-download-zip').addEventListener('click', () => {
   setTimeout(() => btn.textContent = old, 1200);
 });
 
-// Sanitize sketch name as it is typed
 document.getElementById('sketch-name').addEventListener('blur', e => {
   e.target.value = sanitizeSketchName(e.target.value);
 });
 
 function highlightCpp(src) {
-  // Conservative pass. Comments, strings, preprocessor, then keywords/numbers.
   const escaped = src.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-  // Split lines so highlighting stays line-bound
   const lines = escaped.split('\n').map(line => {
-    // Comment
     const cmtIdx = line.indexOf('//');
     let head = line, tail = '';
     if (cmtIdx >= 0) {
       head = line.slice(0, cmtIdx);
       tail = '<span class="tok-cmt">' + line.slice(cmtIdx) + '</span>';
     }
-    // Preprocessor
     if (/^\s*#/.test(head)) head = '<span class="tok-pp">' + head + '</span>';
     else {
-      // Strings
       head = head.replace(/"([^"\\]|\\.)*"/g, m => '<span class="tok-str">' + m + '</span>');
-      // Numbers
       head = head.replace(/\b(0x[0-9A-Fa-f]+|\d+)\b/g, '<span class="tok-num">$1</span>');
-      // Keywords
-      head = head.replace(/\b(void|static|const|bool|true|false|int|int32_t|uint16_t|if|else|return)\b/g, '<span class="tok-kw">$1</span>');
-      // LVGL macros
+      head = head.replace(/\b(void|static|const|bool|true|false|int|int32_t|uint16_t|float|if|else|return|for)\b/g, '<span class="tok-kw">$1</span>');
       head = head.replace(/\b(LV_[A-Z_0-9]+)\b/g, '<span class="tok-kw">$1</span>');
     }
     return head + tail;
@@ -2338,40 +3734,39 @@ $helpOverlay.addEventListener('click', e => { if (e.target === $helpOverlay) $he
 // ----- Boot -----------------------------------------------
 
 buildPalette();
+
+// Seed with a starter project: one screen with a few widgets
+addScreen('main');
+
+// Welcome sample
+addWidget('label', 40, 40);
+let last = curWidgets()[curWidgets().length - 1];
+last.props.text = 'GIGA DISPLAY';
+last.props.fontSize = 28;
+last.props.color = '#d4a574';
+last.w = 280; last.h = 40;
+
+addWidget('label', 40, 80);
+last = curWidgets()[curWidgets().length - 1];
+last.props.text = 'Drag widgets from the palette to begin';
+last.props.color = '#888888';
+last.props.fontSize = 14;
+last.w = 380;
+
+addWidget('button', 40, 140);
+last = curWidgets()[curWidgets().length - 1];
+last.props.text = 'TAP ME';
+
+addWidget('slider', 40, 220);
+addWidget('switch', 280, 215);
+addWidget('arc', 600, 140);
+
+state.selectedId = null;
 applyOrientation();
 redrawAll();
+state.history = [];
+state.historyIdx = -1;
 pushHistory();
-
-// Welcome sample: add a label and a button so the canvas isn't blank
-if (state.widgets.length === 0) {
-  addWidget('label', 40, 40);
-  const last = state.widgets[state.widgets.length - 1];
-  last.props.text = 'GIGA DISPLAY';
-  last.props.fontSize = 28;
-  last.props.color = '#d4a574';
-  last.w = 280; last.h = 40;
-
-  addWidget('label', 40, 80);
-  const sub = state.widgets[state.widgets.length - 1];
-  sub.props.text = 'Drag widgets from the palette to begin';
-  sub.props.color = '#888888';
-  sub.props.fontSize = 14;
-  sub.w = 380;
-
-  addWidget('button', 40, 140);
-  const btn = state.widgets[state.widgets.length - 1];
-  btn.props.text = 'TAP ME';
-
-  addWidget('slider', 40, 220);
-  addWidget('switch', 280, 215);
-  addWidget('arc', 600, 140);
-
-  state.selectedId = null;
-  redrawAll();
-  state.history = [];
-  state.historyIdx = -1;
-  pushHistory();
-}
 
 })();
 </script>

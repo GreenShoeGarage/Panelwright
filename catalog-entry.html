@@ -1,0 +1,97 @@
+<!--
+  Field Instruments catalog entry for FI-042 PANELWRIGHT.
+  Self-contained HTML snippet for mbparks.com/field-instruments.
+  Adapt the wrapper element class names and ordering to match the existing
+  pattern in your catalog. The JSON-LD block at the bottom is independent
+  and can be placed in the page <head> or alongside the card.
+-->
+
+<article class="field-instrument"
+         data-fi="042"
+         data-tags="arduino lvgl ui-design hardware embedded single-file"
+         id="fi-042">
+
+  <header class="fi-header">
+    <span class="fi-designation">FI-042</span>
+    <h2 class="fi-title">
+      <a href="/field-instruments/panelwright/">PANELWRIGHT</a>
+    </h2>
+    <p class="fi-tagline">A single-file UI designer for the Arduino Giga Display Shield.</p>
+  </header>
+
+  <div class="fi-body">
+    <p>
+      A drag and drop layout tool for LVGL panels, built as one self-contained
+      HTML page. Drop widgets onto a one-to-one 800 by 480 canvas, set their
+      properties, then export a ready-to-flash Arduino sketch as a .ino file or
+      a zipped sketch folder. Supports multiple screens with navigation
+      between them, an LVGL default theme and a Tradigital palette, and
+      eighteen widget types including labels, buttons, sliders, switches,
+      checkboxes, bars, arcs, meters, dropdowns, text areas, rollers, tabviews,
+      lists, charts, LEDs, icons, keyboards, and calendars.
+    </p>
+    <p>
+      Built for the Arduino Giga R1 + Giga Display Shield combo but the
+      generated sketch follows generic LVGL v8 conventions and adapts easily
+      to other display hardware. No build step, no dependencies, no CDN. Just
+      one HTML file you can keep next to your sketches.
+    </p>
+  </div>
+
+  <footer class="fi-footer">
+    <ul class="fi-tags">
+      <li>arduino</li>
+      <li>lvgl</li>
+      <li>ui-design</li>
+      <li>hardware</li>
+      <li>embedded</li>
+      <li>single-file</li>
+    </ul>
+    <ul class="fi-links">
+      <li><a href="/field-instruments/panelwright/">Open tool</a></li>
+      <li><a href="/field-instruments/panelwright/panelwright-view.html">Project viewer</a></li>
+      <li><a href="/field-instruments/panelwright/README.md">README</a></li>
+      <li><a href="https://gearsofresistance.substack.com/">Build notes on Substack</a></li>
+    </ul>
+    <p class="fi-license">License: GPL-3.0</p>
+  </footer>
+
+</article>
+
+<!--
+  JSON-LD structured data. Place inside <head> or alongside the article.
+  Update sameAs Wikidata QID once an item exists for this instrument.
+-->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PANELWRIGHT",
+  "alternateName": "Field Instrument 042",
+  "identifier": "FI-042",
+  "applicationCategory": "DeveloperApplication",
+  "applicationSubCategory": "EmbeddedUIDesigner",
+  "operatingSystem": "Any (browser based)",
+  "description": "A single-file HTML UI designer for the Arduino Giga Display Shield that generates LVGL Arduino sketches.",
+  "url": "https://mbparks.com/field-instruments/panelwright/",
+  "license": "https://www.gnu.org/licenses/gpl-3.0.txt",
+  "creator": {
+    "@type": "Person",
+    "name": "M.B. Parks",
+    "alternateName": "N1HNP",
+    "sameAs": "https://www.wikidata.org/wiki/Q140274780"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Green Shoe Garage",
+    "sameAs": "https://www.wikidata.org/wiki/Q140287499",
+    "url": "https://greenshoegarage.com/"
+  },
+  "isPartOf": {
+    "@type": "CreativeWorkSeries",
+    "name": "Field Instruments"
+  },
+  "keywords": "Arduino, LVGL, UI design, embedded, Giga Display Shield, single-file HTML",
+  "softwareRequirements": "Modern web browser. Arduino IDE and LVGL library for the generated sketch."
+}
+</script>
