@@ -203,6 +203,62 @@ and write the logic in the body of your sketch instead.
 
 ---
 
+## Onboard hardware
+
+The **Hardware** button in the toolbar opens a modal listing the onboard
+peripherals available on the Giga R1 mainboard and the Giga Display Shield.
+Each peripheral has a toggle and a small set of configuration controls.
+Enabled peripherals appear as amber indicator dots in the status bar so a
+glance at the editor shows what hardware your sketch will touch.
+
+These are project-level, not per-screen. None of them render anything on the
+canvas. They show up only in the generated sketch as a set of includes,
+globals, init functions, and a call from `setup()`. The body of each init
+function is intentionally readable: print on failure, print on success, ready
+to extend.
+
+| Peripheral  | Library / API           | Notes                                          |
+|-------------|-------------------------|------------------------------------------------|
+| Microphone  | `<PDM.h>`               | Sample rate, channels, ring buffer size        |
+| IMU         | `Arduino_BMI270_BMM150` | Bosch BMI270 6-axis. Optional accel/gyro helper emit toggles |
+| Camera      | `camera.h` + sensor lib | HM01B0, GC2145, OV7670, OV7675; resolution, format, frame rate |
+| SD Card     | `SDMMCBlockDevice` + `FATFileSystem` | Mounts the Display Shield microSD at /sd |
+| WiFi        | `<WiFi.h>`              | SSID and password stored as literals (move to arduino_secrets.h before publishing) |
+| BLE         | `<ArduinoBLE.h>`        | Sets local name, calls advertise; you add services |
+| RGB LED     | (pinMode / analogWrite) | Onboard active-low LED; boot color configurable |
+| RTC         | `<mbed_rtc_time.h>`     | STM32H7 internal RTC, backed by VBAT coin cell |
+
+Helpers are wired up for the ones that need them: `read` callback for the
+microphone, `read_acceleration()` and `read_gyroscope()` for the IMU,
+`capture_camera_frame()` for the camera, `set_rgb_led(r,g,b)` for the LED,
+`rtc_now_string()` for the RTC. Each peripheral block in the generated sketch
+begins with a comment describing how to consume it, including inline examples
+for the patterns most people reach for first.
+
+To call a peripheral from a widget, drop the relevant line into the widget's
+**Event Code** field. For example, on a switch that toggles the onboard LED:
+
+```cpp
+set_rgb_led(on ? 0 : 32, on ? 0 : 32, on ? 96 : 0);
+```
+
+Or to drive an arc from the IMU pitch, in the loop body of your sketch:
+
+```cpp
+float ax, ay, az;
+if (read_acceleration(ax, ay, az)) {
+  int pitch_deg = (int)(atan2(ay, az) * 180.0f / PI);
+  lv_arc_set_value(tilt_arc, pitch_deg + 90);
+}
+```
+
+The Arduino_BMI270_BMM150 library is the standard IMU library for boards
+that carry the Bosch BMI270. The Display Shield uses the BMI270 alone (no
+magnetometer), so the BMM150 portion of the library is inert; accelerometer
+and gyroscope work exactly as documented.
+
+---
+
 ## Hardware target
 
 Arduino Giga R1 WiFi with the Giga Display Shield attached. The shield provides

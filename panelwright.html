@@ -718,6 +718,120 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
 .tok-kw { color: #6fb5a8; }
 .tok-str { color: #d4a574; }
 .tok-num { color: #b9684a; }
+
+/* Hardware modal */
+.hardware-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: none; align-items: center; justify-content: center;
+  z-index: 100; padding: 40px;
+}
+.hardware-modal.open { display: flex; }
+.hardware-modal .box {
+  background: var(--panel); border: 1px solid var(--border-hot);
+  width: 100%; max-width: 900px; max-height: 100%;
+  display: grid; grid-template-rows: auto 1fr auto;
+}
+.hardware-modal .box header {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.hardware-modal .box header h2 {
+  font-size: 12px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--amber);
+}
+.hardware-modal .box header .close {
+  background: transparent; border: none; color: var(--ink-dim);
+  font-size: 20px; cursor: pointer; padding: 0; line-height: 1;
+}
+.hardware-modal .box .actions {
+  padding: 10px 16px; border-top: 1px solid var(--border);
+  display: flex; gap: 12px; justify-content: space-between; align-items: center;
+}
+.hardware-modal .hardware-help {
+  color: var(--ink-mute); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+.hardware-grid {
+  overflow: auto; padding: 16px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.periph-card {
+  background: var(--panel-2); border: 1px solid var(--border);
+  padding: 12px; display: flex; flex-direction: column; gap: 8px;
+  transition: opacity 0.12s, border-color 0.12s;
+}
+.periph-card.disabled { opacity: 0.55; }
+.periph-card.enabled { border-color: var(--amber); }
+.periph-card .ph-head {
+  display: flex; align-items: center; gap: 10px;
+}
+.periph-card .ph-name {
+  flex: 1; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink);
+}
+.periph-card.enabled .ph-name { color: var(--amber); }
+.periph-card .ph-abbrev {
+  font-family: var(--mono); font-size: 9px; color: var(--ink-mute);
+  letter-spacing: 0.12em;
+}
+.periph-card .ph-toggle {
+  width: 36px; height: 20px; background: var(--bg);
+  border: 1px solid var(--border-hot); border-radius: 999px;
+  position: relative; cursor: pointer;
+}
+.periph-card .ph-toggle::after {
+  content: ''; position: absolute; top: 50%; left: 2px;
+  width: 14px; height: 14px; background: var(--ink-mute);
+  border-radius: 50%; transform: translateY(-50%);
+  transition: left 0.12s, background 0.12s;
+}
+.periph-card.enabled .ph-toggle { background: var(--amber); border-color: var(--amber); }
+.periph-card.enabled .ph-toggle::after { left: 18px; background: var(--bg); }
+.periph-card .ph-desc {
+  font-size: 10px; color: var(--ink-dim); line-height: 1.5;
+}
+.periph-card .ph-settings {
+  display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 4px;
+}
+.periph-card.disabled .ph-settings { pointer-events: none; }
+.periph-card .ph-row {
+  display: grid; grid-template-columns: 110px 1fr; gap: 8px;
+  align-items: center; font-size: 10px;
+}
+.periph-card .ph-row label {
+  color: var(--ink-dim); text-transform: uppercase;
+  letter-spacing: 0.06em; font-size: 9px;
+}
+.periph-card .ph-row input,
+.periph-card .ph-row select {
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--ink); padding: 4px 6px; font-family: var(--mono);
+  font-size: 10px; width: 100%;
+}
+.periph-card .ph-row input[type=color] {
+  padding: 1px; height: 22px;
+}
+.periph-card .ph-hint {
+  font-size: 9px; color: var(--rust); margin-top: 2px;
+  line-height: 1.4; font-style: italic;
+}
+
+/* Peripheral indicator dots in the status bar */
+.periph-indicators {
+  display: flex; gap: 8px; align-items: center; margin-right: 6px;
+}
+.periph-indicators .indicator {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 9px; color: var(--amber);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  cursor: default;
+}
+.periph-indicators .indicator .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--amber); box-shadow: 0 0 4px var(--amber);
+}
 .tok-cmt { color: #585348; font-style: italic; }
 .tok-pp { color: #a78bfa; }
 .tok-fn { color: #e0e0e0; }
@@ -875,6 +989,7 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
     <button id="btn-load">Load</button>
     <input type="file" id="file-input" accept=".json" style="display:none">
     <span class="sep"></span>
+    <button id="btn-hardware" title="Configure onboard peripherals (microphone, camera, SD, WiFi, BLE, LED, RTC)">Hardware</button>
     <button id="btn-code" class="primary">Generate Code</button>
     <button id="btn-viewer" title="Preview current project in the viewer (opens in a new tab)">Open Viewer \u2197</button>
     <button id="btn-help">?</button>
@@ -919,6 +1034,7 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
       <div class="item"><span class="key">Screen</span><span class="val" id="status-screen">main</span></div>
       <div class="item"><span class="key">Widgets</span><span class="val" id="status-count">0</span></div>
       <div class="spacer"></div>
+      <div class="periph-indicators" id="periph-indicators"></div>
       <div class="item"><span class="key">Display</span><span class="val" id="status-display">800 x 480</span></div>
     </div>
   </section>
@@ -947,6 +1063,25 @@ aside.props { border-right: none; border-left: 1px solid var(--border); }
         <button id="code-download">Download .ino</button>
         <button id="code-download-zip" class="primary">Download .zip</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hardware (peripherals) modal -->
+<div class="hardware-modal" id="hardware-modal">
+  <div class="box">
+    <header>
+      <h2>Onboard Hardware</h2>
+      <button class="close" id="hardware-close">&times;</button>
+    </header>
+    <div class="hardware-grid" id="hardware-grid">
+      <!-- populated by JS -->
+    </div>
+    <div class="actions">
+      <span class="hardware-help">
+        Enabled peripherals get includes, globals, init functions, and a call from setup() in the generated sketch.
+      </span>
+      <button id="hardware-done" class="primary">Done</button>
     </div>
   </div>
 </div>
@@ -1364,6 +1499,110 @@ const THEME_DEFAULTS = {
   tradigital:   { primary: '#d4a574', secondary: '#6fb5a8' }
 };
 
+// ----- Peripheral definitions -----------------------------
+// Onboard hardware on the Giga R1 + Display Shield combo. These are
+// project-level, not per-screen. When enabled, the code generator emits
+// includes, globals, init functions, and the appropriate setup() calls.
+// The canvas does not render anything for these; they show up only as
+// indicator dots in the status bar and are configured from the Hardware
+// modal.
+
+const PERIPHERALS = {
+  microphone: {
+    label: 'Microphone',
+    abbrev: 'MIC',
+    description: 'Digital microphone (PDM) on the Display Shield.',
+    settings: [
+      { key: 'sampleRate', label: 'Sample rate (Hz)', type: 'select',
+        options: [{v:8000,l:'8000'},{v:11025,l:'11025'},{v:16000,l:'16000'},{v:22050,l:'22050'},{v:32000,l:'32000'},{v:44100,l:'44100'},{v:48000,l:'48000'}] },
+      { key: 'channels', label: 'Channels', type: 'select',
+        options: [{v:1,l:'1 (mono)'},{v:2,l:'2 (stereo)'}] },
+      { key: 'bufferSamples', label: 'Buffer size (samples)', type: 'select',
+        options: [{v:128,l:'128'},{v:256,l:'256'},{v:512,l:'512'},{v:1024,l:'1024'}] }
+    ],
+    defaults: { enabled: false, sampleRate: 16000, channels: 1, bufferSamples: 512 }
+  },
+  imu: {
+    label: 'IMU',
+    abbrev: 'IMU',
+    description: 'Bosch BMI270 6-axis IMU on the Display Shield. Provides accelerometer and gyroscope readings.',
+    settings: [
+      { key: 'emitAccelHelper', label: 'Accel helper', type: 'select',
+        options: [{v:true,l:'Generate'},{v:false,l:'Skip'}] },
+      { key: 'emitGyroHelper', label: 'Gyro helper', type: 'select',
+        options: [{v:true,l:'Generate'},{v:false,l:'Skip'}] }
+    ],
+    defaults: { enabled: false, emitAccelHelper: true, emitGyroHelper: true }
+  },
+  camera: {
+    label: 'Camera',
+    abbrev: 'CAM',
+    description: 'CSI camera through the Display Shield connector. Requires a sensor module.',
+    settings: [
+      { key: 'sensor', label: 'Sensor', type: 'select',
+        options: [{v:'HM01B0',l:'HM01B0 (Himax mono)'},{v:'GC2145',l:'GC2145 (Galaxy Core)'},{v:'OV7670',l:'OV7670 (OmniVision)'},{v:'OV7675',l:'OV7675 (OmniVision)'}] },
+      { key: 'resolution', label: 'Resolution', type: 'select',
+        options: [{v:'CAMERA_R160x120',l:'160 x 120 (QQVGA)'},{v:'CAMERA_R320x240',l:'320 x 240 (QVGA)'},{v:'CAMERA_R320x320',l:'320 x 320'},{v:'CAMERA_R640x480',l:'640 x 480 (VGA)'}] },
+      { key: 'pixelFormat', label: 'Pixel format', type: 'select',
+        options: [{v:'CAMERA_GRAYSCALE',l:'Grayscale'},{v:'CAMERA_RGB565',l:'RGB565'},{v:'CAMERA_BAYER',l:'Bayer'}] },
+      { key: 'framerate', label: 'Frame rate (fps)', type: 'select',
+        options: [{v:5,l:'5'},{v:10,l:'10'},{v:15,l:'15'},{v:30,l:'30'}] }
+    ],
+    defaults: { enabled: false, sensor: 'GC2145', resolution: 'CAMERA_R320x240', pixelFormat: 'CAMERA_RGB565', framerate: 30 }
+  },
+  sdcard: {
+    label: 'SD Card',
+    abbrev: 'SD',
+    description: 'microSD slot on the Giga Display Shield (SDMMC + FATFileSystem).',
+    settings: [],
+    defaults: { enabled: false }
+  },
+  wifi: {
+    label: 'WiFi',
+    abbrev: 'WIFI',
+    description: 'Murata WiFi/BT module on the Giga mainboard.',
+    settings: [
+      { key: 'ssid', label: 'SSID', type: 'text' },
+      { key: 'password', label: 'Password', type: 'password',
+        hint: 'Stored in the sketch as a literal. Move to arduino_secrets.h before publishing.' }
+    ],
+    defaults: { enabled: false, ssid: 'YOUR_SSID', password: 'YOUR_PASSWORD' }
+  },
+  ble: {
+    label: 'BLE',
+    abbrev: 'BLE',
+    description: 'Bluetooth Low Energy peripheral mode via ArduinoBLE.',
+    settings: [
+      { key: 'localName', label: 'Local name', type: 'text' }
+    ],
+    defaults: { enabled: false, localName: 'Giga BLE' }
+  },
+  rgbLed: {
+    label: 'RGB LED',
+    abbrev: 'LED',
+    description: 'Onboard RGB LED on the Giga R1 mainboard (active low).',
+    settings: [
+      { key: 'defaultColor', label: 'Boot color', type: 'color' }
+    ],
+    defaults: { enabled: false, defaultColor: '#000000' }
+  },
+  rtc: {
+    label: 'RTC',
+    abbrev: 'RTC',
+    description: 'STM32H7 internal real-time clock (mbed RTC).',
+    settings: [],
+    defaults: { enabled: false }
+  }
+};
+
+function defaultPeripherals() {
+  const p = {};
+  for (const [k, spec] of Object.entries(PERIPHERALS)) {
+    p[k] = Object.assign({}, spec.defaults);
+  }
+  return p;
+}
+
 // ----- Application state ----------------------------------
 
 const state = {
@@ -1375,6 +1614,7 @@ const state = {
   nameCounts: {},         // type -> counter for auto names
   orientation: 'landscape',
   theme: 'lvgl_default',
+  peripherals: defaultPeripherals(),
   grid: true,
   snap: true,
   gridSize: 10,
@@ -2415,6 +2655,7 @@ function updateStatus() {
   $statusCount.textContent = curWidgets().length;
   const dims = getCanvasDims();
   $statusDisplay.textContent = `${dims.w} x ${dims.h}`;
+  updatePeripheralIndicators();
 }
 
 // ----- Widget drag and resize -----------------------------
@@ -2910,11 +3151,12 @@ document.getElementById('btn-new').addEventListener('click', () => {
 
 document.getElementById('btn-save').addEventListener('click', () => {
   const data = {
-    version: 2,
+    version: 3,
     tool: 'PANELWRIGHT',
     orientation: state.orientation,
     theme: state.theme,
     screens: state.screens,
+    peripherals: state.peripherals,
     nextId: state.nextId,
     nextScreenId: state.nextScreenId,
     nameCounts: state.nameCounts
@@ -2952,6 +3194,16 @@ document.getElementById('file-input').addEventListener('change', e => {
       state.theme = data.theme || 'lvgl_default';
       state.nextId = data.nextId || 1;
       state.nameCounts = data.nameCounts || {};
+      // Peripherals: merge stored values over defaults, so v1/v2 files
+      // get all peripherals at their disabled defaults and v3 files
+      // pick up any new peripherals added since the file was written.
+      const peripherals = defaultPeripherals();
+      if (data.peripherals) {
+        for (const [k, v] of Object.entries(data.peripherals)) {
+          if (peripherals[k]) Object.assign(peripherals[k], v);
+        }
+      }
+      state.peripherals = peripherals;
       state.activeScreenId = (state.screens[0] || {}).id;
       state.selectedId = null;
       $orientSelect.value = state.orientation;
@@ -3027,11 +3279,12 @@ document.getElementById('btn-apply-theme').addEventListener('click', () => {
 // empty if storage is unavailable.
 document.getElementById('btn-viewer').addEventListener('click', () => {
   const data = {
-    version: 2,
+    version: 3,
     tool: 'PANELWRIGHT',
     orientation: state.orientation,
     theme: state.theme,
     screens: state.screens,
+    peripherals: state.peripherals,
     nextId: state.nextId,
     nextScreenId: state.nextScreenId,
     nameCounts: state.nameCounts
@@ -3044,6 +3297,143 @@ document.getElementById('btn-viewer').addEventListener('click', () => {
   }
   window.open('viewer/', '_blank');
 });
+
+// ----- Hardware modal -------------------------------------
+const $hardwareModal = document.getElementById('hardware-modal');
+const $hardwareGrid = document.getElementById('hardware-grid');
+
+document.getElementById('btn-hardware').addEventListener('click', () => {
+  renderHardwareModal();
+  $hardwareModal.classList.add('open');
+});
+document.getElementById('hardware-close').addEventListener('click', () => {
+  $hardwareModal.classList.remove('open');
+});
+document.getElementById('hardware-done').addEventListener('click', () => {
+  $hardwareModal.classList.remove('open');
+});
+$hardwareModal.addEventListener('click', (e) => {
+  if (e.target === $hardwareModal) $hardwareModal.classList.remove('open');
+});
+
+function renderHardwareModal() {
+  $hardwareGrid.innerHTML = '';
+  for (const [key, spec] of Object.entries(PERIPHERALS)) {
+    const cfg = state.peripherals[key] || Object.assign({}, spec.defaults);
+    state.peripherals[key] = cfg;
+
+    const card = document.createElement('div');
+    card.className = 'periph-card ' + (cfg.enabled ? 'enabled' : 'disabled');
+    card.dataset.periph = key;
+
+    // Head: name, abbreviation, toggle
+    const head = document.createElement('div');
+    head.className = 'ph-head';
+    const name = document.createElement('div');
+    name.className = 'ph-name';
+    name.textContent = spec.label;
+    const abbrev = document.createElement('span');
+    abbrev.className = 'ph-abbrev';
+    abbrev.textContent = spec.abbrev;
+    const toggle = document.createElement('div');
+    toggle.className = 'ph-toggle';
+    toggle.title = cfg.enabled ? 'Disable ' + spec.label : 'Enable ' + spec.label;
+    toggle.addEventListener('click', () => {
+      pushHistory();
+      cfg.enabled = !cfg.enabled;
+      renderHardwareModal();
+      updatePeripheralIndicators();
+    });
+    head.appendChild(name); head.appendChild(abbrev); head.appendChild(toggle);
+    card.appendChild(head);
+
+    // Description
+    const desc = document.createElement('div');
+    desc.className = 'ph-desc';
+    desc.textContent = spec.description;
+    card.appendChild(desc);
+
+    // Settings rows
+    if (spec.settings.length) {
+      const settingsBox = document.createElement('div');
+      settingsBox.className = 'ph-settings';
+      for (const s of spec.settings) {
+        const row = document.createElement('div');
+        row.className = 'ph-row';
+        const lbl = document.createElement('label');
+        lbl.textContent = s.label;
+        row.appendChild(lbl);
+
+        let input;
+        if (s.type === 'select') {
+          input = document.createElement('select');
+          for (const opt of s.options) {
+            const o = document.createElement('option');
+            o.value = opt.v;
+            o.textContent = opt.l;
+            if (String(cfg[s.key]) === String(opt.v)) o.selected = true;
+            input.appendChild(o);
+          }
+        } else if (s.type === 'color') {
+          input = document.createElement('input');
+          input.type = 'color';
+          input.value = cfg[s.key] || '#000000';
+        } else if (s.type === 'password') {
+          input = document.createElement('input');
+          input.type = 'password';
+          input.value = cfg[s.key] || '';
+          input.spellcheck = false;
+        } else {
+          input = document.createElement('input');
+          input.type = 'text';
+          input.value = cfg[s.key] || '';
+          input.spellcheck = false;
+        }
+        input.addEventListener('change', () => {
+          pushHistory();
+          let v = input.value;
+          // Coerce select values to match the option-value type
+          if (s.type === 'select' && s.options.length) {
+            const sampleType = typeof s.options[0].v;
+            if (sampleType === 'number') v = Number(v);
+            else if (sampleType === 'boolean') v = (v === 'true');
+          }
+          cfg[s.key] = v;
+        });
+        if (!cfg.enabled) input.disabled = true;
+        row.appendChild(input);
+        settingsBox.appendChild(row);
+
+        if (s.hint) {
+          const hint = document.createElement('div');
+          hint.className = 'ph-hint';
+          hint.textContent = s.hint;
+          settingsBox.appendChild(hint);
+        }
+      }
+      card.appendChild(settingsBox);
+    }
+    $hardwareGrid.appendChild(card);
+  }
+}
+
+function updatePeripheralIndicators() {
+  const $ind = document.getElementById('periph-indicators');
+  $ind.innerHTML = '';
+  for (const [key, spec] of Object.entries(PERIPHERALS)) {
+    const cfg = state.peripherals[key];
+    if (!cfg || !cfg.enabled) continue;
+    const el = document.createElement('div');
+    el.className = 'indicator';
+    el.title = spec.label + ' enabled';
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    const txt = document.createElement('span');
+    txt.textContent = spec.abbrev;
+    el.appendChild(dot); el.appendChild(txt);
+    $ind.appendChild(el);
+  }
+}
 
 function applyOrientation() {
   const dims = getCanvasDims();
@@ -3109,10 +3499,39 @@ function generateCode() {
   lines.push('#include "Arduino_H7_Video.h"');
   lines.push('#include "Arduino_GigaDisplayTouch.h"');
   lines.push('#include "lvgl.h"');
+
+  // Peripheral-specific includes
+  const enabled = name => state.peripherals[name] && state.peripherals[name].enabled;
+  if (enabled('microphone')) lines.push('#include <PDM.h>');
+  if (enabled('imu')) lines.push('#include "Arduino_BMI270_BMM150.h"');
+  if (enabled('camera')) {
+    lines.push('#include "camera.h"');
+    const sensor = state.peripherals.camera.sensor;
+    if (sensor === 'HM01B0') lines.push('#include "himax.h"');
+    else if (sensor === 'GC2145') lines.push('#include "gc2145.h"');
+    else if (sensor === 'OV7670' || sensor === 'OV7675') lines.push('#include "ov767x.h"');
+  }
+  if (enabled('sdcard')) {
+    lines.push('#include "SDMMCBlockDevice.h"');
+    lines.push('#include "FATFileSystem.h"');
+  }
+  if (enabled('wifi')) lines.push('#include <WiFi.h>');
+  if (enabled('ble')) lines.push('#include <ArduinoBLE.h>');
+  if (enabled('rtc')) lines.push('#include <mbed_rtc_time.h>');
   lines.push('');
+
   lines.push('Arduino_H7_Video          Display(' + dims.w + ', ' + dims.h + ', GigaDisplayShield);');
   lines.push('Arduino_GigaDisplayTouch  TouchDetector;');
   lines.push('');
+
+  // ---- Peripheral globals + init functions ----
+  if (Object.keys(state.peripherals).some(k => enabled(k))) {
+    lines.push('// =====================================================================');
+    lines.push('// Onboard peripherals');
+    lines.push('// =====================================================================');
+    lines.push('');
+    genPeripheralCode(lines);
+  }
 
   // Screen handles
   lines.push('// ---- Screen handles ----');
@@ -3245,6 +3664,21 @@ function generateCode() {
   lines.push('  Display.begin();');
   lines.push('  TouchDetector.begin();');
   lines.push('');
+  // Peripheral init calls (before any screen build, so widgets can refer to handles)
+  const peripheralInitCalls = [];
+  if (enabled('microphone')) peripheralInitCalls.push('  init_microphone();');
+  if (enabled('imu'))        peripheralInitCalls.push('  init_imu();');
+  if (enabled('camera'))     peripheralInitCalls.push('  init_camera();');
+  if (enabled('sdcard'))     peripheralInitCalls.push('  init_sdcard();');
+  if (enabled('wifi'))       peripheralInitCalls.push('  init_wifi();');
+  if (enabled('ble'))        peripheralInitCalls.push('  init_ble();');
+  if (enabled('rgbLed'))     peripheralInitCalls.push('  init_rgb_led();');
+  if (enabled('rtc'))        peripheralInitCalls.push('  init_rtc();');
+  if (peripheralInitCalls.length) {
+    lines.push('  // ---- Onboard peripherals ----');
+    for (const c of peripheralInitCalls) lines.push(c);
+    lines.push('');
+  }
   if (state.theme === 'tradigital') {
     lines.push('  apply_theme();');
   }
@@ -3264,6 +3698,246 @@ function generateCode() {
   lines.push('');
 
   return lines.join('\n');
+}
+
+// ----- Peripheral code generation -------------------------
+// Emits globals, helper functions, and init functions for each enabled
+// onboard peripheral. Called once near the top of the sketch, before any
+// widget or screen code is generated. Each block is heavily commented so
+// you can wire it into your event handlers or loop() by hand.
+
+function genPeripheralCode(lines) {
+  const P = state.peripherals;
+  const en = k => P[k] && P[k].enabled;
+
+  if (en('microphone')) {
+    const m = P.microphone;
+    lines.push('// ---- Microphone (PDM) ----');
+    lines.push('static const int MIC_CHANNELS = ' + m.channels + ';');
+    lines.push('static const int MIC_SAMPLE_RATE = ' + m.sampleRate + ';');
+    lines.push('static int16_t mic_buffer[' + m.bufferSamples + '];');
+    lines.push('static volatile int mic_samples_ready = 0;');
+    lines.push('');
+    lines.push('static void on_mic_data(void) {');
+    lines.push('  int bytes = PDM.available();');
+    lines.push('  if (bytes > (int)sizeof(mic_buffer)) bytes = sizeof(mic_buffer);');
+    lines.push('  PDM.read(mic_buffer, bytes);');
+    lines.push('  mic_samples_ready = bytes / 2;');
+    lines.push('}');
+    lines.push('');
+    lines.push('static void init_microphone(void) {');
+    lines.push('  PDM.onReceive(on_mic_data);');
+    lines.push('  PDM.setBufferSize(' + (m.bufferSamples * 2) + ');');
+    lines.push('  if (!PDM.begin(MIC_CHANNELS, MIC_SAMPLE_RATE)) {');
+    lines.push('    Serial.println("Microphone (PDM) init failed");');
+    lines.push('  } else {');
+    lines.push('    Serial.println("Microphone (PDM) ready");');
+    lines.push('  }');
+    lines.push('}');
+    lines.push('');
+    lines.push('// To consume samples in your loop() or a widget Event Code:');
+    lines.push('//   if (mic_samples_ready) {');
+    lines.push('//     int16_t peak = 0;');
+    lines.push('//     for (int i = 0; i < mic_samples_ready; i++) {');
+    lines.push('//       int16_t s = abs(mic_buffer[i]);');
+    lines.push('//       if (s > peak) peak = s;');
+    lines.push('//     }');
+    lines.push('//     mic_samples_ready = 0;');
+    lines.push('//     // do something with peak...');
+    lines.push('//   }');
+    lines.push('');
+  }
+
+  if (en('imu')) {
+    const i = P.imu;
+    lines.push('// ---- IMU (Bosch BMI270 6-axis) ----');
+    lines.push('// Uses the Arduino_BMI270_BMM150 library, which exposes an "IMU"');
+    lines.push('// global with accelerometer (g) and gyroscope (deg/s) readings.');
+    lines.push('// The Display Shield carries the BMI270 only (no magnetometer).');
+    lines.push('');
+    lines.push('static void init_imu(void) {');
+    lines.push('  if (!IMU.begin()) {');
+    lines.push('    Serial.println("IMU (BMI270) init failed");');
+    lines.push('    return;');
+    lines.push('  }');
+    lines.push('  Serial.print("IMU ready. Accel @ ");');
+    lines.push('  Serial.print(IMU.accelerationSampleRate());');
+    lines.push('  Serial.print(" Hz, Gyro @ ");');
+    lines.push('  Serial.print(IMU.gyroscopeSampleRate());');
+    lines.push('  Serial.println(" Hz");');
+    lines.push('}');
+    lines.push('');
+    if (i.emitAccelHelper !== false) {
+      lines.push('// Read the accelerometer in g\'s (range +/-4g by default).');
+      lines.push('// Returns true if fresh data was available.');
+      lines.push('static bool read_acceleration(float &ax, float &ay, float &az) {');
+      lines.push('  if (!IMU.accelerationAvailable()) return false;');
+      lines.push('  IMU.readAcceleration(ax, ay, az);');
+      lines.push('  return true;');
+      lines.push('}');
+      lines.push('');
+    }
+    if (i.emitGyroHelper !== false) {
+      lines.push('// Read the gyroscope in degrees/sec (range +/-2000 dps by default).');
+      lines.push('// Returns true if fresh data was available.');
+      lines.push('static bool read_gyroscope(float &gx, float &gy, float &gz) {');
+      lines.push('  if (!IMU.gyroscopeAvailable()) return false;');
+      lines.push('  IMU.readGyroscope(gx, gy, gz);');
+      lines.push('  return true;');
+      lines.push('}');
+      lines.push('');
+    }
+    if (i.emitAccelHelper !== false) {
+      lines.push('// Example: drive a tilt-style label or update an arc from loop():');
+      lines.push('//   float ax, ay, az;');
+      lines.push('//   if (read_acceleration(ax, ay, az)) {');
+      lines.push('//     int pitch_deg = (int)(atan2(ay, az) * 180.0f / PI);');
+      lines.push('//     // lv_arc_set_value(some_arc, pitch_deg + 90);');
+      lines.push('//   }');
+      lines.push('');
+    }
+  }
+
+  if (en('camera')) {
+    const c = P.camera;
+    const sensorClass = c.sensor;       // class name matches the dropdown value
+    const sensorVar = 'cam_sensor';
+    lines.push('// ---- Camera (' + sensorClass + ') ----');
+    lines.push(sensorClass + ' ' + sensorVar + ';');
+    lines.push('Camera cam(' + sensorVar + ');');
+    lines.push('FrameBuffer cam_fb;');
+    lines.push('');
+    lines.push('static void init_camera(void) {');
+    lines.push('  if (!cam.begin(' + c.resolution + ', ' + c.pixelFormat + ', ' + c.framerate + ')) {');
+    lines.push('    Serial.println("Camera init failed");');
+    lines.push('  } else {');
+    lines.push('    Serial.println("Camera ready (' + c.resolution + ', ' + c.pixelFormat + ', ' + c.framerate + ' fps)");');
+    lines.push('  }');
+    lines.push('}');
+    lines.push('');
+    lines.push('// Grab a frame into cam_fb. Returns 0 on success.');
+    lines.push('// Call from loop() or a button Event Code.');
+    lines.push('static int capture_camera_frame(uint32_t timeout_ms = 3000) {');
+    lines.push('  return cam.grabFrame(cam_fb, timeout_ms);');
+    lines.push('}');
+    lines.push('');
+  }
+
+  if (en('sdcard')) {
+    lines.push('// ---- SD card (microSD slot on the Display Shield) ----');
+    lines.push('SDMMCBlockDevice sd_block_device;');
+    lines.push('mbed::FATFileSystem sd_fs("sd");');
+    lines.push('');
+    lines.push('static void init_sdcard(void) {');
+    lines.push('  int err = sd_fs.mount(&sd_block_device);');
+    lines.push('  if (err) {');
+    lines.push('    Serial.print("SD card mount failed (");');
+    lines.push('    Serial.print(err);');
+    lines.push('    Serial.println("). Insert a card formatted as FAT32 and reset.");');
+    lines.push('  } else {');
+    lines.push('    Serial.println("SD card mounted at /sd");');
+    lines.push('  }');
+    lines.push('}');
+    lines.push('');
+    lines.push('// Use the standard C stdio file API rooted at /sd:');
+    lines.push('//   FILE * f = fopen("/sd/log.txt", "a"); fprintf(f, "..."); fclose(f);');
+    lines.push('');
+  }
+
+  if (en('wifi')) {
+    const w = P.wifi;
+    lines.push('// ---- WiFi (Murata 1DX on the Giga mainboard) ----');
+    lines.push('// NOTE: move credentials to arduino_secrets.h before publishing.');
+    lines.push('static const char * WIFI_SSID     = ' + cstr(w.ssid) + ';');
+    lines.push('static const char * WIFI_PASSWORD = ' + cstr(w.password) + ';');
+    lines.push('');
+    lines.push('static void init_wifi(void) {');
+    lines.push('  Serial.print("Connecting to WiFi");');
+    lines.push('  int status = WL_IDLE_STATUS;');
+    lines.push('  int attempts = 0;');
+    lines.push('  while (status != WL_CONNECTED && attempts < 10) {');
+    lines.push('    Serial.print(".");');
+    lines.push('    status = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);');
+    lines.push('    delay(2000);');
+    lines.push('    attempts++;');
+    lines.push('  }');
+    lines.push('  if (status == WL_CONNECTED) {');
+    lines.push('    Serial.print(" connected. IP: ");');
+    lines.push('    Serial.println(WiFi.localIP());');
+    lines.push('  } else {');
+    lines.push('    Serial.println(" failed.");');
+    lines.push('  }');
+    lines.push('}');
+    lines.push('');
+  }
+
+  if (en('ble')) {
+    const b = P.ble;
+    lines.push('// ---- BLE (Bluetooth Low Energy peripheral) ----');
+    lines.push('static const char * BLE_LOCAL_NAME = ' + cstr(b.localName) + ';');
+    lines.push('');
+    lines.push('static void init_ble(void) {');
+    lines.push('  if (!BLE.begin()) {');
+    lines.push('    Serial.println("BLE init failed");');
+    lines.push('    return;');
+    lines.push('  }');
+    lines.push('  BLE.setLocalName(BLE_LOCAL_NAME);');
+    lines.push('  BLE.setDeviceName(BLE_LOCAL_NAME);');
+    lines.push('  BLE.advertise();');
+    lines.push('  Serial.print("BLE advertising as ");');
+    lines.push('  Serial.println(BLE_LOCAL_NAME);');
+    lines.push('}');
+    lines.push('');
+    lines.push('// Define your BLEService and BLECharacteristic objects above and');
+    lines.push('// add them with BLE.setAdvertisedService() / BLE.addService() before');
+    lines.push('// the BLE.advertise() call.');
+    lines.push('');
+  }
+
+  if (en('rgbLed')) {
+    const r = P.rgbLed;
+    const c = hexToRgb(r.defaultColor || '#000000');
+    lines.push('// ---- RGB LED (onboard, active low) ----');
+    lines.push('static const uint8_t RGB_DEFAULT_R = ' + c.r + ';');
+    lines.push('static const uint8_t RGB_DEFAULT_G = ' + c.g + ';');
+    lines.push('static const uint8_t RGB_DEFAULT_B = ' + c.b + ';');
+    lines.push('');
+    lines.push('// Drive any color. Each channel is 0-255.');
+    lines.push('static void set_rgb_led(uint8_t r, uint8_t g, uint8_t b) {');
+    lines.push('  analogWrite(LEDR, 255 - r);');
+    lines.push('  analogWrite(LEDG, 255 - g);');
+    lines.push('  analogWrite(LEDB, 255 - b);');
+    lines.push('}');
+    lines.push('');
+    lines.push('static void init_rgb_led(void) {');
+    lines.push('  pinMode(LEDR, OUTPUT);');
+    lines.push('  pinMode(LEDG, OUTPUT);');
+    lines.push('  pinMode(LEDB, OUTPUT);');
+    lines.push('  set_rgb_led(RGB_DEFAULT_R, RGB_DEFAULT_G, RGB_DEFAULT_B);');
+    lines.push('}');
+    lines.push('');
+  }
+
+  if (en('rtc')) {
+    lines.push('// ---- RTC (STM32H7 internal real-time clock) ----');
+    lines.push('// Backed by VBAT when the coin cell holder is populated.');
+    lines.push('static void init_rtc(void) {');
+    lines.push('  time_t now = time(NULL);');
+    lines.push('  Serial.print("RTC current time (epoch): ");');
+    lines.push('  Serial.println((long)now);');
+    lines.push('  // To set the clock, uncomment and provide a Unix epoch in seconds:');
+    lines.push('  // set_time(1750000000);');
+    lines.push('}');
+    lines.push('');
+    lines.push('// Read a formatted timestamp at any time (for labels, log entries, etc):');
+    lines.push('static String rtc_now_string(void) {');
+    lines.push('  time_t now = time(NULL);');
+    lines.push('  char buf[32];');
+    lines.push('  strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&now));');
+    lines.push('  return String(buf);');
+    lines.push('}');
+    lines.push('');
+  }
 }
 
 function genWidgetCode(w, screen) {
