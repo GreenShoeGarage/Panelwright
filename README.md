@@ -449,6 +449,33 @@ the tab sub-canvas codegen all work in both layouts.
 
 ---
 
+---
+
+## Auto-save
+
+The editor writes a snapshot of the live project to `localStorage` on
+every mutation (drag, drop, nudge, scrub, property edit, screen add,
+peripheral toggle), debounced 500ms. On startup, if a saved snapshot is
+present, it is restored automatically, and a small dismissable banner
+near the top of the workspace confirms the restore with the original
+time stamp. The banner has a **Start fresh** button that clears the
+saved snapshot and reloads the default seed project.
+
+Auto-save is independent of **Save .json**: the manual save downloads a
+file for archival and version control, while auto-save is the safety
+net for in-progress sessions. Browsers can and do discard background
+tabs to reclaim memory; when that tab is revisited, the editor reloads
+its HTML and would lose the JavaScript state that was holding the
+project. Auto-save means the project comes back instead.
+
+The storage key is `panelwright_autosave`, and the payload is a single
+JSON blob with the same shape used internally for undo. If `localStorage`
+is unavailable (private browsing, quota exceeded, file:// origin in
+some browser configurations) the editor falls back to running without
+the safety net; no error is shown.
+
+---
+
 ## Project files
 
 PANELWRIGHT can save and load its own layouts as JSON. Use **Save .json** in
@@ -551,30 +578,51 @@ real estate.
 
 ---
 
-## SVG export
+## Image export
 
-The **Export SVG** button in the toolbar opens a small modal with two
-options: **Scope** (current screen only, or all screens packed into a
-zip) and **Device shell** (plain canvas, best for embedding in
-documentation, or a product-photo style frame with the device shield
-banner). The download is one .svg file or one .zip of .svg files.
+The **Export** button in the toolbar opens a small modal with four
+options: **Scope** (current screen, or all screens packed into a zip),
+**Format**, **PNG scale** (PNG only), and **Device shell**.
 
-Each exported SVG is a complete standalone document. The screen content
-is wrapped in an SVG `<foreignObject>` with HTML inside and the widget
-CSS inlined, which means every browser renders the SVG pixel-perfect
-with the editor canvas. The same renderers that paint the editor produce
-the export, so a meter or chart or arc or any custom widget styling
-carries through.
+Three formats are available:
 
-PNG rasterization is intentionally not in this release. Drawing an SVG
-that contains foreignObject onto a canvas taints the canvas by browser
-security policy, and the tainted canvas refuses to export via `toBlob`
-or `toDataURL`. The proper path to PNG is a set of native SVG primitive
-renderers (rect, text, circle, path per widget type), which is its own
-focused round of work and is on the roadmap. In the meantime, the SVG
-output is a clean and durable artifact for design docs, design reviews,
-and code documentation, and any tool that renders SVG (browser save-as,
-Inkscape, ImageMagick, Pixelmator) can turn it into a PNG.
+**PNG (raster, 2x by default)** rasterizes the screen at the chosen
+scale: 1x produces a native 800x480 pixel image, 2x produces 1600x960
+(the default, retina-ready), 3x and 4x for print or oversized
+documentation. The rasterizer takes the native primitive SVG, loads it
+into an off-screen `<canvas>`, and exports the canvas as a PNG blob.
+
+**SVG, native primitives (universal)** emits `<rect>`, `<text>`,
+`<circle>`, `<path>`, `<line>`, `<polygon>`, and `<polyline>` elements
+that any SVG-aware tool can read. Inkscape, Illustrator, Affinity
+Designer, GIMP, Preview, ImageMagick, and any browser all render the
+result identically. File sizes are typically 1 to 5 KB per screen since
+there is no embedded CSS payload.
+
+**SVG, HTML in foreignObject (browser-only)** wraps the editor's HTML
+widget renderers in an SVG `<foreignObject>` element with the relevant
+page CSS inlined. This produces a pixel-perfect match with the editor
+canvas (every CSS gradient, drop shadow, and font carries through) but
+only browser engines render it. Most photo editors and vector tools
+show a blank canvas when opening a foreignObject SVG. Use this mode
+only when the SVG is going to be viewed in a browser context.
+
+PNG and Native SVG both go through the same primitive renderers, so a
+PNG export at 1x and a Native SVG export at 1x produce visually
+identical output (the SVG can be scaled losslessly afterward, the PNG
+cannot). For documentation that will be inserted into Markdown or a
+slide deck, PNG at 2x is usually right. For documentation that needs
+to scale arbitrarily, Native SVG.
+
+There is one visual cost to the native renderers (which both PNG and
+Native SVG use): certain CSS effects (linear gradients on slider knobs,
+subtle box shadows on the device shell, the exact LVGL UI font) are
+approximated rather than reproduced. The shapes, positions, sizes, and
+colors all match the editor; a generic sans-serif font stands in for
+the editor's UI font, and a few subtle gradient ramps become solid
+fills. For matching the editor exactly to the pixel, the foreignObject
+SVG mode remains available (and renders to PNG via any browser's
+"save as image" feature).
 
 ---
 

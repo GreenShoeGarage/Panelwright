@@ -259,22 +259,32 @@ button#btn-preview.active {
   padding: 16px; display: flex; align-items: center; justify-content: center;
   flex: 1;
 }
+/* Outer: takes the SCALED dimensions for layout purposes (set by JS).
+   This is what the flex parent sees and centers correctly. Background
+   and border live here so they always cover the visible viewport. */
 .preview-dock .preview-stage-inner {
   position: relative;
   background: #000;
   border: 1px solid var(--border);
   box-shadow: 0 0 0 1px var(--bg), 0 0 0 4px var(--panel-2);
+  overflow: hidden;
+}
+/* Inner: takes the NATIVE 800x480 (or 480x800) dimensions and uses
+   CSS transform to scale down to fit the outer. Widget renderers stay
+   pixel-correct at 1:1; only the transform changes their visual size. */
+.preview-dock .preview-stage-canvas {
+  position: absolute;
+  top: 0; left: 0;
   transform-origin: top left;
 }
-.preview-dock .preview-stage-inner .widget {
-  /* Preview widgets render the same as canvas widgets but without any
-     edit chrome (no selection ring, no resize handles, no drag cursor). */
+.preview-dock .preview-stage-canvas.theme-tradigital { background: #0e0a06; }
+.preview-dock .preview-stage-canvas .widget {
   cursor: default;
 }
-.preview-dock .preview-stage-inner .widget.clickable-nav {
+.preview-dock .preview-stage-canvas .widget.clickable-nav {
   cursor: pointer;
 }
-.preview-dock .preview-stage-inner .widget.clickable-nav:hover {
+.preview-dock .preview-stage-canvas .widget.clickable-nav:hover {
   outline: 1px solid var(--amber);
   outline-offset: -1px;
 }
@@ -1040,6 +1050,36 @@ button#btn-preview.active {
   display: none;
 }
 .ctx-menu.open { display: block; }
+
+/* Auto-save restored banner: top-center toast, dismissable */
+.autosave-banner {
+  position: fixed; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 9999;
+  background: var(--panel-2);
+  border: 1px solid var(--amber);
+  color: var(--ink);
+  padding: 8px 14px; border-radius: 4px;
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--mono); font-size: 11px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+}
+.autosave-banner .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--amber); display: inline-block;
+}
+.autosave-banner .msg { color: var(--ink); }
+.autosave-banner #autosave-when { color: var(--ink-dim); margin-left: 4px; }
+.autosave-banner .link {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--ink-dim); padding: 3px 8px; cursor: pointer;
+  font-family: inherit; font-size: 10px; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.autosave-banner .link:hover { color: var(--amber); border-color: var(--amber); }
+.autosave-banner .link.close {
+  border: none; font-size: 14px; padding: 0 4px;
+  text-transform: none;
+}
 .ctx-menu .ctx-item {
   padding: 6px 14px; font-size: 11px; color: var(--ink);
   cursor: pointer; display: flex; justify-content: space-between;
@@ -1220,7 +1260,7 @@ button#btn-preview.active {
     <span class="sep"></span>
     <button id="btn-hardware" title="Configure onboard peripherals (microphone, camera, SD, WiFi, BLE, LED, RTC)">Hardware</button>
     <button id="btn-preview" title="Toggle the docked live preview pane">Preview</button>
-    <button id="btn-export" title="Export the current screen as a standalone SVG">Export SVG</button>
+    <button id="btn-export" title="Export the current screen as PNG or SVG">Export</button>
     <button id="btn-code" class="primary">Generate Code</button>
     <button id="btn-viewer" title="Preview current project in the viewer (opens in a new tab)">Open Viewer \u2197</button>
     <button id="btn-help">?</button>
@@ -1277,7 +1317,9 @@ button#btn-preview.active {
       <span class="preview-screen-name" id="preview-screen-name"></span>
     </div>
     <div class="preview-stage">
-      <div class="preview-stage-inner" id="preview-stage-inner"></div>
+      <div class="preview-stage-inner" id="preview-stage-inner">
+        <div class="preview-stage-canvas" id="preview-stage-canvas"></div>
+      </div>
     </div>
     <div class="preview-footer">
       Mirrors the active screen at every edit. Click a goto button to navigate.
@@ -1404,6 +1446,15 @@ button#btn-preview.active {
 <!-- Right-click context menu (populated by JS) -->
 <div class="ctx-menu" id="ctx-menu"></div>
 
+<!-- Auto-save restored banner. Appears briefly when the editor loads a
+     restored project; user can dismiss or start fresh. -->
+<div class="autosave-banner" id="autosave-banner" style="display:none;">
+  <span class="dot"></span>
+  <span class="msg">Restored from auto-save <span id="autosave-when"></span></span>
+  <button class="link" id="autosave-fresh" title="Discard the restored project and start with the default seed">Start fresh</button>
+  <button class="link close" id="autosave-dismiss" title="Dismiss">&times;</button>
+</div>
+
 <!-- Validation issues modal -->
 <div class="hardware-modal" id="validate-modal">
   <div class="box" style="max-width: 640px;">
@@ -1424,7 +1475,7 @@ button#btn-preview.active {
 <div class="hardware-modal" id="export-modal">
   <div class="box" style="max-width: 480px;">
     <header>
-      <h2>Export SVG</h2>
+      <h2>Export image</h2>
       <button class="close" id="export-close">&times;</button>
     </header>
     <div style="padding: 16px;">
@@ -1436,6 +1487,23 @@ button#btn-preview.active {
         </select>
       </div>
       <div class="ph-row">
+        <label>Format</label>
+        <select id="export-format">
+          <option value="png">PNG (raster, 2x by default)</option>
+          <option value="native">SVG, native primitives (universal)</option>
+          <option value="foreignobject">SVG, HTML in foreignObject (browser-only)</option>
+        </select>
+      </div>
+      <div class="ph-row" id="export-scale-row">
+        <label>PNG scale</label>
+        <select id="export-scale">
+          <option value="1">1x (800 x 480)</option>
+          <option value="2" selected>2x (1600 x 960, retina)</option>
+          <option value="3">3x (2400 x 1440)</option>
+          <option value="4">4x (3200 x 1920)</option>
+        </select>
+      </div>
+      <div class="ph-row">
         <label>Device shell</label>
         <select id="export-shell">
           <option value="off">Plain canvas (default, best for docs)</option>
@@ -1443,9 +1511,9 @@ button#btn-preview.active {
         </select>
       </div>
       <div class="hardware-help" id="export-status" style="margin-top: 12px; color: var(--ink-dim); font-size: 10px; line-height: 1.5;">
-        SVG is exported via an HTML foreignObject so the widgets render in
-        any browser pixel-for-pixel with the editor canvas. PNG rasterization
-        is deferred until native SVG primitives land.
+        PNG and Native SVG both use the same primitive renderers and open
+        in any image-aware tool. The foreignObject SVG mode is pixel-perfect
+        in browsers but appears blank in most photo editors.
       </div>
     </div>
     <div class="actions">
@@ -3600,18 +3668,22 @@ function renderPreview() {
   const $nameLabel = document.getElementById('preview-screen-name');
   if ($nameLabel) $nameLabel.textContent = screen ? screen.name : '';
 
-  // Size the stage to the device dimensions, then scale to fit the dock
-  stage.innerHTML = '';
-  stage.style.width = dims.w + 'px';
-  stage.style.height = dims.h + 'px';
-  stage.classList.toggle('theme-tradigital', state.theme === 'tradigital');
-
-  // Compute scale to fit the available stage width. The dock content area
+  // Compute scale to fit the available dock width. The dock content area
   // is ~348px wide (380px minus padding); aim for that as the target.
   const targetWidth = Math.max(200, dock.clientWidth - 32);
   const scale = Math.min(1, targetWidth / dims.w);
-  stage.style.transform = 'scale(' + scale.toFixed(4) + ')';
-  stage.parentElement.style.minHeight = Math.ceil(dims.h * scale) + 'px';
+  // The outer wrapper takes the SCALED dimensions for layout purposes so
+  // the flex parent centers correctly and the dark background covers the
+  // full device viewport. The inner canvas stays at the native 800x480
+  // and uses transform to scale; widget renderers stay at 1:1 pixels.
+  const canvas = document.getElementById('preview-stage-canvas');
+  stage.style.width  = Math.ceil(dims.w * scale) + 'px';
+  stage.style.height = Math.ceil(dims.h * scale) + 'px';
+  canvas.innerHTML = '';
+  canvas.style.width  = dims.w + 'px';
+  canvas.style.height = dims.h + 'px';
+  canvas.style.transform = 'scale(' + scale.toFixed(4) + ')';
+  canvas.classList.toggle('theme-tradigital', state.theme === 'tradigital');
 
   if (!screen) return;
 
@@ -3619,7 +3691,7 @@ function renderPreview() {
   // their absolute on-canvas positions (tabContentRect + tab-local x/y)
   // so the preview matches what the device would show.
   for (const w of screen.widgets) {
-    renderPreviewWidget(w, stage, 0, 0);
+    renderPreviewWidget(w, canvas, 0, 0);
   }
 }
 
@@ -4653,6 +4725,88 @@ function pushHistory() {
   if (state.history.length > state.historyMax) state.history.shift();
   state.historyIdx = state.history.length - 1;
   markDirty();
+  scheduleAutosave();
+}
+
+// ----- Auto-save to localStorage --------------------------
+// Persist the current project to localStorage on every mutation so that
+// a browser tab discard, page refresh, or accidental close cannot
+// silently destroy in-progress work. Restored on startup with a small
+// dismissable banner. This is independent of manual Save .json: that
+// downloads a file, this just protects the live session.
+const AUTOSAVE_KEY = 'panelwright_autosave';
+const AUTOSAVE_VERSION = 1;
+let _autosaveTimer = null;
+
+function scheduleAutosave() {
+  // Debounce: rapid-fire pushHistory calls (nudges, scrubs, drags) all
+  // collapse into one localStorage write 500ms after the last change.
+  if (_autosaveTimer) clearTimeout(_autosaveTimer);
+  _autosaveTimer = setTimeout(saveAutosave, 500);
+}
+
+function saveAutosave() {
+  try {
+    const payload = JSON.stringify({
+      v: AUTOSAVE_VERSION,
+      savedAt: Date.now(),
+      snapshot: snapshot()
+    });
+    localStorage.setItem(AUTOSAVE_KEY, payload);
+  } catch (err) {
+    // localStorage disabled or quota exceeded; silently swallow. The
+    // dirty indicator still shows there are unsaved changes.
+  }
+}
+
+function loadAutosave() {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.v !== AUTOSAVE_VERSION) return null;
+    return parsed;
+  } catch (err) {
+    return null;
+  }
+}
+
+function clearAutosave() {
+  try { localStorage.removeItem(AUTOSAVE_KEY); } catch (err) {}
+}
+
+// Show the "Restored from auto-save" toast for ~12 seconds. The user
+// can dismiss it, or click Start fresh to discard the restore and
+// rebuild the default seed project.
+function showAutosaveRestoredBanner(savedAt) {
+  const banner = document.getElementById('autosave-banner');
+  if (!banner) return;
+  const when = document.getElementById('autosave-when');
+  if (when) when.textContent = '(' + formatAgo(savedAt) + ')';
+  banner.style.display = 'flex';
+  const dismiss = document.getElementById('autosave-dismiss');
+  const fresh = document.getElementById('autosave-fresh');
+  const hide = () => { banner.style.display = 'none'; };
+  dismiss.onclick = hide;
+  fresh.onclick = () => {
+    if (!confirm('Discard the restored project and reload with the default seed? Your manual .json saves are not affected.')) return;
+    clearAutosave();
+    location.reload();
+  };
+  // Auto-hide after 12 seconds; user can also dismiss explicitly
+  setTimeout(hide, 12000);
+}
+
+function formatAgo(timestamp) {
+  if (!timestamp) return 'just now';
+  const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return seconds + ' second' + (seconds === 1 ? '' : 's') + ' ago';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + ' minute' + (minutes === 1 ? '' : 's') + ' ago';
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours + ' hour' + (hours === 1 ? '' : 's') + ' ago';
+  const days = Math.floor(hours / 24);
+  return days + ' day' + (days === 1 ? '' : 's') + ' ago';
 }
 
 function markDirty() {
@@ -4952,9 +5106,18 @@ $validateModal.addEventListener('click', (e) => {
 // Export image modal
 const $exportModal = document.getElementById('export-modal');
 const $exportStatus = document.getElementById('export-status');
-const $exportDefaultMsg = 'SVG is exported via an HTML foreignObject so the widgets render in any browser pixel-for-pixel with the editor canvas. PNG rasterization is deferred until native SVG primitives land.';
+const $exportFormat = document.getElementById('export-format');
+const $exportScaleRow = document.getElementById('export-scale-row');
+const $exportDefaultMsg = 'PNG and Native SVG both use the same primitive renderers and open in any image-aware tool. The foreignObject SVG mode is pixel-perfect in browsers but appears blank in most photo editors.';
+
+function refreshExportControls() {
+  // Scale only matters for PNG
+  $exportScaleRow.style.display = $exportFormat.value === 'png' ? '' : 'none';
+}
+$exportFormat.addEventListener('change', refreshExportControls);
 
 document.getElementById('btn-export').addEventListener('click', () => {
+  refreshExportControls();
   $exportStatus.textContent = $exportDefaultMsg;
   $exportStatus.style.color = 'var(--ink-dim)';
   $exportModal.classList.add('open');
@@ -4970,6 +5133,8 @@ document.getElementById('export-download').addEventListener('click', async () =>
   const btn = document.getElementById('export-download');
   const opts = {
     scope: document.getElementById('export-scope').value,
+    format: document.getElementById('export-format').value,
+    scale: parseInt(document.getElementById('export-scale').value, 10) || 2,
     includeShell: document.getElementById('export-shell').value === 'on'
   };
   $exportStatus.textContent = 'Rendering...';
@@ -6279,6 +6444,651 @@ function crc32(bytes) {
 // download the SVG directly or rasterize it through Image+Canvas.toBlob
 // for PNG. Single-file friendly, no external dependencies.
 
+// ----- Native SVG primitive renderers ---------------------
+// One per widget type. Each returns an SVG string fragment positioned in
+// the screen's coordinate space via translate(w.x, w.y). Unlike the HTML
+// foreignObject path, the result is pure SVG that opens in Inkscape,
+// Illustrator, Affinity, GIMP, Preview, and any other tool that speaks
+// SVG. The cost: a few visual differences from the editor (no CSS
+// gradients on knobs, simpler glow effects, generic sans-serif font).
+//
+// Each renderer reads w.props for the styling values it needs and
+// returns SVG markup. Helpers below escape text and format colors so
+// every widget can stay concise.
+
+const SVG_FONT = '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif';
+const SVG_MONO = 'JetBrains Mono, Menlo, Consolas, monospace';
+
+function svgEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>'"]/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&apos;','"':'&quot;'
+  }[c]));
+}
+
+// Position text vertically so its visual middle sits at y. SVG text is
+// dominated by its baseline; this approximates centering for common
+// fonts using 0.35 of font-size as the descent offset.
+function svgTextY(yCenter, fontSize) {
+  return (yCenter + fontSize * 0.35).toFixed(2);
+}
+
+// Wrap a fragment in a translate group at the widget's screen position
+function svgGroup(w, inner, extraAttrs) {
+  return '<g transform="translate(' + w.x + ',' + w.y + ')"' +
+    (extraAttrs ? ' ' + extraAttrs : '') + '>' + inner + '</g>';
+}
+
+function svgLabel(w) {
+  const p = w.props || {};
+  const fs = p.fontSize || 14;
+  const align = p.align || 'left';
+  let anchor = 'start';
+  let tx = 0;
+  if (align === 'center') { anchor = 'middle'; tx = w.w / 2; }
+  else if (align === 'right') { anchor = 'end'; tx = w.w; }
+  // Split lines on \n; render each as its own <text>
+  const lines = String(p.text || '').split('\n');
+  const lineH = fs * 1.2;
+  const totalH = lines.length * lineH;
+  const startY = (w.h - totalH) / 2 + fs * 0.85;
+  const parts = lines.map((line, i) =>
+    '<text x="' + tx + '" y="' + (startY + i * lineH).toFixed(2) + '" ' +
+    'fill="' + svgEsc(p.color || '#d3d3d3') + '" ' +
+    'font-size="' + fs + '" font-family="' + SVG_FONT + '" ' +
+    'text-anchor="' + anchor + '">' + svgEsc(line) + '</text>'
+  ).join('');
+  return svgGroup(w, parts);
+}
+
+function svgButton(w) {
+  const p = w.props || {};
+  const bg = p.bgColor || '#2e6cda';
+  const fg = p.textColor || '#ffffff';
+  const r = p.radius != null ? p.radius : 5;
+  return svgGroup(w,
+    '<rect width="' + w.w + '" height="' + w.h + '" rx="' + r + '" ry="' + r +
+      '" fill="' + svgEsc(bg) + '"/>' +
+    '<text x="' + (w.w / 2) + '" y="' + svgTextY(w.h / 2, 14) + '" ' +
+      'fill="' + svgEsc(fg) + '" font-size="14" font-weight="600" ' +
+      'font-family="' + SVG_FONT + '" text-anchor="middle">' +
+      svgEsc(p.text || 'BUTTON') + '</text>'
+  );
+}
+
+function svgSlider(w) {
+  const p = w.props || {};
+  const min = p.min != null ? p.min : 0;
+  const max = p.max != null ? p.max : 100;
+  const val = p.value != null ? p.value : 50;
+  const pct = (max === min) ? 0 : (val - min) / (max - min);
+  const color = p.color || '#2e6cda';
+  const trackH = 6;
+  const knobR = Math.min(w.h / 2, 10);
+  const cy = w.h / 2;
+  const fillW = pct * w.w;
+  return svgGroup(w,
+    '<rect y="' + (cy - trackH / 2) + '" width="' + w.w + '" height="' + trackH +
+      '" rx="' + (trackH / 2) + '" fill="#3a3f4d"/>' +
+    '<rect y="' + (cy - trackH / 2) + '" width="' + fillW + '" height="' + trackH +
+      '" rx="' + (trackH / 2) + '" fill="' + svgEsc(color) + '"/>' +
+    '<circle cx="' + fillW + '" cy="' + cy + '" r="' + knobR + '" ' +
+      'fill="' + svgEsc(color) + '" stroke="#ffffff" stroke-width="1.5"/>'
+  );
+}
+
+function svgSwitch(w) {
+  const p = w.props || {};
+  const checked = !!p.checked;
+  const color = p.color || '#2e6cda';
+  const trackColor = checked ? color : '#3a3f4d';
+  const r = w.h / 2;
+  const knobR = r - 3;
+  const knobCx = checked ? (w.w - r) : r;
+  return svgGroup(w,
+    '<rect width="' + w.w + '" height="' + w.h + '" rx="' + r + '" ry="' + r +
+      '" fill="' + svgEsc(trackColor) + '"/>' +
+    '<circle cx="' + knobCx + '" cy="' + r + '" r="' + knobR + '" fill="#ffffff"/>'
+  );
+}
+
+function svgCheckbox(w) {
+  const p = w.props || {};
+  const checked = !!p.checked;
+  const color = p.color || '#2e6cda';
+  const text = p.text || '';
+  const boxSize = Math.min(w.h, 24);
+  const boxY = (w.h - boxSize) / 2;
+  let inner =
+    '<rect x="0" y="' + boxY + '" width="' + boxSize + '" height="' + boxSize +
+      '" rx="3" ry="3" fill="' + (checked ? svgEsc(color) : '#1d2027') +
+      '" stroke="' + (checked ? svgEsc(color) : '#3a3f4d') + '" stroke-width="2"/>';
+  if (checked) {
+    // Check mark path
+    const cx = boxSize / 2, cy = boxY + boxSize / 2;
+    const s = boxSize * 0.25;
+    inner +=
+      '<polyline points="' + (cx - s) + ',' + cy + ' ' +
+      (cx - s * 0.25) + ',' + (cy + s * 0.6) + ' ' +
+      (cx + s) + ',' + (cy - s * 0.5) +
+      '" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+  if (text) {
+    inner +=
+      '<text x="' + (boxSize + 8) + '" y="' + svgTextY(w.h / 2, 14) + '" ' +
+      'fill="#d3d3d3" font-size="14" font-family="' + SVG_FONT + '">' + svgEsc(text) + '</text>';
+  }
+  return svgGroup(w, inner);
+}
+
+function svgBar(w) {
+  const p = w.props || {};
+  const min = p.min != null ? p.min : 0;
+  const max = p.max != null ? p.max : 100;
+  const val = p.value != null ? p.value : 60;
+  const pct = (max === min) ? 0 : (val - min) / (max - min);
+  const color = p.color || '#2e6cda';
+  const r = Math.min(w.h / 2, 6);
+  return svgGroup(w,
+    '<rect width="' + w.w + '" height="' + w.h + '" rx="' + r + '" ry="' + r +
+      '" fill="#3a3f4d"/>' +
+    '<rect width="' + (pct * w.w) + '" height="' + w.h + '" rx="' + r + '" ry="' + r +
+      '" fill="' + svgEsc(color) + '"/>'
+  );
+}
+
+// SVG arc path from (a0, a1) sweep around a center, returning d= attribute
+function svgArcPath(cx, cy, r, a0, a1) {
+  const start = a0 * Math.PI / 180, end = a1 * Math.PI / 180;
+  const x0 = cx + r * Math.cos(start), y0 = cy + r * Math.sin(start);
+  const x1 = cx + r * Math.cos(end),   y1 = cy + r * Math.sin(end);
+  let sweep = a1 - a0;
+  while (sweep < 0) sweep += 360;
+  while (sweep > 360) sweep -= 360;
+  const largeArc = sweep > 180 ? 1 : 0;
+  return 'M ' + x0.toFixed(2) + ' ' + y0.toFixed(2) +
+    ' A ' + r + ' ' + r + ' 0 ' + largeArc + ' 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2);
+}
+
+function svgArc(w) {
+  const p = w.props || {};
+  const min = p.min != null ? p.min : 0;
+  const max = p.max != null ? p.max : 100;
+  const val = p.value != null ? p.value : 40;
+  const color = p.color || '#2e6cda';
+  const cx = w.w / 2, cy = w.h / 2;
+  const radius = Math.min(cx, cy) - 6;
+  const stroke = 8;
+  // Default LVGL arc: 135° to 45° clockwise (270° sweep)
+  const a0 = 135, a1 = 45; // 135 → 405 = 270° sweep
+  const sweep = 270;
+  const pct = (max === min) ? 0 : (val - min) / (max - min);
+  const valAngle = a0 + pct * sweep;
+  return svgGroup(w,
+    '<path d="' + svgArcPath(cx, cy, radius, a0, a0 + sweep) + '" ' +
+      'fill="none" stroke="#3a3f4d" stroke-width="' + stroke + '" stroke-linecap="round"/>' +
+    '<path d="' + svgArcPath(cx, cy, radius, a0, valAngle) + '" ' +
+      'fill="none" stroke="' + svgEsc(color) + '" stroke-width="' + stroke + '" stroke-linecap="round"/>' +
+    '<circle cx="' + (cx + radius * Math.cos(valAngle * Math.PI / 180)).toFixed(2) + '" ' +
+      'cy="' + (cy + radius * Math.sin(valAngle * Math.PI / 180)).toFixed(2) + '" ' +
+      'r="' + (stroke / 2 + 2) + '" fill="' + svgEsc(lighten(color, 0.2)) + '"/>'
+  );
+}
+
+function svgMeter(w) {
+  const p = w.props || {};
+  const min = p.min != null ? p.min : 0;
+  const max = p.max != null ? p.max : 100;
+  const val = p.value != null ? p.value : 70;
+  const color = p.color || '#2e6cda';
+  const needleColor = p.needleColor || '#ff8050';
+  const a0 = p.angleStart != null ? p.angleStart : 135;
+  const a1 = p.angleEnd   != null ? p.angleEnd   : 45;
+  const ticks = p.majorTicks || 8;
+  const cx = w.w / 2, cy = w.h / 2;
+  const radius = Math.min(cx, cy) - 6;
+  let sweep = a1 - a0;
+  while (sweep <= 0) sweep += 360;
+  const pct = (max === min) ? 0 : (val - min) / (max - min);
+  const valAngle = a0 + pct * sweep;
+  let inner =
+    '<path d="' + svgArcPath(cx, cy, radius, a0, a0 + sweep) + '" ' +
+      'fill="none" stroke="#3a3f4d" stroke-width="6"/>' +
+    '<path d="' + svgArcPath(cx, cy, radius, a0, valAngle) + '" ' +
+      'fill="none" stroke="' + svgEsc(color) + '" stroke-width="6"/>';
+  // Tick marks
+  for (let i = 0; i < ticks; i++) {
+    const ang = (a0 + sweep * i / (ticks - 1)) * Math.PI / 180;
+    const x1 = cx + (radius - 10) * Math.cos(ang);
+    const y1 = cy + (radius - 10) * Math.sin(ang);
+    const x2 = cx + (radius - 2)  * Math.cos(ang);
+    const y2 = cy + (radius - 2)  * Math.sin(ang);
+    inner += '<line x1="' + x1.toFixed(2) + '" y1="' + y1.toFixed(2) +
+      '" x2="' + x2.toFixed(2) + '" y2="' + y2.toFixed(2) +
+      '" stroke="#8a8579" stroke-width="2"/>';
+  }
+  // Needle
+  const nAng = valAngle * Math.PI / 180;
+  const nx = cx + (radius - 14) * Math.cos(nAng);
+  const ny = cy + (radius - 14) * Math.sin(nAng);
+  inner += '<line x1="' + cx + '" y1="' + cy + '" x2="' + nx.toFixed(2) + '" y2="' + ny.toFixed(2) +
+    '" stroke="' + svgEsc(needleColor) + '" stroke-width="3" stroke-linecap="round"/>';
+  inner += '<circle cx="' + cx + '" cy="' + cy + '" r="5" fill="' + svgEsc(needleColor) + '"/>';
+  return svgGroup(w, inner);
+}
+
+function svgDropdown(w) {
+  const p = w.props || {};
+  const options = String(p.options || '').split('\n').filter(s => s.length);
+  const sel = p.selected != null ? Math.max(0, Math.min(options.length - 1, p.selected | 0)) : 0;
+  const text = options[sel] || '';
+  return svgGroup(w,
+    '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
+      'fill="#1d2027" stroke="#3a3f4d" stroke-width="1"/>' +
+    '<text x="10" y="' + svgTextY(w.h / 2, 14) + '" fill="#d3d3d3" ' +
+      'font-size="14" font-family="' + SVG_FONT + '">' + svgEsc(text) + '</text>' +
+    '<polygon points="' + (w.w - 16) + ',' + (w.h / 2 - 4) + ' ' +
+      (w.w - 8) + ',' + (w.h / 2 - 4) + ' ' +
+      (w.w - 12) + ',' + (w.h / 2 + 4) + '" fill="#d3d3d3"/>'
+  );
+}
+
+function svgTextarea(w) {
+  const p = w.props || {};
+  const text = p.text || '';
+  const placeholder = p.placeholder || '';
+  const display = text || placeholder;
+  const color = text ? '#d3d3d3' : '#585348';
+  // Multi-line: split on newlines, render each line
+  const lines = display.split('\n');
+  const lineH = 18;
+  let inner = '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
+    'fill="#1d2027" stroke="#3a3f4d" stroke-width="1"/>';
+  const startY = 8 + 14;
+  for (let i = 0; i < lines.length; i++) {
+    const y = startY + i * lineH;
+    if (y > w.h - 8) break;
+    inner += '<text x="10" y="' + y + '" fill="' + color + '" ' +
+      'font-size="14" font-family="' + SVG_FONT + '">' + svgEsc(lines[i]) + '</text>';
+  }
+  return svgGroup(w, inner);
+}
+
+function svgRoller(w) {
+  const p = w.props || {};
+  const options = String(p.options || '').split('\n').filter(s => s.length);
+  const sel = p.selected != null ? Math.max(0, Math.min(options.length - 1, p.selected | 0)) : 0;
+  // Show 3 lines vertically with selected centered
+  const rowH = w.h / 3;
+  let inner =
+    '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
+      'fill="#1d2027" stroke="#3a3f4d" stroke-width="1"/>' +
+    '<rect y="' + rowH + '" width="' + w.w + '" height="' + rowH +
+      '" fill="#2a2e38"/>';
+  for (let i = -1; i <= 1; i++) {
+    const idx = sel + i;
+    if (idx < 0 || idx >= options.length) continue;
+    const y = rowH * (1 + i) + rowH / 2;
+    const col = i === 0 ? '#d4a574' : '#8a8579';
+    inner += '<text x="' + (w.w / 2) + '" y="' + svgTextY(y, 14) + '" ' +
+      'fill="' + col + '" font-size="14" font-family="' + SVG_FONT + '" ' +
+      'text-anchor="middle">' + svgEsc(options[idx]) + '</text>';
+  }
+  return svgGroup(w, inner);
+}
+
+function svgList(w) {
+  const items = String((w.props && w.props.items) || '').split('\n');
+  let inner =
+    '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
+      'fill="#1d2027" stroke="#3a3f4d" stroke-width="1"/>';
+  const rowH = 32;
+  for (let i = 0; i < items.length; i++) {
+    const y = i * rowH;
+    if (y >= w.h - 4) break;
+    const it = items[i];
+    if (it.startsWith('#')) {
+      inner += '<rect y="' + y + '" width="' + w.w + '" height="' + rowH +
+        '" fill="#0a0a0a"/>';
+      inner += '<text x="12" y="' + svgTextY(y + rowH / 2, 11) + '" ' +
+        'fill="#8a8579" font-size="11" font-family="' + SVG_FONT +
+        '" font-weight="600" letter-spacing="0.08em">' +
+        svgEsc(it.substring(1).trim().toUpperCase()) + '</text>';
+    } else {
+      if (i > 0) inner += '<line x1="0" y1="' + y + '" x2="' + w.w + '" y2="' + y +
+        '" stroke="#2a2e38"/>';
+      inner += '<text x="12" y="' + svgTextY(y + rowH / 2, 14) + '" ' +
+        'fill="#d3d3d3" font-size="14" font-family="' + SVG_FONT + '">' +
+        svgEsc(it) + '</text>';
+    }
+  }
+  return svgGroup(w, inner);
+}
+
+function svgChart(w) {
+  const p = w.props || {};
+  const type = p.chartType || 'line';
+  const pts = Math.max(2, p.pointCount || 16);
+  const series = Math.max(1, Math.min(3, p.seriesCount || 1));
+  const colors = [p.color1 || '#2e6cda', p.color2 || '#d4a574', p.color3 || '#6fb5a8'];
+  const padding = 8;
+  const plotW = w.w - padding * 2;
+  const plotH = w.h - padding * 2;
+  let inner =
+    '<rect width="' + w.w + '" height="' + w.h + '" rx="3" ry="3" ' +
+      'fill="#0a0a0a" stroke="#3a3f4d" stroke-width="1"/>';
+  // Grid lines (4 horizontal)
+  for (let i = 1; i < 4; i++) {
+    const y = padding + (plotH * i / 4);
+    inner += '<line x1="' + padding + '" y1="' + y + '" x2="' + (padding + plotW) +
+      '" y2="' + y + '" stroke="#2a2e38" stroke-dasharray="2,3"/>';
+  }
+  // Generate deterministic-looking series data
+  for (let s = 0; s < series; s++) {
+    const c = colors[s];
+    const phase = s * 1.7;
+    const values = [];
+    for (let i = 0; i < pts; i++) {
+      const t = i / (pts - 1);
+      const v = 0.5 + 0.4 * Math.sin(t * Math.PI * 2 + phase) * (1 - 0.5 * s);
+      values.push(v);
+    }
+    if (type === 'line') {
+      const points = values.map((v, i) =>
+        (padding + (plotW * i / (pts - 1))).toFixed(2) + ',' +
+        (padding + plotH * (1 - v)).toFixed(2)).join(' ');
+      inner += '<polyline points="' + points + '" fill="none" ' +
+        'stroke="' + svgEsc(c) + '" stroke-width="2"/>';
+    } else if (type === 'bar') {
+      const barW = plotW / pts * 0.7;
+      values.forEach((v, i) => {
+        const x = padding + (plotW * i / pts) + (plotW / pts - barW) / 2;
+        const y = padding + plotH * (1 - v);
+        inner += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) +
+          '" width="' + barW.toFixed(2) + '" height="' + (plotH * v).toFixed(2) +
+          '" fill="' + svgEsc(c) + '"/>';
+      });
+    } else {
+      // scatter
+      values.forEach((v, i) => {
+        const x = padding + (plotW * i / (pts - 1));
+        const y = padding + plotH * (1 - v);
+        inner += '<circle cx="' + x.toFixed(2) + '" cy="' + y.toFixed(2) +
+          '" r="3" fill="' + svgEsc(c) + '"/>';
+      });
+    }
+  }
+  return svgGroup(w, inner);
+}
+
+function svgLed(w) {
+  const p = w.props || {};
+  const color = p.color || '#ff6040';
+  const brightness = (p.brightness != null ? p.brightness : 220) / 255;
+  const on = p.on !== false;
+  const cx = w.w / 2, cy = w.h / 2;
+  const r = Math.min(cx, cy);
+  const fill = on ? color : darken(color, 0.6);
+  // Outer glow ring (faux glow via stroke)
+  let inner = '';
+  if (on) {
+    inner += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" ' +
+      'fill="' + svgEsc(color) + '" opacity="' + (brightness * 0.3) + '"/>';
+  }
+  inner += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r * 0.75) + '" ' +
+    'fill="' + svgEsc(fill) + '"/>';
+  if (on) {
+    // Highlight specular
+    inner += '<circle cx="' + (cx - r * 0.25) + '" cy="' + (cy - r * 0.25) +
+      '" r="' + (r * 0.2) + '" fill="' + svgEsc(lighten(color, 0.4)) +
+      '" opacity="0.7"/>';
+  }
+  return svgGroup(w, inner);
+}
+
+// Map of LVGL symbol names → Unicode characters that approximate them
+const ICON_GLYPHS = {
+  wifi: '\u2706', bluetooth: '\u260A', battery: '\u25AD', settings: '\u2699',
+  home: '\u2302', power: '\u23FB', play: '\u25B6', pause: '\u25AE\u25AE',
+  stop: '\u25A0', refresh: '\u21BB', save: '\u2913', folder: '\u25C7',
+  edit: '\u270E', trash: '\u2716', plus: '+', minus: '-',
+  up: '\u25B2', down: '\u25BC', left: '\u25C0', right: '\u25B6',
+  ok: '\u2713', close: '\u2715', warning: '\u26A0', info: '\u24D8',
+  search: '\u2315', heart: '\u2665', star: '\u2605', bell: '\u237E',
+  download: '\u2913', upload: '\u2912', cloud: '\u2601', sun: '\u2600'
+};
+
+function svgIcon(w) {
+  const p = w.props || {};
+  const symbol = p.symbol || 'wifi';
+  const glyph = ICON_GLYPHS[symbol] || '\u25CF';
+  const fs = p.fontSize || 24;
+  return svgGroup(w,
+    '<text x="' + (w.w / 2) + '" y="' + svgTextY(w.h / 2, fs) + '" ' +
+      'fill="' + svgEsc(p.color || '#d3d3d3') + '" font-size="' + fs + '" ' +
+      'font-family="' + SVG_FONT + '" text-anchor="middle">' + svgEsc(glyph) + '</text>'
+  );
+}
+
+function svgKeyboard(w) {
+  // Schematic representation: a grid of key boxes labeled with the row's chars
+  const rows = {
+    text_lower: ['qwertyuiop', 'asdfghjkl', 'zxcvbnm', ' '],
+    text_upper: ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM', ' '],
+    special:    ['!@#$%^&*()', '-_=+[]{}', '\\|;:\'"', ',.<>/?'],
+    number:     ['123', '456', '789', '0.']
+  };
+  const mode = (w.props && w.props.mode) || 'text_lower';
+  const layout = rows[mode] || rows.text_lower;
+  const rowH = w.h / layout.length;
+  let inner =
+    '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
+      'fill="#16181d" stroke="#3a3f4d" stroke-width="1"/>';
+  for (let r = 0; r < layout.length; r++) {
+    const row = layout[r];
+    const keyW = w.w / row.length - 4;
+    for (let c = 0; c < row.length; c++) {
+      const x = c * (w.w / row.length) + 2;
+      const y = r * rowH + 2;
+      inner += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) +
+        '" width="' + keyW.toFixed(2) + '" height="' + (rowH - 4).toFixed(2) +
+        '" rx="3" ry="3" fill="#2a2e38" stroke="#3a3f4d"/>';
+      const ch = row[c];
+      if (ch && ch !== ' ') {
+        inner += '<text x="' + (x + keyW / 2).toFixed(2) + '" y="' +
+          svgTextY(y + (rowH - 4) / 2, 12) + '" fill="#d3d3d3" ' +
+          'font-size="12" font-family="' + SVG_FONT + '" text-anchor="middle">' +
+          svgEsc(ch) + '</text>';
+      }
+    }
+  }
+  return svgGroup(w, inner);
+}
+
+function svgCalendar(w) {
+  const p = w.props || {};
+  const year = p.year || 2026;
+  const month = p.month || 6;     // 1..12
+  const selDay = p.day || 1;
+  const headerH = 28;
+  const weekH = 18;
+  const gridY = headerH + weekH;
+  const gridH = w.h - gridY;
+  const cellW = w.w / 7;
+  // Compute first weekday of month (0 = Sunday)
+  const first = new Date(year, month - 1, 1).getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const monthNames = ['January','February','March','April','May','June',
+                      'July','August','September','October','November','December'];
+  const dayLabels = ['S','M','T','W','T','F','S'];
+  let inner =
+    '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
+      'fill="#1d2027" stroke="#3a3f4d" stroke-width="1"/>' +
+    '<text x="' + (w.w / 2) + '" y="' + svgTextY(headerH / 2, 14) + '" ' +
+      'fill="#d4a574" font-size="14" font-weight="600" ' +
+      'font-family="' + SVG_FONT + '" text-anchor="middle">' +
+      svgEsc(monthNames[month - 1] + ' ' + year) + '</text>';
+  for (let i = 0; i < 7; i++) {
+    inner += '<text x="' + (i * cellW + cellW / 2).toFixed(2) + '" y="' +
+      svgTextY(headerH + weekH / 2, 10) + '" fill="#8a8579" font-size="10" ' +
+      'font-family="' + SVG_FONT + '" text-anchor="middle">' + dayLabels[i] + '</text>';
+  }
+  const rows = Math.ceil((first + daysInMonth) / 7);
+  const cellH = gridH / rows;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const idx = first + d - 1;
+    const col = idx % 7, row = Math.floor(idx / 7);
+    const cx = col * cellW + cellW / 2;
+    const cy = gridY + row * cellH + cellH / 2;
+    if (d === selDay) {
+      inner += '<circle cx="' + cx.toFixed(2) + '" cy="' + cy.toFixed(2) +
+        '" r="' + (Math.min(cellW, cellH) / 2 - 3).toFixed(2) +
+        '" fill="#d4a574"/>';
+      inner += '<text x="' + cx.toFixed(2) + '" y="' + svgTextY(cy, 11) +
+        '" fill="#0e0f12" font-size="11" font-weight="600" ' +
+        'font-family="' + SVG_FONT + '" text-anchor="middle">' + d + '</text>';
+    } else {
+      inner += '<text x="' + cx.toFixed(2) + '" y="' + svgTextY(cy, 11) +
+        '" fill="#d3d3d3" font-size="11" font-family="' + SVG_FONT +
+        '" text-anchor="middle">' + d + '</text>';
+    }
+  }
+  return svgGroup(w, inner);
+}
+
+// Tabview is recursive: it renders the container shell and tab bar,
+// then defers child rendering to the caller (buildScreenSvg) which
+// recurses into the active tab's widgets at the right offset.
+function svgTabview(w, opts) {
+  const p = w.props || {};
+  const tabs = Array.isArray(p.tabs) ? p.tabs : [];
+  const activeTab = Math.max(0, Math.min(tabs.length - 1, p.activeTab || 0));
+  const tabSize = p.tabSize || 50;
+  const pos = p.tabPosition || 'top';
+  let inner = '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
+    'fill="#16181d" stroke="#3a3f4d" stroke-width="1"/>';
+  // Tab bar
+  if (pos === 'top' || pos === 'bottom') {
+    const barY = pos === 'top' ? 0 : (w.h - tabSize);
+    inner += '<rect y="' + barY + '" width="' + w.w + '" height="' + tabSize +
+      '" fill="#0a0a0a"/>';
+    const tabW = tabs.length ? (w.w / tabs.length) : 0;
+    tabs.forEach((tab, i) => {
+      const tx = i * tabW;
+      if (i === activeTab) {
+        inner += '<rect x="' + tx + '" y="' + barY + '" width="' + tabW +
+          '" height="' + tabSize + '" fill="#1d2027"/>';
+        inner += '<rect x="' + tx + '" y="' + (pos === 'top' ? barY + tabSize - 2 : barY) +
+          '" width="' + tabW + '" height="2" fill="#d4a574"/>';
+      }
+      inner += '<text x="' + (tx + tabW / 2).toFixed(2) + '" y="' +
+        svgTextY(barY + tabSize / 2, 12) + '" fill="' +
+        (i === activeTab ? '#d4a574' : '#8a8579') + '" font-size="12" ' +
+        'font-family="' + SVG_FONT + '" text-anchor="middle">' +
+        svgEsc(tab.name || ('Tab ' + (i + 1))) + '</text>';
+    });
+  } else {
+    // Left or right vertical tabs
+    const barX = pos === 'left' ? 0 : (w.w - tabSize);
+    inner += '<rect x="' + barX + '" width="' + tabSize + '" height="' + w.h +
+      '" fill="#0a0a0a"/>';
+    const tabH = tabs.length ? (w.h / tabs.length) : 0;
+    tabs.forEach((tab, i) => {
+      const ty = i * tabH;
+      if (i === activeTab) {
+        inner += '<rect x="' + barX + '" y="' + ty + '" width="' + tabSize +
+          '" height="' + tabH + '" fill="#1d2027"/>';
+      }
+      inner += '<text x="' + (barX + tabSize / 2).toFixed(2) + '" y="' +
+        svgTextY(ty + tabH / 2, 12) + '" fill="' +
+        (i === activeTab ? '#d4a574' : '#8a8579') + '" font-size="12" ' +
+        'font-family="' + SVG_FONT + '" text-anchor="middle">' +
+        svgEsc(tab.name || ('Tab ' + (i + 1))) + '</text>';
+    });
+  }
+  return svgGroup(w, inner);
+}
+
+// Fallback for unknown / unimplemented widget types (e.g. "custom").
+// Renders a dashed bounding box with the widget's type label.
+function svgFallback(w) {
+  return svgGroup(w,
+    '<rect width="' + w.w + '" height="' + w.h +
+      '" fill="none" stroke="#585348" stroke-width="1" stroke-dasharray="4,3"/>' +
+    '<text x="' + (w.w / 2) + '" y="' + svgTextY(w.h / 2, 11) + '" ' +
+      'fill="#585348" font-size="11" font-family="' + SVG_MONO +
+      '" text-anchor="middle">' + svgEsc(w.type) + '</text>'
+  );
+}
+
+const WIDGET_SVG_RENDERERS = {
+  label: svgLabel, button: svgButton, slider: svgSlider, switch: svgSwitch,
+  checkbox: svgCheckbox, bar: svgBar, arc: svgArc, meter: svgMeter,
+  dropdown: svgDropdown, textarea: svgTextarea, roller: svgRoller, list: svgList,
+  chart: svgChart, led: svgLed, icon: svgIcon, keyboard: svgKeyboard,
+  calendar: svgCalendar, tabview: svgTabview
+};
+
+// Build a native-SVG-primitive string for one screen. Returns the
+// <svg>...</svg> markup that opens in any SVG-aware tool, not just
+// browsers. Each widget gets its own translate group; tabview children
+// recurse at the parent tabview's tabContentRect offset.
+function buildScreenSvgNative(screen, opts) {
+  opts = opts || {};
+  const dims = getCanvasDims();
+  const hostShell = opts.includeShell;
+  const shellPad = hostShell ? 14 : 0;
+  const bannerH  = hostShell ? 26 : 0;
+  const svgW = dims.w + shellPad * 2;
+  const svgH = dims.h + shellPad * 2 + bannerH;
+  const bg = state.theme === 'tradigital' ? '#0e0a06' : '#0a0a0a';
+
+  function renderArr(arr, ox, oy) {
+    let out = '';
+    for (const w of arr) {
+      const renderer = WIDGET_SVG_RENDERERS[w.type] || svgFallback;
+      // Each renderer assumes the widget is at (w.x, w.y); to apply
+      // a parent offset, wrap the whole thing in another translate group.
+      const widgetSvg = renderer(w, opts);
+      if (ox || oy) {
+        out += '<g transform="translate(' + ox + ',' + oy + ')">' + widgetSvg + '</g>';
+      } else {
+        out += widgetSvg;
+      }
+      if (w.type === 'tabview' && Array.isArray(w.props.tabs) && w.props.tabs.length) {
+        const tabIdx = Math.max(0, Math.min(w.props.tabs.length - 1, w.props.activeTab || 0));
+        const tab = w.props.tabs[tabIdx];
+        if (tab && Array.isArray(tab.widgets) && tab.widgets.length) {
+          const content = tabContentRect(w);
+          out += renderArr(tab.widgets, ox + content.x, oy + content.y);
+        }
+      }
+    }
+    return out;
+  }
+
+  let inner = '<rect width="' + dims.w + '" height="' + dims.h + '" fill="' + bg + '"/>' +
+              renderArr(screen.widgets, 0, 0);
+  let shellMarkup = '';
+  if (hostShell) {
+    shellMarkup =
+      '<rect width="' + svgW + '" height="' + svgH +
+        '" fill="#050505"/>' +
+      '<text x="0" y="' + (bannerH - 8) + '" fill="#585348" font-size="9" ' +
+        'font-family="' + SVG_MONO + '" letter-spacing="2">' +
+        svgEsc('ARDUINO GIGA DISPLAY SHIELD // ' + dims.w + ' x ' + dims.h +
+               ' // SCREEN: ' + (screen.name || '').toUpperCase()) +
+      '</text>' +
+      '<g transform="translate(' + shellPad + ',' + (bannerH + shellPad) + ')">' +
+        inner + '</g>';
+  } else {
+    shellMarkup = inner;
+  }
+
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + svgW +
+    '" height="' + svgH + '" viewBox="0 0 ' + svgW + ' ' + svgH + '">' +
+    shellMarkup + '</svg>';
+}
+
 // Build a self-contained HTML fragment representing one screen as the
 // device would show it. Returns an HTMLDivElement positioned at 0,0 with
 // the canvas dimensions.
@@ -6399,39 +7209,90 @@ function screenToSvgString(screen, opts) {
     '</svg>';
 }
 
-// Top-level export entry point. opts: { scope, includeShell }
-// PNG rasterization is intentionally not supported: drawing an SVG that
-// contains a foreignObject onto a canvas taints the canvas, and browsers
-// refuse to export tainted canvases via toBlob or toDataURL. A native
-// SVG renderer set would unlock PNG export and is planned for a future
-// round. For now SVG output is fully sufficient for design documentation,
-// and any user who needs a PNG can convert the SVG with their tool of
-// choice (browser save-as, Inkscape, ImageMagick).
+// Rasterize a native-primitive SVG string to a PNG Blob at the given
+// scale. This works because native SVG primitives do NOT taint a canvas
+// when drawn via drawImage. The foreignObject mode would taint, so this
+// function should only be called with the output of buildScreenSvgNative.
+function svgToPngBlob(svgText, scale) {
+  return new Promise((resolve, reject) => {
+    const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    const wMatch = /<svg[^>]*width="(\d+)"/.exec(svgText);
+    const hMatch = /<svg[^>]*height="(\d+)"/.exec(svgText);
+    const w = wMatch ? parseInt(wMatch[1], 10) : 800;
+    const h = hMatch ? parseInt(hMatch[1], 10) : 480;
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(w * scale);
+        canvas.height = Math.round(h * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(blob => {
+          if (blob) resolve(blob);
+          else reject(new Error('canvas.toBlob returned null'));
+        }, 'image/png');
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('SVG failed to load as image'));
+    };
+    img.src = url;
+  });
+}
+
+// Top-level export entry point. opts: { scope, format, scale, includeShell }
+// format: 'png' (raster via native-SVG rasterization),
+//         'native' (native SVG primitives, universal),
+//         'foreignobject' (HTML inside SVG foreignObject, browser-only).
 async function performImageExport(opts) {
-  const { scope, includeShell } = opts;
+  const { scope, format, scale, includeShell } = opts;
   const screens = scope === 'all' ? state.screens : [curScreen()].filter(Boolean);
   if (!screens.length) return;
   const savedActiveId = state.activeScreenId;
   const savedScope = state.editScope;
   state.editScope = null;
   const baseName = sanitizeSketchName(state.meta.title || 'panelwright_screen');
+  const isPng = format === 'png';
+  // PNG always rasterizes from the native primitive SVG; foreignObject SVG
+  // would taint the canvas and break toBlob, so it is restricted to direct
+  // .svg download only.
+  const buildSvg = (format === 'foreignobject') ? screenToSvgString : buildScreenSvgNative;
+  const ext = isPng ? 'png' : 'svg';
 
   try {
     if (screens.length === 1) {
-      const svgText = screenToSvgString(screens[0], { includeShell });
-      const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
-      downloadBlob(blob, baseName + '_' + screens[0].name + '.svg');
+      const svgText = buildSvg(screens[0], { includeShell });
+      const fileName = baseName + '_' + screens[0].name + '.' + ext;
+      if (isPng) {
+        const blob = await svgToPngBlob(svgText, scale || 2);
+        downloadBlob(blob, fileName);
+      } else {
+        const blob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+        downloadBlob(blob, fileName);
+      }
     } else {
       // Multi-screen: pack into a zip
       const enc = new TextEncoder();
       const files = [];
       for (const screen of screens) {
         state.activeScreenId = screen.id;
-        const svgText = screenToSvgString(screen, { includeShell });
-        files.push({
-          name: baseName + '/' + screen.name + '.svg',
-          data: enc.encode(svgText)
-        });
+        const svgText = buildSvg(screen, { includeShell });
+        const inner = baseName + '/' + screen.name + '.' + ext;
+        if (isPng) {
+          const blob = await svgToPngBlob(svgText, scale || 2);
+          files.push({ name: inner,
+                       data: new Uint8Array(await blob.arrayBuffer()) });
+        } else {
+          files.push({ name: inner, data: enc.encode(svgText) });
+        }
       }
       const zipBytes = buildZip(files);
       downloadBlob(new Blob([zipBytes], { type: 'application/zip' }),
@@ -6706,12 +7567,31 @@ addWidget('arc', 600, 140);
 
 clearSelection();
 applyOrientation();
+
+// Restore autosave if present. This must run after the seed project is
+// in place, because the autosave restore replaces the state wholesale
+// via restore(snapshot). If no autosave exists, fall through to the seed
+// we just built.
+let _restoredFromAutosave = null;
+try {
+  const parsed = loadAutosave();
+  if (parsed && parsed.snapshot) {
+    restore(parsed.snapshot);
+    _restoredFromAutosave = parsed.savedAt || null;
+  }
+} catch (err) {
+  console.warn('Autosave restore failed:', err);
+}
+
 redrawAll();
 state.history = [];
 state.historyIdx = -1;
 pushHistory();
-// Seed project is the starting "clean" state, not dirty
+// Seed project (or restored autosave) is the starting "clean" state
 markClean();
+
+// If we restored, show a small banner explaining what happened.
+if (_restoredFromAutosave) showAutosaveRestoredBanner(_restoredFromAutosave);
 
 })();
 </script>
