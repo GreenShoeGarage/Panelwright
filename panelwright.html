@@ -1,0 +1,2199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PANELWRIGHT // FI-042 // Arduino Giga Display Shield UI Designer</title>
+<style>
+/*
+  PANELWRIGHT
+  Field Instrument 042
+  Arduino Giga Display Shield UI Designer
+  Single file, no build step, no external dependencies.
+  License: GPL-3.0
+*/
+
+:root {
+  --bg: #0e0f12;
+  --panel: #16181d;
+  --panel-2: #1d2027;
+  --border: #2a2e38;
+  --border-hot: #3a3f4d;
+  --ink: #e8dfd0;
+  --ink-dim: #8a8579;
+  --ink-mute: #585348;
+  --amber: #d4a574;
+  --amber-bright: #f0c896;
+  --teal: #6fb5a8;
+  --rust: #b9684a;
+  --select: #d4a574;
+  --grid: rgba(255, 255, 255, 0.03);
+  --grid-strong: rgba(255, 255, 255, 0.08);
+  --canvas-bg: #0a0a0a;
+  --mono: 'JetBrains Mono', 'IBM Plex Mono', 'Menlo', 'Consolas', monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+button {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 4px 10px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  transition: all 0.12s;
+}
+button:hover { background: var(--border); border-color: var(--border-hot); color: var(--amber-bright); }
+button.primary { background: var(--amber); color: var(--bg); border-color: var(--amber); font-weight: 600; }
+button.primary:hover { background: var(--amber-bright); color: var(--bg); }
+button.danger:hover { background: var(--rust); border-color: var(--rust); color: var(--ink); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+input[type=text], input[type=number], select, textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 4px 6px;
+  width: 100%;
+  font-size: 11px;
+}
+input[type=text]:focus, input[type=number]:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--amber);
+}
+input[type=color] {
+  background: transparent;
+  border: 1px solid var(--border);
+  width: 40px;
+  height: 22px;
+  padding: 0;
+  cursor: pointer;
+}
+input[type=checkbox] {
+  accent-color: var(--amber);
+}
+
+/* === Layout === */
+#app {
+  display: grid;
+  grid-template-rows: 38px 1fr;
+  height: 100vh;
+}
+
+header.topbar {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  gap: 16px;
+}
+header.topbar .brand {
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--amber);
+  font-size: 13px;
+}
+header.topbar .brand .sub {
+  color: var(--ink-mute);
+  font-weight: 400;
+  margin-left: 8px;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+}
+header.topbar .toolbar {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  align-items: center;
+}
+header.topbar .toolbar .sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+header.topbar label.orient-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-dim);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+main.workbench {
+  display: grid;
+  grid-template-columns: 200px 1fr 280px;
+  overflow: hidden;
+}
+
+aside.palette, aside.props {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+aside.props {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+
+.panel-section {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+}
+.panel-section h3 {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* === Palette === */
+.palette-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.palette-item {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 10px 6px;
+  text-align: center;
+  cursor: grab;
+  user-select: none;
+  transition: all 0.12s;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.palette-item:hover {
+  border-color: var(--amber);
+  color: var(--amber-bright);
+  background: var(--bg);
+}
+.palette-item:active { cursor: grabbing; }
+.palette-item .glyph {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 4px;
+  color: var(--ink);
+  font-family: var(--mono);
+}
+
+/* === Center canvas region === */
+.canvas-region {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.canvas-frame {
+  position: relative;
+  overflow: auto;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    var(--bg);
+  background-size: 20px 20px;
+  padding: 40px;
+}
+
+.device-shell {
+  position: relative;
+  margin: 0 auto;
+  background: #050505;
+  padding: 14px;
+  border: 1px solid var(--border-hot);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px var(--border) inset, 0 20px 50px rgba(0,0,0,0.6);
+  width: fit-content;
+}
+.device-shell::before {
+  content: 'ARDUINO GIGA DISPLAY SHIELD // 800 x 480';
+  position: absolute;
+  top: -22px;
+  left: 0;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+}
+.device-shell::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 4px;
+  background: var(--ink-mute);
+  border-radius: 2px;
+  opacity: 0.4;
+}
+
+#canvas {
+  position: relative;
+  background: var(--canvas-bg);
+  overflow: hidden;
+  /* LVGL default theme tones */
+  color: #d3d3d3;
+  font-family: var(--sans);
+  user-select: none;
+}
+#canvas.grid-on {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 10px 10px, 10px 10px;
+}
+
+/* Widget visual representations on canvas */
+.widget {
+  position: absolute;
+  box-sizing: border-box;
+  cursor: move;
+}
+.widget.selected {
+  outline: 1.5px solid var(--select);
+  outline-offset: 1px;
+}
+.widget .resize-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--select);
+  border: 1px solid var(--bg);
+  z-index: 10;
+}
+.widget .resize-handle.nw { left: -5px; top: -5px; cursor: nwse-resize; }
+.widget .resize-handle.ne { right: -5px; top: -5px; cursor: nesw-resize; }
+.widget .resize-handle.sw { left: -5px; bottom: -5px; cursor: nesw-resize; }
+.widget .resize-handle.se { right: -5px; bottom: -5px; cursor: nwse-resize; }
+.widget .resize-handle.n { left: 50%; top: -5px; transform: translateX(-50%); cursor: ns-resize; }
+.widget .resize-handle.s { left: 50%; bottom: -5px; transform: translateX(-50%); cursor: ns-resize; }
+.widget .resize-handle.e { top: 50%; right: -5px; transform: translateY(-50%); cursor: ew-resize; }
+.widget .resize-handle.w { top: 50%; left: -5px; transform: translateY(-50%); cursor: ew-resize; }
+
+/* LVGL approximate styles */
+.lv-label {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  white-space: pre;
+  overflow: hidden;
+}
+.lv-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #2e6cda, #1f4ea0);
+  color: white;
+  border-radius: 5px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+  font-weight: 500;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.4);
+}
+.lv-slider {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.lv-slider .track {
+  width: 100%;
+  height: 6px;
+  background: #404750;
+  border-radius: 3px;
+  position: relative;
+  overflow: visible;
+}
+.lv-slider .fill {
+  height: 100%;
+  background: linear-gradient(180deg, #2e6cda, #1f4ea0);
+  border-radius: 3px;
+}
+.lv-slider .knob {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(180deg, #4a85e8, #2a5cb8);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid #1a3a78;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+.lv-switch {
+  background: #404750;
+  border-radius: 999px;
+  position: relative;
+}
+.lv-switch.checked { background: linear-gradient(180deg, #2e6cda, #1f4ea0); }
+.lv-switch .knob {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #d8d8d8;
+  border-radius: 50%;
+  transition: left 0.15s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+.lv-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #d3d3d3;
+}
+.lv-checkbox .box {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #707880;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lv-checkbox.checked .box {
+  background: linear-gradient(180deg, #2e6cda, #1f4ea0);
+  border-color: #1f4ea0;
+}
+.lv-checkbox.checked .box::after {
+  content: '\2713';
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+.lv-bar {
+  background: #404750;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.lv-bar .fill {
+  height: 100%;
+  background: linear-gradient(180deg, #2e6cda, #1f4ea0);
+}
+.lv-arc {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lv-dropdown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #2a2f37;
+  border: 1px solid #4a525c;
+  border-radius: 4px;
+  padding: 0 10px;
+  color: #d3d3d3;
+}
+.lv-dropdown .caret {
+  font-size: 10px;
+  color: #888;
+}
+.lv-textarea {
+  background: #1a1d22;
+  border: 1px solid #4a525c;
+  border-radius: 4px;
+  padding: 6px 8px;
+  color: #d3d3d3;
+  overflow: hidden;
+}
+.lv-textarea.placeholder {
+  color: #6a7078;
+  font-style: italic;
+}
+.lv-roller {
+  background: #2a2f37;
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #d3d3d3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  line-height: 1.3;
+  font-size: 13px;
+}
+.lv-roller .dim { color: #6a7078; }
+.lv-roller .sel { color: #4a85e8; font-weight: 600; }
+
+/* Status bar */
+.status-bar {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  padding: 5px 12px;
+  display: flex;
+  gap: 16px;
+  font-size: 10px;
+  color: var(--ink-dim);
+  letter-spacing: 0.06em;
+}
+.status-bar .item { display: flex; gap: 6px; }
+.status-bar .item .key { color: var(--ink-mute); text-transform: uppercase; }
+.status-bar .item .val { color: var(--ink); }
+.status-bar .spacer { flex: 1; }
+
+/* === Properties panel === */
+.props-empty {
+  padding: 30px 16px;
+  text-align: center;
+  color: var(--ink-mute);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+.props-empty .glyph {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 12px;
+  color: var(--border-hot);
+}
+.prop-row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.prop-row label {
+  color: var(--ink-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.prop-row.full {
+  grid-template-columns: 1fr;
+}
+.prop-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.prop-grid-2 .prop-row {
+  display: block;
+}
+.prop-grid-2 .prop-row label {
+  display: block;
+  margin-bottom: 3px;
+}
+
+.widget-list {
+  max-height: 180px;
+  overflow-y: auto;
+}
+.widget-list .item {
+  display: flex;
+  align-items: center;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  font-size: 10.5px;
+}
+.widget-list .item:hover { background: var(--panel-2); }
+.widget-list .item.selected {
+  border-left-color: var(--amber);
+  background: var(--panel-2);
+  color: var(--amber-bright);
+}
+.widget-list .item .type {
+  color: var(--ink-mute);
+  margin-left: auto;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* === Code panel === */
+.code-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 40px;
+}
+.code-modal.open { display: flex; }
+.code-modal .box {
+  background: var(--panel);
+  border: 1px solid var(--border-hot);
+  width: 100%;
+  max-width: 900px;
+  max-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+.code-modal .box header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.code-modal .box header h2 {
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+.code-modal .box header .close {
+  background: transparent;
+  border: none;
+  color: var(--ink-dim);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+.code-modal .box pre {
+  overflow: auto;
+  padding: 16px;
+  background: var(--canvas-bg);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre;
+}
+.code-modal .box .actions {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Code syntax highlighting (very light) */
+.tok-kw { color: #6fb5a8; }
+.tok-str { color: #d4a574; }
+.tok-num { color: #b9684a; }
+.tok-cmt { color: #585348; font-style: italic; }
+.tok-pp { color: #a78bfa; }
+.tok-fn { color: #e0e0e0; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--border-hot); }
+
+/* Help overlay */
+.help-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.help-overlay.open { display: flex; }
+.help-overlay .box {
+  background: var(--panel);
+  border: 1px solid var(--border-hot);
+  padding: 30px 40px;
+  max-width: 580px;
+  width: 90%;
+}
+.help-overlay h2 {
+  color: var(--amber);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.help-overlay h3 {
+  color: var(--ink);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 14px 0 6px;
+}
+.help-overlay .kbd-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  font-size: 11px;
+  color: var(--ink-dim);
+}
+.help-overlay .kbd-list kbd {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--amber);
+}
+.help-overlay p {
+  font-size: 11px;
+  color: var(--ink-dim);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.help-overlay .actions { margin-top: 20px; text-align: right; }
+
+/* Drag ghost */
+.drag-ghost {
+  position: fixed;
+  pointer-events: none;
+  background: var(--amber);
+  color: var(--bg);
+  padding: 6px 10px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  z-index: 500;
+  opacity: 0.9;
+  transform: translate(-50%, -50%);
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+<header class="topbar">
+  <div class="brand">FI-042 // PANELWRIGHT <span class="sub">// GIGA DISPLAY SHIELD UI DESIGNER</span></div>
+  <div class="toolbar">
+    <label class="orient-toggle">
+      <span>Orientation</span>
+      <select id="orient-select">
+        <option value="landscape">Landscape 800 x 480</option>
+        <option value="portrait">Portrait 480 x 800</option>
+      </select>
+    </label>
+    <span class="sep"></span>
+    <label class="orient-toggle">
+      <input type="checkbox" id="grid-toggle" checked> Grid
+    </label>
+    <label class="orient-toggle">
+      <input type="checkbox" id="snap-toggle" checked> Snap
+    </label>
+    <span class="sep"></span>
+    <button id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
+    <button id="btn-redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+    <span class="sep"></span>
+    <button id="btn-new" class="danger">New</button>
+    <button id="btn-save">Save .json</button>
+    <button id="btn-load">Load</button>
+    <input type="file" id="file-input" accept=".json" style="display:none">
+    <span class="sep"></span>
+    <button id="btn-code" class="primary">Generate Code</button>
+    <button id="btn-help">?</button>
+  </div>
+</header>
+
+<main class="workbench">
+
+  <aside class="palette">
+    <div class="panel-section">
+      <h3>Widgets</h3>
+      <div class="palette-list" id="palette-list">
+        <!-- populated by JS -->
+      </div>
+    </div>
+    <div class="panel-section">
+      <h3>Hierarchy</h3>
+      <div class="widget-list" id="widget-list">
+        <div style="color: var(--ink-mute); font-size: 10px; text-align: center; padding: 10px;">No widgets yet</div>
+      </div>
+    </div>
+    <div class="panel-section">
+      <h3>About</h3>
+      <p style="font-size: 10px; color: var(--ink-mute); line-height: 1.6;">
+        Drag widgets to the canvas. Click to select, drag to move, corners to resize.
+        Generate compiles against Arduino_H7_Video plus lvgl on the Giga Display Shield.
+      </p>
+    </div>
+  </aside>
+
+  <section class="canvas-region">
+    <div class="canvas-frame" id="canvas-frame">
+      <div class="device-shell" id="device-shell">
+        <div id="canvas" class="grid-on" style="width: 800px; height: 480px;"></div>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="item"><span class="key">Cursor</span><span class="val" id="status-cursor">0, 0</span></div>
+      <div class="item"><span class="key">Selected</span><span class="val" id="status-selected">none</span></div>
+      <div class="item"><span class="key">Widgets</span><span class="val" id="status-count">0</span></div>
+      <div class="spacer"></div>
+      <div class="item"><span class="key">Display</span><span class="val" id="status-display">800 x 480</span></div>
+    </div>
+  </section>
+
+  <aside class="props" id="props-panel">
+    <div class="props-empty">
+      <span class="glyph">+</span>
+      Select a widget on the canvas or drag one from the palette.
+    </div>
+  </aside>
+
+</main>
+
+</div>
+
+<!-- Code generation modal -->
+<div class="code-modal" id="code-modal">
+  <div class="box">
+    <header>
+      <h2>Generated Arduino Sketch</h2>
+      <button class="close" id="code-close">&times;</button>
+    </header>
+    <pre id="code-output"></pre>
+    <div class="actions">
+      <button id="code-copy">Copy</button>
+      <button id="code-download" class="primary">Download .ino</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help modal -->
+<div class="help-overlay" id="help-overlay">
+  <div class="box">
+    <h2>FI-042 // PANELWRIGHT // Quick Reference</h2>
+    <p>
+      Design touch UIs for the Arduino Giga Display Shield. Drag widgets from the left palette
+      onto the canvas, edit properties on the right, then click Generate Code to produce a complete
+      Arduino sketch using LVGL.
+    </p>
+
+    <h3>Keyboard</h3>
+    <div class="kbd-list">
+      <kbd>Click</kbd><span>Select widget</span>
+      <kbd>Drag</kbd><span>Move widget</span>
+      <kbd>Corners</kbd><span>Resize</span>
+      <kbd>Delete</kbd><span>Delete selected</span>
+      <kbd>Arrows</kbd><span>Nudge 1 px</span>
+      <kbd>Shift + Arrows</kbd><span>Nudge 10 px</span>
+      <kbd>Ctrl + D</kbd><span>Duplicate</span>
+      <kbd>Ctrl + Z</kbd><span>Undo</span>
+      <kbd>Ctrl + Shift + Z</kbd><span>Redo</span>
+      <kbd>Esc</kbd><span>Deselect</span>
+    </div>
+
+    <h3>Required Arduino Libraries</h3>
+    <p style="font-family: var(--mono); font-size: 10.5px;">
+      Arduino_H7_Video, Arduino_GigaDisplayTouch, lvgl, ArduinoGraphics
+    </p>
+
+    <div class="actions">
+      <button class="primary" id="help-close">Got it</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===========================================================
+   PANELWRIGHT
+   Field Instrument 042
+   Single-file UI designer for Arduino Giga Display Shield
+   GPL-3.0
+   =========================================================== */
+
+(function(){
+'use strict';
+
+// ----- Widget definitions ---------------------------------
+
+const WIDGET_TYPES = {
+  label: {
+    label: 'Label', glyph: 'Aa',
+    defaultSize: { w: 120, h: 24 },
+    defaultName: 'lbl',
+    defaultProps: { text: 'Label', color: '#d3d3d3', fontSize: 14, align: 'left' },
+    render: renderLabel,
+    properties: [
+      { key: 'text', label: 'Text', type: 'textarea' },
+      { key: 'color', label: 'Color', type: 'color' },
+      { key: 'fontSize', label: 'Font', type: 'select', options: [
+          { v: 12, l: '12 px' }, { v: 14, l: '14 px' }, { v: 16, l: '16 px' },
+          { v: 18, l: '18 px' }, { v: 20, l: '20 px' }, { v: 24, l: '24 px' },
+          { v: 28, l: '28 px' }, { v: 32, l: '32 px' }, { v: 36, l: '36 px' },
+          { v: 40, l: '40 px' }, { v: 48, l: '48 px' }
+      ]},
+      { key: 'align', label: 'Align', type: 'select', options: [
+          { v: 'left', l: 'Left' }, { v: 'center', l: 'Center' }, { v: 'right', l: 'Right' }
+      ]}
+    ]
+  },
+  button: {
+    label: 'Button', glyph: '\u25A0',
+    defaultSize: { w: 140, h: 50 },
+    defaultName: 'btn',
+    defaultProps: { text: 'BUTTON', bgColor: '#2e6cda', textColor: '#ffffff', radius: 5 },
+    render: renderButton,
+    properties: [
+      { key: 'text', label: 'Label', type: 'text' },
+      { key: 'bgColor', label: 'BG', type: 'color' },
+      { key: 'textColor', label: 'Text', type: 'color' },
+      { key: 'radius', label: 'Radius', type: 'number', min: 0, max: 100 }
+    ]
+  },
+  slider: {
+    label: 'Slider', glyph: '\u2500\u25CF\u2500',
+    defaultSize: { w: 200, h: 20 },
+    defaultName: 'sld',
+    defaultProps: { min: 0, max: 100, value: 50, color: '#2e6cda' },
+    render: renderSlider,
+    properties: [
+      { key: 'min', label: 'Min', type: 'number' },
+      { key: 'max', label: 'Max', type: 'number' },
+      { key: 'value', label: 'Value', type: 'number' },
+      { key: 'color', label: 'Color', type: 'color' }
+    ]
+  },
+  switch: {
+    label: 'Switch', glyph: '\u25CB\u2500',
+    defaultSize: { w: 50, h: 28 },
+    defaultName: 'sw',
+    defaultProps: { checked: false, color: '#2e6cda' },
+    render: renderSwitch,
+    properties: [
+      { key: 'checked', label: 'On', type: 'boolean' },
+      { key: 'color', label: 'Color', type: 'color' }
+    ]
+  },
+  checkbox: {
+    label: 'Checkbox', glyph: '\u2611',
+    defaultSize: { w: 140, h: 24 },
+    defaultName: 'chk',
+    defaultProps: { text: 'Option', checked: false, color: '#2e6cda' },
+    render: renderCheckbox,
+    properties: [
+      { key: 'text', label: 'Label', type: 'text' },
+      { key: 'checked', label: 'Checked', type: 'boolean' },
+      { key: 'color', label: 'Color', type: 'color' }
+    ]
+  },
+  bar: {
+    label: 'Bar', glyph: '\u2588\u2588\u2591',
+    defaultSize: { w: 200, h: 14 },
+    defaultName: 'bar',
+    defaultProps: { min: 0, max: 100, value: 60, color: '#2e6cda' },
+    render: renderBar,
+    properties: [
+      { key: 'min', label: 'Min', type: 'number' },
+      { key: 'max', label: 'Max', type: 'number' },
+      { key: 'value', label: 'Value', type: 'number' },
+      { key: 'color', label: 'Color', type: 'color' }
+    ]
+  },
+  arc: {
+    label: 'Arc', glyph: '\u25DC',
+    defaultSize: { w: 120, h: 120 },
+    defaultName: 'arc',
+    defaultProps: { min: 0, max: 100, value: 40, color: '#2e6cda' },
+    render: renderArc,
+    properties: [
+      { key: 'min', label: 'Min', type: 'number' },
+      { key: 'max', label: 'Max', type: 'number' },
+      { key: 'value', label: 'Value', type: 'number' },
+      { key: 'color', label: 'Color', type: 'color' }
+    ]
+  },
+  dropdown: {
+    label: 'Dropdown', glyph: '\u25BC',
+    defaultSize: { w: 160, h: 36 },
+    defaultName: 'dd',
+    defaultProps: { options: 'Option 1\nOption 2\nOption 3', selected: 0 },
+    render: renderDropdown,
+    properties: [
+      { key: 'options', label: 'Options', type: 'textarea', hint: 'One per line' },
+      { key: 'selected', label: 'Default', type: 'number' }
+    ]
+  },
+  textarea: {
+    label: 'TextArea', glyph: '\u2261',
+    defaultSize: { w: 200, h: 80 },
+    defaultName: 'ta',
+    defaultProps: { text: '', placeholder: 'Type here...', oneLine: false },
+    render: renderTextarea,
+    properties: [
+      { key: 'text', label: 'Text', type: 'textarea' },
+      { key: 'placeholder', label: 'Hint', type: 'text' },
+      { key: 'oneLine', label: 'One Line', type: 'boolean' }
+    ]
+  },
+  roller: {
+    label: 'Roller', glyph: '\u2261',
+    defaultSize: { w: 100, h: 120 },
+    defaultName: 'rl',
+    defaultProps: { options: 'One\nTwo\nThree\nFour\nFive', selected: 0, mode: 'normal' },
+    render: renderRoller,
+    properties: [
+      { key: 'options', label: 'Options', type: 'textarea', hint: 'One per line' },
+      { key: 'selected', label: 'Default', type: 'number' },
+      { key: 'mode', label: 'Mode', type: 'select', options: [
+          { v: 'normal', l: 'Normal' }, { v: 'infinite', l: 'Infinite' }
+      ]}
+    ]
+  }
+};
+
+// ----- Application state ----------------------------------
+
+const state = {
+  widgets: [],            // array of widget objects
+  selectedId: null,
+  nextId: 1,
+  nameCounts: {},         // type -> counter for auto names
+  orientation: 'landscape',
+  grid: true,
+  snap: true,
+  gridSize: 10,
+  history: [],
+  historyIdx: -1,
+  historyMax: 50
+};
+
+// ----- Widget rendering on canvas -------------------------
+
+function renderBase(w) {
+  const el = document.createElement('div');
+  el.className = 'widget';
+  el.dataset.id = w.id;
+  el.style.left = w.x + 'px';
+  el.style.top = w.y + 'px';
+  el.style.width = w.w + 'px';
+  el.style.height = w.h + 'px';
+  return el;
+}
+
+function renderLabel(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-label';
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  inner.style.color = w.props.color;
+  inner.style.fontSize = w.props.fontSize + 'px';
+  inner.style.justifyContent = w.props.align === 'center' ? 'center' : (w.props.align === 'right' ? 'flex-end' : 'flex-start');
+  inner.textContent = w.props.text || '';
+  el.appendChild(inner);
+  return el;
+}
+
+function renderButton(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-btn';
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  inner.style.background = `linear-gradient(180deg, ${w.props.bgColor}, ${darken(w.props.bgColor, 0.3)})`;
+  inner.style.color = w.props.textColor;
+  inner.style.borderRadius = w.props.radius + 'px';
+  inner.textContent = w.props.text || '';
+  el.appendChild(inner);
+  return el;
+}
+
+function renderSlider(w) {
+  const el = renderBase(w);
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  const wrap = document.createElement('div');
+  wrap.className = 'lv-slider';
+  wrap.style.width = '100%';
+  wrap.style.height = w.h + 'px';
+  wrap.style.alignItems = 'center';
+  wrap.style.display = 'flex';
+  const track = document.createElement('div');
+  track.className = 'track';
+  const fill = document.createElement('div');
+  fill.className = 'fill';
+  const pct = (w.props.value - w.props.min) / (w.props.max - w.props.min);
+  fill.style.width = (pct * 100) + '%';
+  fill.style.background = `linear-gradient(180deg, ${w.props.color}, ${darken(w.props.color, 0.3)})`;
+  const knob = document.createElement('div');
+  knob.className = 'knob';
+  knob.style.left = (pct * 100) + '%';
+  knob.style.background = `linear-gradient(180deg, ${lighten(w.props.color, 0.2)}, ${w.props.color})`;
+  track.appendChild(fill);
+  track.appendChild(knob);
+  wrap.appendChild(track);
+  el.appendChild(wrap);
+  return el;
+}
+
+function renderSwitch(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-switch' + (w.props.checked ? ' checked' : '');
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  if (w.props.checked) {
+    inner.style.background = `linear-gradient(180deg, ${w.props.color}, ${darken(w.props.color, 0.3)})`;
+  }
+  const knob = document.createElement('div');
+  knob.className = 'knob';
+  const knobSize = w.h - 6;
+  knob.style.width = knobSize + 'px';
+  knob.style.height = knobSize + 'px';
+  knob.style.left = w.props.checked ? (w.w - knobSize - 3) + 'px' : '3px';
+  inner.appendChild(knob);
+  el.appendChild(inner);
+  return el;
+}
+
+function renderCheckbox(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-checkbox' + (w.props.checked ? ' checked' : '');
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  const box = document.createElement('div');
+  box.className = 'box';
+  if (w.props.checked) {
+    box.style.background = `linear-gradient(180deg, ${w.props.color}, ${darken(w.props.color, 0.3)})`;
+    box.style.borderColor = darken(w.props.color, 0.3);
+  }
+  inner.appendChild(box);
+  const txt = document.createElement('span');
+  txt.textContent = w.props.text || '';
+  inner.appendChild(txt);
+  el.appendChild(inner);
+  return el;
+}
+
+function renderBar(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-bar';
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  const fill = document.createElement('div');
+  fill.className = 'fill';
+  const pct = (w.props.value - w.props.min) / (w.props.max - w.props.min);
+  fill.style.width = (pct * 100) + '%';
+  fill.style.background = `linear-gradient(180deg, ${w.props.color}, ${darken(w.props.color, 0.3)})`;
+  inner.appendChild(fill);
+  el.appendChild(inner);
+  return el;
+}
+
+function renderArc(w) {
+  const el = renderBase(w);
+  const size = Math.min(w.w, w.h);
+  const cx = w.w / 2;
+  const cy = w.h / 2;
+  const r = size / 2 - 8;
+  const stroke = 8;
+  const startAngle = 135;
+  const endAngle = 45;
+  const pct = (w.props.value - w.props.min) / (w.props.max - w.props.min);
+  const sweep = ((endAngle - startAngle + 360) % 360);
+  const valAngle = startAngle + sweep * pct;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', w.w);
+  svg.setAttribute('height', w.h);
+  svg.style.position = 'absolute';
+  svg.style.inset = '0';
+
+  const bg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  bg.setAttribute('d', arcPath(cx, cy, r, startAngle, endAngle));
+  bg.setAttribute('stroke', '#404750');
+  bg.setAttribute('stroke-width', stroke);
+  bg.setAttribute('fill', 'none');
+  bg.setAttribute('stroke-linecap', 'round');
+  svg.appendChild(bg);
+
+  if (pct > 0.001) {
+    const fg = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    fg.setAttribute('d', arcPath(cx, cy, r, startAngle, valAngle));
+    fg.setAttribute('stroke', w.props.color);
+    fg.setAttribute('stroke-width', stroke);
+    fg.setAttribute('fill', 'none');
+    fg.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(fg);
+  }
+
+  // Knob
+  const knobX = cx + r * Math.cos(valAngle * Math.PI / 180);
+  const knobY = cy + r * Math.sin(valAngle * Math.PI / 180);
+  const knob = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  knob.setAttribute('cx', knobX);
+  knob.setAttribute('cy', knobY);
+  knob.setAttribute('r', stroke / 2 + 2);
+  knob.setAttribute('fill', lighten(w.props.color, 0.2));
+  svg.appendChild(knob);
+
+  el.appendChild(svg);
+  return el;
+}
+
+function arcPath(cx, cy, r, a1, a2) {
+  const rad = Math.PI / 180;
+  let sweep = ((a2 - a1 + 360) % 360);
+  if (sweep < 0.001) sweep = 0.001;
+  const large = sweep > 180 ? 1 : 0;
+  const x1 = cx + r * Math.cos(a1 * rad);
+  const y1 = cy + r * Math.sin(a1 * rad);
+  const x2 = cx + r * Math.cos(a2 * rad);
+  const y2 = cy + r * Math.sin(a2 * rad);
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+}
+
+function renderDropdown(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-dropdown';
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  const opts = (w.props.options || '').split('\n').filter(s => s.length);
+  const txt = document.createElement('span');
+  txt.textContent = opts[w.props.selected] || opts[0] || '';
+  const car = document.createElement('span');
+  car.className = 'caret';
+  car.textContent = '\u25BC';
+  inner.appendChild(txt);
+  inner.appendChild(car);
+  el.appendChild(inner);
+  return el;
+}
+
+function renderTextarea(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-textarea' + (w.props.text ? '' : ' placeholder');
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  inner.textContent = w.props.text || w.props.placeholder || '';
+  if (w.props.oneLine) {
+    inner.style.whiteSpace = 'nowrap';
+    inner.style.textOverflow = 'ellipsis';
+  } else {
+    inner.style.whiteSpace = 'pre-wrap';
+  }
+  el.appendChild(inner);
+  return el;
+}
+
+function renderRoller(w) {
+  const el = renderBase(w);
+  const inner = document.createElement('div');
+  inner.className = 'lv-roller';
+  inner.style.width = '100%';
+  inner.style.height = '100%';
+  const opts = (w.props.options || '').split('\n').filter(s => s.length);
+  const sel = Math.min(w.props.selected || 0, opts.length - 1);
+  // Show items around selected
+  const visibleSlots = 3;
+  for (let i = -1; i <= 1; i++) {
+    const idx = sel + i;
+    const span = document.createElement('div');
+    if (i === 0) span.className = 'sel';
+    else span.className = 'dim';
+    span.textContent = opts[idx] || '\u00A0';
+    inner.appendChild(span);
+  }
+  el.appendChild(inner);
+  return el;
+}
+
+// ----- Color helpers --------------------------------------
+
+function hexToRgb(h) {
+  h = h.replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c+c).join('');
+  return {
+    r: parseInt(h.slice(0,2), 16),
+    g: parseInt(h.slice(2,4), 16),
+    b: parseInt(h.slice(4,6), 16)
+  };
+}
+function rgbToHex(r, g, b) {
+  return '#' + [r, g, b].map(v => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('');
+}
+function darken(hex, amt) {
+  const c = hexToRgb(hex);
+  return rgbToHex(c.r * (1 - amt), c.g * (1 - amt), c.b * (1 - amt));
+}
+function lighten(hex, amt) {
+  const c = hexToRgb(hex);
+  return rgbToHex(c.r + (255 - c.r) * amt, c.g + (255 - c.g) * amt, c.b + (255 - c.b) * amt);
+}
+function hexToLvHex(hex) {
+  return '0x' + hex.replace('#', '').toUpperCase();
+}
+
+// ----- DOM refs ------------------------------------------
+
+const $canvas = document.getElementById('canvas');
+const $paletteList = document.getElementById('palette-list');
+const $widgetList = document.getElementById('widget-list');
+const $propsPanel = document.getElementById('props-panel');
+const $statusCursor = document.getElementById('status-cursor');
+const $statusSelected = document.getElementById('status-selected');
+const $statusCount = document.getElementById('status-count');
+const $statusDisplay = document.getElementById('status-display');
+const $orientSelect = document.getElementById('orient-select');
+const $gridToggle = document.getElementById('grid-toggle');
+const $snapToggle = document.getElementById('snap-toggle');
+
+// ----- Populate palette -----------------------------------
+
+function buildPalette() {
+  $paletteList.innerHTML = '';
+  for (const [type, def] of Object.entries(WIDGET_TYPES)) {
+    const item = document.createElement('div');
+    item.className = 'palette-item';
+    item.dataset.type = type;
+    item.innerHTML = `<span class="glyph">${def.glyph}</span>${def.label}`;
+    item.addEventListener('pointerdown', e => beginPaletteDrag(e, type));
+    $paletteList.appendChild(item);
+  }
+}
+
+// ----- Palette drag to canvas -----------------------------
+
+let dragGhost = null;
+
+function beginPaletteDrag(e, type) {
+  e.preventDefault();
+  const def = WIDGET_TYPES[type];
+  dragGhost = document.createElement('div');
+  dragGhost.className = 'drag-ghost';
+  dragGhost.textContent = def.label;
+  dragGhost.style.left = e.clientX + 'px';
+  dragGhost.style.top = e.clientY + 'px';
+  document.body.appendChild(dragGhost);
+
+  function onMove(ev) {
+    dragGhost.style.left = ev.clientX + 'px';
+    dragGhost.style.top = ev.clientY + 'px';
+  }
+  function onUp(ev) {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    if (dragGhost) { dragGhost.remove(); dragGhost = null; }
+
+    const rect = $canvas.getBoundingClientRect();
+    if (ev.clientX >= rect.left && ev.clientX <= rect.right &&
+        ev.clientY >= rect.top && ev.clientY <= rect.bottom) {
+      const x = snap(Math.max(0, ev.clientX - rect.left - def.defaultSize.w / 2));
+      const y = snap(Math.max(0, ev.clientY - rect.top - def.defaultSize.h / 2));
+      addWidget(type, x, y);
+    }
+  }
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+
+// ----- Widget lifecycle -----------------------------------
+
+function snap(n) {
+  if (!state.snap) return Math.round(n);
+  return Math.round(n / state.gridSize) * state.gridSize;
+}
+
+function autoName(type) {
+  const def = WIDGET_TYPES[type];
+  state.nameCounts[type] = (state.nameCounts[type] || 0) + 1;
+  return `${def.defaultName}_${state.nameCounts[type]}`;
+}
+
+function addWidget(type, x, y) {
+  const def = WIDGET_TYPES[type];
+  const dims = getCanvasDims();
+  const w = Math.min(def.defaultSize.w, dims.w - x);
+  const h = Math.min(def.defaultSize.h, dims.h - y);
+  const widget = {
+    id: 'w_' + (state.nextId++),
+    type: type,
+    name: autoName(type),
+    x: x, y: y, w: w, h: h,
+    props: JSON.parse(JSON.stringify(def.defaultProps))
+  };
+  pushHistory();
+  state.widgets.push(widget);
+  state.selectedId = widget.id;
+  redrawAll();
+}
+
+function deleteWidget(id) {
+  pushHistory();
+  state.widgets = state.widgets.filter(w => w.id !== id);
+  if (state.selectedId === id) state.selectedId = null;
+  redrawAll();
+}
+
+function duplicateWidget(id) {
+  const src = state.widgets.find(w => w.id === id);
+  if (!src) return;
+  pushHistory();
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = 'w_' + (state.nextId++);
+  copy.name = autoName(src.type);
+  copy.x = Math.min(src.x + 20, getCanvasDims().w - copy.w);
+  copy.y = Math.min(src.y + 20, getCanvasDims().h - copy.h);
+  state.widgets.push(copy);
+  state.selectedId = copy.id;
+  redrawAll();
+}
+
+function moveSelected(dx, dy) {
+  const w = state.widgets.find(w => w.id === state.selectedId);
+  if (!w) return;
+  const dims = getCanvasDims();
+  w.x = Math.max(0, Math.min(dims.w - w.w, w.x + dx));
+  w.y = Math.max(0, Math.min(dims.h - w.h, w.y + dy));
+  redrawAll();
+}
+
+function getCanvasDims() {
+  return state.orientation === 'landscape' ? { w: 800, h: 480 } : { w: 480, h: 800 };
+}
+
+// ----- Redraw ---------------------------------------------
+
+function redrawAll() {
+  $canvas.innerHTML = '';
+  for (const w of state.widgets) {
+    const def = WIDGET_TYPES[w.type];
+    const el = def.render(w);
+    if (w.id === state.selectedId) {
+      el.classList.add('selected');
+      attachResizeHandles(el, w);
+    }
+    el.addEventListener('pointerdown', e => beginWidgetDrag(e, w));
+    $canvas.appendChild(el);
+  }
+  renderHierarchy();
+  renderPropsPanel();
+  updateStatus();
+}
+
+function attachResizeHandles(el, w) {
+  const handles = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+  for (const h of handles) {
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle ' + h;
+    handle.addEventListener('pointerdown', e => beginResize(e, w, h));
+    el.appendChild(handle);
+  }
+}
+
+function updateStatus() {
+  const sel = state.widgets.find(w => w.id === state.selectedId);
+  $statusSelected.textContent = sel ? `${sel.name} (${sel.type})` : 'none';
+  $statusCount.textContent = state.widgets.length;
+  const dims = getCanvasDims();
+  $statusDisplay.textContent = `${dims.w} x ${dims.h}`;
+}
+
+// ----- Widget drag and resize -----------------------------
+
+function beginWidgetDrag(e, w) {
+  if (e.target.classList.contains('resize-handle')) return;
+  e.stopPropagation();
+  state.selectedId = w.id;
+  redrawAll();
+
+  const rect = $canvas.getBoundingClientRect();
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const startWX = w.x;
+  const startWY = w.y;
+  let moved = false;
+
+  function onMove(ev) {
+    if (!moved && (Math.abs(ev.clientX - startX) > 2 || Math.abs(ev.clientY - startY) > 2)) {
+      moved = true;
+      pushHistory();
+    }
+    if (!moved) return;
+    const dx = ev.clientX - startX;
+    const dy = ev.clientY - startY;
+    const dims = getCanvasDims();
+    w.x = Math.max(0, Math.min(dims.w - w.w, snap(startWX + dx)));
+    w.y = Math.max(0, Math.min(dims.h - w.h, snap(startWY + dy)));
+    redrawAll();
+  }
+  function onUp() {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+  }
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+
+function beginResize(e, w, dir) {
+  e.stopPropagation();
+  e.preventDefault();
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const sX = w.x, sY = w.y, sW = w.w, sH = w.h;
+  pushHistory();
+
+  function onMove(ev) {
+    let dx = ev.clientX - startX;
+    let dy = ev.clientY - startY;
+    let nx = sX, ny = sY, nw = sW, nh = sH;
+    const dims = getCanvasDims();
+
+    if (dir.includes('e')) nw = Math.max(20, snap(sW + dx));
+    if (dir.includes('s')) nh = Math.max(20, snap(sH + dy));
+    if (dir.includes('w')) {
+      nw = Math.max(20, snap(sW - dx));
+      nx = sX + (sW - nw);
+    }
+    if (dir.includes('n')) {
+      nh = Math.max(20, snap(sH - dy));
+      ny = sY + (sH - nh);
+    }
+    if (nx < 0) { nw += nx; nx = 0; }
+    if (ny < 0) { nh += ny; ny = 0; }
+    if (nx + nw > dims.w) nw = dims.w - nx;
+    if (ny + nh > dims.h) nh = dims.h - ny;
+    w.x = nx; w.y = ny; w.w = nw; w.h = nh;
+    redrawAll();
+  }
+  function onUp() {
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+  }
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+}
+
+// Click canvas empty space to deselect
+$canvas.addEventListener('pointerdown', e => {
+  if (e.target === $canvas) {
+    state.selectedId = null;
+    redrawAll();
+  }
+});
+
+// Cursor tracking
+$canvas.addEventListener('pointermove', e => {
+  const rect = $canvas.getBoundingClientRect();
+  const x = Math.round(e.clientX - rect.left);
+  const y = Math.round(e.clientY - rect.top);
+  $statusCursor.textContent = `${x}, ${y}`;
+});
+
+// ----- Hierarchy panel ------------------------------------
+
+function renderHierarchy() {
+  if (state.widgets.length === 0) {
+    $widgetList.innerHTML = '<div style="color: var(--ink-mute); font-size: 10px; text-align: center; padding: 10px;">No widgets yet</div>';
+    return;
+  }
+  $widgetList.innerHTML = '';
+  for (let i = state.widgets.length - 1; i >= 0; i--) {
+    const w = state.widgets[i];
+    const item = document.createElement('div');
+    item.className = 'item' + (w.id === state.selectedId ? ' selected' : '');
+    item.innerHTML = `<span>${escapeHtml(w.name)}</span><span class="type">${w.type}</span>`;
+    item.addEventListener('click', () => {
+      state.selectedId = w.id;
+      redrawAll();
+    });
+    $widgetList.appendChild(item);
+  }
+}
+
+// ----- Properties panel -----------------------------------
+
+function renderPropsPanel() {
+  const w = state.widgets.find(x => x.id === state.selectedId);
+  if (!w) {
+    $propsPanel.innerHTML = `
+      <div class="props-empty">
+        <span class="glyph">+</span>
+        Select a widget on the canvas or drag one from the palette.
+      </div>
+    `;
+    return;
+  }
+  const def = WIDGET_TYPES[w.type];
+
+  let html = `
+    <div class="panel-section">
+      <h3>${def.label} // Identity</h3>
+      <div class="prop-row">
+        <label>Name</label>
+        <input type="text" id="prop-name" value="${escapeAttr(w.name)}">
+      </div>
+    </div>
+    <div class="panel-section">
+      <h3>Geometry</h3>
+      <div class="prop-grid-2">
+        <div class="prop-row"><label>X</label><input type="number" data-geo="x" value="${w.x}"></div>
+        <div class="prop-row"><label>Y</label><input type="number" data-geo="y" value="${w.y}"></div>
+        <div class="prop-row"><label>Width</label><input type="number" data-geo="w" value="${w.w}" min="20"></div>
+        <div class="prop-row"><label>Height</label><input type="number" data-geo="h" value="${w.h}" min="20"></div>
+      </div>
+    </div>
+    <div class="panel-section">
+      <h3>Properties</h3>
+  `;
+  for (const p of def.properties) {
+    html += renderPropInput(w, p);
+  }
+  html += `
+    </div>
+    <div class="panel-section">
+      <h3>Order</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+        <button data-act="raise">\u25B2 Raise</button>
+        <button data-act="lower">\u25BC Lower</button>
+        <button data-act="front">To Front</button>
+        <button data-act="back">To Back</button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <h3>Actions</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+        <button data-act="duplicate">Duplicate</button>
+        <button data-act="delete" class="danger">Delete</button>
+      </div>
+    </div>
+  `;
+  $propsPanel.innerHTML = html;
+
+  // Wire up inputs
+  $propsPanel.querySelector('#prop-name').addEventListener('change', e => {
+    pushHistory();
+    w.name = sanitizeName(e.target.value);
+    renderHierarchy();
+    updateStatus();
+  });
+
+  $propsPanel.querySelectorAll('[data-geo]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      pushHistory();
+      const k = inp.dataset.geo;
+      const v = parseInt(inp.value, 10);
+      const dims = getCanvasDims();
+      if (k === 'x') w.x = Math.max(0, Math.min(dims.w - w.w, v));
+      if (k === 'y') w.y = Math.max(0, Math.min(dims.h - w.h, v));
+      if (k === 'w') w.w = Math.max(20, Math.min(dims.w - w.x, v));
+      if (k === 'h') w.h = Math.max(20, Math.min(dims.h - w.y, v));
+      redrawAll();
+    });
+  });
+
+  $propsPanel.querySelectorAll('[data-prop]').forEach(inp => {
+    inp.addEventListener('change', () => {
+      pushHistory();
+      const k = inp.dataset.prop;
+      let v;
+      if (inp.type === 'checkbox') v = inp.checked;
+      else if (inp.type === 'number') v = parseInt(inp.value, 10);
+      else v = inp.value;
+      w.props[k] = v;
+      redrawAll();
+    });
+    if (inp.tagName === 'TEXTAREA' || inp.type === 'text') {
+      inp.addEventListener('input', () => {
+        const k = inp.dataset.prop;
+        w.props[k] = inp.value;
+        redrawAll();
+      });
+    }
+  });
+
+  $propsPanel.querySelectorAll('[data-act]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const act = btn.dataset.act;
+      if (act === 'delete') deleteWidget(w.id);
+      else if (act === 'duplicate') duplicateWidget(w.id);
+      else if (act === 'raise') zOrder(w.id, +1);
+      else if (act === 'lower') zOrder(w.id, -1);
+      else if (act === 'front') zOrder(w.id, 'front');
+      else if (act === 'back') zOrder(w.id, 'back');
+    });
+  });
+}
+
+function renderPropInput(w, p) {
+  const val = w.props[p.key];
+  if (p.type === 'text') {
+    return `<div class="prop-row"><label>${p.label}</label><input type="text" data-prop="${p.key}" value="${escapeAttr(val || '')}"></div>`;
+  }
+  if (p.type === 'textarea') {
+    return `<div class="prop-row full"><label>${p.label}${p.hint ? ' <span style="color: var(--ink-mute); text-transform: none;">(' + p.hint + ')</span>' : ''}</label><textarea data-prop="${p.key}" rows="3">${escapeHtml(val || '')}</textarea></div>`;
+  }
+  if (p.type === 'number') {
+    const min = p.min !== undefined ? ` min="${p.min}"` : '';
+    const max = p.max !== undefined ? ` max="${p.max}"` : '';
+    return `<div class="prop-row"><label>${p.label}</label><input type="number" data-prop="${p.key}" value="${val}"${min}${max}></div>`;
+  }
+  if (p.type === 'color') {
+    return `<div class="prop-row"><label>${p.label}</label>
+      <div style="display: flex; gap: 4px; align-items: center;">
+        <input type="color" data-prop="${p.key}" value="${val}">
+        <span style="font-size: 10px; color: var(--ink-dim);">${val}</span>
+      </div>
+    </div>`;
+  }
+  if (p.type === 'boolean') {
+    return `<div class="prop-row"><label>${p.label}</label><input type="checkbox" data-prop="${p.key}"${val ? ' checked' : ''}></div>`;
+  }
+  if (p.type === 'select') {
+    const opts = p.options.map(o => `<option value="${o.v}"${o.v == val ? ' selected' : ''}>${o.l}</option>`).join('');
+    return `<div class="prop-row"><label>${p.label}</label><select data-prop="${p.key}">${opts}</select></div>`;
+  }
+  return '';
+}
+
+function zOrder(id, dir) {
+  pushHistory();
+  const i = state.widgets.findIndex(w => w.id === id);
+  if (i < 0) return;
+  const w = state.widgets.splice(i, 1)[0];
+  if (dir === 'front') state.widgets.push(w);
+  else if (dir === 'back') state.widgets.unshift(w);
+  else {
+    const ni = Math.max(0, Math.min(state.widgets.length, i + dir));
+    state.widgets.splice(ni, 0, w);
+  }
+  redrawAll();
+}
+
+function sanitizeName(s) {
+  return (s || '').replace(/[^a-zA-Z0-9_]/g, '_').replace(/^([0-9])/, '_$1') || 'widget';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+// ----- Keyboard -------------------------------------------
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    if (state.selectedId) { deleteWidget(state.selectedId); e.preventDefault(); }
+  }
+  if (e.key === 'Escape') { state.selectedId = null; redrawAll(); }
+  if (e.key === 'ArrowLeft')  { moveSelected(e.shiftKey ? -10 : -1, 0); e.preventDefault(); }
+  if (e.key === 'ArrowRight') { moveSelected(e.shiftKey ?  10 :  1, 0); e.preventDefault(); }
+  if (e.key === 'ArrowUp')    { moveSelected(0, e.shiftKey ? -10 : -1); e.preventDefault(); }
+  if (e.key === 'ArrowDown')  { moveSelected(0, e.shiftKey ?  10 :  1); e.preventDefault(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+    if (state.selectedId) duplicateWidget(state.selectedId);
+    e.preventDefault();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { undo(); e.preventDefault(); }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'Z' || (e.shiftKey && e.key.toLowerCase() === 'z'))) { redo(); e.preventDefault(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { redo(); e.preventDefault(); }
+});
+
+// ----- History (undo/redo) --------------------------------
+
+function snapshot() {
+  return JSON.stringify({
+    widgets: state.widgets,
+    selectedId: state.selectedId,
+    nextId: state.nextId,
+    nameCounts: state.nameCounts,
+    orientation: state.orientation
+  });
+}
+
+function restore(snap) {
+  const obj = JSON.parse(snap);
+  state.widgets = obj.widgets;
+  state.selectedId = obj.selectedId;
+  state.nextId = obj.nextId;
+  state.nameCounts = obj.nameCounts;
+  state.orientation = obj.orientation;
+  applyOrientation();
+  redrawAll();
+}
+
+function pushHistory() {
+  state.history = state.history.slice(0, state.historyIdx + 1);
+  state.history.push(snapshot());
+  if (state.history.length > state.historyMax) state.history.shift();
+  state.historyIdx = state.history.length - 1;
+}
+
+function undo() {
+  if (state.historyIdx <= 0) return;
+  state.historyIdx--;
+  restore(state.history[state.historyIdx]);
+}
+
+function redo() {
+  if (state.historyIdx >= state.history.length - 1) return;
+  state.historyIdx++;
+  restore(state.history[state.historyIdx]);
+}
+
+document.getElementById('btn-undo').addEventListener('click', undo);
+document.getElementById('btn-redo').addEventListener('click', redo);
+
+// ----- Toolbar --------------------------------------------
+
+document.getElementById('btn-new').addEventListener('click', () => {
+  if (state.widgets.length && !confirm('Clear all widgets?')) return;
+  pushHistory();
+  state.widgets = [];
+  state.selectedId = null;
+  state.nameCounts = {};
+  state.nextId = 1;
+  redrawAll();
+});
+
+document.getElementById('btn-save').addEventListener('click', () => {
+  const data = {
+    version: 1,
+    tool: 'PANELWRIGHT',
+    orientation: state.orientation,
+    widgets: state.widgets,
+    nextId: state.nextId,
+    nameCounts: state.nameCounts
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'panelwright-project.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('btn-load').addEventListener('click', () => {
+  document.getElementById('file-input').click();
+});
+
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      pushHistory();
+      state.widgets = data.widgets || [];
+      state.orientation = data.orientation || 'landscape';
+      state.nextId = data.nextId || 1;
+      state.nameCounts = data.nameCounts || {};
+      state.selectedId = null;
+      $orientSelect.value = state.orientation;
+      applyOrientation();
+      redrawAll();
+    } catch (err) {
+      alert('Could not load file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+$orientSelect.addEventListener('change', () => {
+  pushHistory();
+  state.orientation = $orientSelect.value;
+  applyOrientation();
+  // Clamp widgets to new bounds
+  const dims = getCanvasDims();
+  for (const w of state.widgets) {
+    w.w = Math.min(w.w, dims.w);
+    w.h = Math.min(w.h, dims.h);
+    w.x = Math.min(w.x, dims.w - w.w);
+    w.y = Math.min(w.y, dims.h - w.h);
+  }
+  redrawAll();
+});
+
+function applyOrientation() {
+  const dims = getCanvasDims();
+  $canvas.style.width = dims.w + 'px';
+  $canvas.style.height = dims.h + 'px';
+  updateStatus();
+}
+
+$gridToggle.addEventListener('change', () => {
+  state.grid = $gridToggle.checked;
+  $canvas.classList.toggle('grid-on', state.grid);
+});
+
+$snapToggle.addEventListener('change', () => {
+  state.snap = $snapToggle.checked;
+});
+
+// ----- Code generation ------------------------------------
+
+function generateCode() {
+  const dims = getCanvasDims();
+  const lines = [];
+
+  lines.push('// =====================================================================');
+  lines.push('// Arduino Giga Display Shield sketch');
+  lines.push('// Generated by PANELWRIGHT (Field Instrument 042)');
+  lines.push('// Display: ' + dims.w + ' x ' + dims.h + '  (' + state.orientation + ')');
+  lines.push('// Widgets: ' + state.widgets.length);
+  lines.push('// =====================================================================');
+  lines.push('');
+  lines.push('#include "Arduino_H7_Video.h"');
+  lines.push('#include "Arduino_GigaDisplayTouch.h"');
+  lines.push('#include "lvgl.h"');
+  lines.push('');
+  lines.push('Arduino_H7_Video          Display(' + dims.w + ', ' + dims.h + ', GigaDisplayShield);');
+  lines.push('Arduino_GigaDisplayTouch  TouchDetector;');
+  lines.push('');
+
+  // Forward decls for widget handles if interactive
+  const interactiveTypes = new Set(['button', 'slider', 'switch', 'checkbox', 'dropdown', 'roller']);
+  const handles = [];
+  for (const w of state.widgets) {
+    handles.push(w.name);
+    if (w.type === 'button') handles.push(w.name + '_label');
+  }
+  if (handles.length) {
+    lines.push('// Widget handles');
+    for (const h of handles) {
+      lines.push('static lv_obj_t * ' + h + ';');
+    }
+    lines.push('');
+  }
+
+  // Event handlers for interactive widgets (stubs)
+  const interactive = state.widgets.filter(w => interactiveTypes.has(w.type));
+  if (interactive.length) {
+    lines.push('// ---- Event handler stubs ----');
+    for (const w of interactive) {
+      lines.push('static void ' + w.name + '_event(lv_event_t * e) {');
+      if (w.type === 'button') {
+        lines.push('  // Pressed: ' + w.name);
+        lines.push('  Serial.println("' + w.name + ' pressed");');
+      } else if (w.type === 'slider') {
+        lines.push('  int32_t v = lv_slider_get_value(' + w.name + ');');
+        lines.push('  Serial.print("' + w.name + ' = "); Serial.println(v);');
+      } else if (w.type === 'switch') {
+        lines.push('  bool on = lv_obj_has_state(' + w.name + ', LV_STATE_CHECKED);');
+        lines.push('  Serial.print("' + w.name + ' = "); Serial.println(on ? "ON" : "OFF");');
+      } else if (w.type === 'checkbox') {
+        lines.push('  bool on = lv_obj_has_state(' + w.name + ', LV_STATE_CHECKED);');
+        lines.push('  Serial.print("' + w.name + ' = "); Serial.println(on ? "ON" : "OFF");');
+      } else if (w.type === 'dropdown') {
+        lines.push('  uint16_t sel = lv_dropdown_get_selected(' + w.name + ');');
+        lines.push('  Serial.print("' + w.name + ' selection = "); Serial.println(sel);');
+      } else if (w.type === 'roller') {
+        lines.push('  uint16_t sel = lv_roller_get_selected(' + w.name + ');');
+        lines.push('  Serial.print("' + w.name + ' selection = "); Serial.println(sel);');
+      }
+      lines.push('}');
+      lines.push('');
+    }
+  }
+
+  // Build UI function
+  lines.push('// ---- UI construction ----');
+  lines.push('static void build_ui(void) {');
+  lines.push('  lv_obj_t * scr = lv_scr_act();');
+  lines.push('  lv_obj_set_style_bg_color(scr, lv_color_hex(0x000000), 0);');
+  lines.push('  lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);');
+  lines.push('');
+
+  for (const w of state.widgets) {
+    lines.push('  // ' + w.type.toUpperCase() + ': ' + w.name);
+    lines.push(...genWidgetCode(w).map(l => '  ' + l));
+    lines.push('');
+  }
+
+  lines.push('}');
+  lines.push('');
+
+  // Setup and loop
+  lines.push('void setup() {');
+  lines.push('  Serial.begin(115200);');
+  lines.push('  Display.begin();');
+  lines.push('  TouchDetector.begin();');
+  lines.push('');
+  lines.push('  build_ui();');
+  lines.push('}');
+  lines.push('');
+  lines.push('void loop() {');
+  lines.push('  lv_timer_handler();');
+  lines.push('  delay(5);');
+  lines.push('}');
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+function genWidgetCode(w) {
+  const lines = [];
+  const N = w.name;
+  const cb = (handler) => {
+    lines.push(`lv_obj_add_event_cb(${N}, ${N}_event, ${handler}, NULL);`);
+  };
+
+  switch (w.type) {
+    case 'label':
+      lines.push(`${N} = lv_label_create(scr);`);
+      lines.push(`lv_label_set_text(${N}, ${cstr(w.props.text)});`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_obj_set_style_text_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), 0);`);
+      lines.push(`lv_obj_set_style_text_font(${N}, &lv_font_montserrat_${nearestFont(w.props.fontSize)}, 0);`);
+      if (w.props.align === 'center')
+        lines.push(`lv_obj_set_style_text_align(${N}, LV_TEXT_ALIGN_CENTER, 0);`);
+      else if (w.props.align === 'right')
+        lines.push(`lv_obj_set_style_text_align(${N}, LV_TEXT_ALIGN_RIGHT, 0);`);
+      break;
+
+    case 'button': {
+      lines.push(`${N} = lv_btn_create(scr);`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_obj_set_style_bg_color(${N}, lv_color_hex(${hexToLvHex(w.props.bgColor)}), 0);`);
+      lines.push(`lv_obj_set_style_radius(${N}, ${w.props.radius}, 0);`);
+      lines.push(`${N}_label = lv_label_create(${N});`);
+      lines.push(`lv_label_set_text(${N}_label, ${cstr(w.props.text)});`);
+      lines.push(`lv_obj_set_style_text_color(${N}_label, lv_color_hex(${hexToLvHex(w.props.textColor)}), 0);`);
+      lines.push(`lv_obj_center(${N}_label);`);
+      cb('LV_EVENT_CLICKED');
+      break;
+    }
+
+    case 'slider':
+      lines.push(`${N} = lv_slider_create(scr);`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_slider_set_range(${N}, ${w.props.min}, ${w.props.max});`);
+      lines.push(`lv_slider_set_value(${N}, ${w.props.value}, LV_ANIM_OFF);`);
+      lines.push(`lv_obj_set_style_bg_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR);`);
+      lines.push(`lv_obj_set_style_bg_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_KNOB);`);
+      cb('LV_EVENT_VALUE_CHANGED');
+      break;
+
+    case 'switch':
+      lines.push(`${N} = lv_switch_create(scr);`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      if (w.props.checked) lines.push(`lv_obj_add_state(${N}, LV_STATE_CHECKED);`);
+      lines.push(`lv_obj_set_style_bg_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR | LV_STATE_CHECKED);`);
+      cb('LV_EVENT_VALUE_CHANGED');
+      break;
+
+    case 'checkbox':
+      lines.push(`${N} = lv_checkbox_create(scr);`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_checkbox_set_text(${N}, ${cstr(w.props.text)});`);
+      if (w.props.checked) lines.push(`lv_obj_add_state(${N}, LV_STATE_CHECKED);`);
+      lines.push(`lv_obj_set_style_bg_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR | LV_STATE_CHECKED);`);
+      cb('LV_EVENT_VALUE_CHANGED');
+      break;
+
+    case 'bar':
+      lines.push(`${N} = lv_bar_create(scr);`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_bar_set_range(${N}, ${w.props.min}, ${w.props.max});`);
+      lines.push(`lv_bar_set_value(${N}, ${w.props.value}, LV_ANIM_OFF);`);
+      lines.push(`lv_obj_set_style_bg_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR);`);
+      break;
+
+    case 'arc':
+      lines.push(`${N} = lv_arc_create(scr);`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_arc_set_range(${N}, ${w.props.min}, ${w.props.max});`);
+      lines.push(`lv_arc_set_value(${N}, ${w.props.value});`);
+      lines.push(`lv_obj_set_style_arc_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR);`);
+      break;
+
+    case 'dropdown': {
+      const opts = (w.props.options || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+      lines.push(`${N} = lv_dropdown_create(scr);`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_dropdown_set_options(${N}, "${opts}");`);
+      if (w.props.selected) lines.push(`lv_dropdown_set_selected(${N}, ${w.props.selected});`);
+      cb('LV_EVENT_VALUE_CHANGED');
+      break;
+    }
+
+    case 'textarea':
+      lines.push(`${N} = lv_textarea_create(scr);`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      if (w.props.text) lines.push(`lv_textarea_set_text(${N}, ${cstr(w.props.text)});`);
+      if (w.props.placeholder) lines.push(`lv_textarea_set_placeholder_text(${N}, ${cstr(w.props.placeholder)});`);
+      if (w.props.oneLine) lines.push(`lv_textarea_set_one_line(${N}, true);`);
+      break;
+
+    case 'roller': {
+      const opts = (w.props.options || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+      const mode = w.props.mode === 'infinite' ? 'LV_ROLLER_MODE_INFINITE' : 'LV_ROLLER_MODE_NORMAL';
+      lines.push(`${N} = lv_roller_create(scr);`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`lv_roller_set_options(${N}, "${opts}", ${mode});`);
+      if (w.props.selected) lines.push(`lv_roller_set_selected(${N}, ${w.props.selected}, LV_ANIM_OFF);`);
+      cb('LV_EVENT_VALUE_CHANGED');
+      break;
+    }
+  }
+  return lines;
+}
+
+function cstr(s) {
+  if (s === undefined || s === null) s = '';
+  s = String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\t/g, '\\t');
+  return '"' + s + '"';
+}
+
+function nearestFont(size) {
+  // LVGL ships these Montserrat sizes by default in many builds
+  const available = [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48];
+  let best = available[0];
+  let bestDelta = Infinity;
+  for (const s of available) {
+    if (Math.abs(s - size) < bestDelta) { best = s; bestDelta = Math.abs(s - size); }
+  }
+  return best;
+}
+
+// Code modal ------------------------------------------------
+
+const $codeModal = document.getElementById('code-modal');
+const $codeOutput = document.getElementById('code-output');
+
+document.getElementById('btn-code').addEventListener('click', () => {
+  const code = generateCode();
+  $codeOutput.innerHTML = highlightCpp(code);
+  $codeOutput.dataset.raw = code;
+  $codeModal.classList.add('open');
+});
+document.getElementById('code-close').addEventListener('click', () => $codeModal.classList.remove('open'));
+$codeModal.addEventListener('click', e => { if (e.target === $codeModal) $codeModal.classList.remove('open'); });
+
+document.getElementById('code-copy').addEventListener('click', () => {
+  navigator.clipboard.writeText($codeOutput.dataset.raw).then(() => {
+    const btn = document.getElementById('code-copy');
+    const old = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(() => btn.textContent = old, 1200);
+  });
+});
+document.getElementById('code-download').addEventListener('click', () => {
+  const blob = new Blob([$codeOutput.dataset.raw], { type: 'text/x-arduino' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'panelwright_ui.ino';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+function highlightCpp(src) {
+  // Conservative pass. Comments, strings, preprocessor, then keywords/numbers.
+  const escaped = src.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  // Split lines so highlighting stays line-bound
+  const lines = escaped.split('\n').map(line => {
+    // Comment
+    const cmtIdx = line.indexOf('//');
+    let head = line, tail = '';
+    if (cmtIdx >= 0) {
+      head = line.slice(0, cmtIdx);
+      tail = '<span class="tok-cmt">' + line.slice(cmtIdx) + '</span>';
+    }
+    // Preprocessor
+    if (/^\s*#/.test(head)) head = '<span class="tok-pp">' + head + '</span>';
+    else {
+      // Strings
+      head = head.replace(/"([^"\\]|\\.)*"/g, m => '<span class="tok-str">' + m + '</span>');
+      // Numbers
+      head = head.replace(/\b(0x[0-9A-Fa-f]+|\d+)\b/g, '<span class="tok-num">$1</span>');
+      // Keywords
+      head = head.replace(/\b(void|static|const|bool|true|false|int|int32_t|uint16_t|if|else|return)\b/g, '<span class="tok-kw">$1</span>');
+      // LVGL macros
+      head = head.replace(/\b(LV_[A-Z_0-9]+)\b/g, '<span class="tok-kw">$1</span>');
+    }
+    return head + tail;
+  });
+  return lines.join('\n');
+}
+
+// Help -----------------------------------------------------
+
+const $helpOverlay = document.getElementById('help-overlay');
+document.getElementById('btn-help').addEventListener('click', () => $helpOverlay.classList.add('open'));
+document.getElementById('help-close').addEventListener('click', () => $helpOverlay.classList.remove('open'));
+$helpOverlay.addEventListener('click', e => { if (e.target === $helpOverlay) $helpOverlay.classList.remove('open'); });
+
+// ----- Boot -----------------------------------------------
+
+buildPalette();
+applyOrientation();
+redrawAll();
+pushHistory();
+
+// Welcome sample: add a label and a button so the canvas isn't blank
+if (state.widgets.length === 0) {
+  addWidget('label', 40, 40);
+  const last = state.widgets[state.widgets.length - 1];
+  last.props.text = 'GIGA DISPLAY';
+  last.props.fontSize = 28;
+  last.props.color = '#d4a574';
+  last.w = 280; last.h = 40;
+
+  addWidget('label', 40, 80);
+  const sub = state.widgets[state.widgets.length - 1];
+  sub.props.text = 'Drag widgets from the palette to begin';
+  sub.props.color = '#888888';
+  sub.props.fontSize = 14;
+  sub.w = 380;
+
+  addWidget('button', 40, 140);
+  const btn = state.widgets[state.widgets.length - 1];
+  btn.props.text = 'TAP ME';
+
+  addWidget('slider', 40, 220);
+  addWidget('switch', 280, 215);
+  addWidget('arc', 600, 140);
+
+  state.selectedId = null;
+  redrawAll();
+  state.history = [];
+  state.historyIdx = -1;
+  pushHistory();
+}
+
+})();
+</script>
+
+</body>
+</html>
