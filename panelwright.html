@@ -1452,9 +1452,24 @@ button#btn-preview.active {
                      padding: 4px 6px; font-family: var(--mono); font-size: 10px; width: 100%;
                      resize: vertical;"></textarea>
           </div>
+          <div class="ph-row" style="grid-template-columns: 110px 1fr; align-items: start;">
+            <label style="padding-top: 5px;">Setup code</label>
+            <textarea id="meta-setup-code" rows="4" spellcheck="false"
+              placeholder="// Inserted at the end of setup(). Runs once after UI build."
+              style="background: var(--bg); border: 1px solid var(--border); color: var(--ink);
+                     padding: 4px 6px; font-family: var(--mono); font-size: 10px; width: 100%;
+                     resize: vertical;"></textarea>
+          </div>
+          <div class="ph-row" style="grid-template-columns: 110px 1fr; align-items: start;">
+            <label style="padding-top: 5px;">Loop code</label>
+            <textarea id="meta-loop-code" rows="6" spellcheck="false"
+              placeholder="// Inserted at the end of loop(). Runs every iteration after lv_timer_handler()."
+              style="background: var(--bg); border: 1px solid var(--border); color: var(--ink);
+                     padding: 4px 6px; font-family: var(--mono); font-size: 10px; width: 100%;
+                     resize: vertical;"></textarea>
+          </div>
           <div class="ph-hint" style="color: var(--ink-dim); font-style: normal;">
-            These fields are included in the generated sketch as a comment header at the top
-            of the .ino file, and the title is used as the default filename when you save.
+            Description appears as a header comment. Setup/loop code is injected into the generated sketch at the marked points and persists across regeneration. Reference any widget by its name (e.g. lv_arc_set_value(mtr_1_indicator, val)).
           </div>
         </div>
       </div>
@@ -5097,6 +5112,8 @@ const $metaDescription = document.getElementById('meta-description');
 const $metaBoardProfile = document.getElementById('meta-board-profile');
 const $metaLvglVersion = document.getElementById('meta-lvgl-version');
 const $metaSplitFiles = document.getElementById('meta-split-files');
+const $metaSetupCode = document.getElementById('meta-setup-code');
+const $metaLoopCode = document.getElementById('meta-loop-code');
 
 function openProjectModal() {
   $metaTitle.value = state.meta.title || '';
@@ -5106,6 +5123,8 @@ function openProjectModal() {
   $metaBoardProfile.value = state.meta.boardProfile || 'giga_display_shield';
   $metaLvglVersion.value = state.meta.lvglVersion || 'v9';
   $metaSplitFiles.value = state.meta.splitFiles ? 'true' : 'false';
+  $metaSetupCode.value = state.meta.setupCode || '';
+  $metaLoopCode.value = state.meta.loopCode || '';
   $projectModal.classList.add('open');
 }
 function closeProjectModal() {
@@ -5116,7 +5135,9 @@ function closeProjectModal() {
     description: $metaDescription.value,
     boardProfile: $metaBoardProfile.value || 'giga_display_shield',
     lvglVersion: $metaLvglVersion.value || 'v9',
-    splitFiles: $metaSplitFiles.value === 'true'
+    splitFiles: $metaSplitFiles.value === 'true',
+    setupCode: $metaSetupCode.value,
+    loopCode: $metaLoopCode.value
   };
   const changed = JSON.stringify(newMeta) !== JSON.stringify(state.meta);
   if (changed) {
@@ -5680,14 +5701,36 @@ function codegenContext() {
   // interactive widgets once, so each emitter doesn't redo the walk.
   const interactiveTypes = new Set(['button', 'slider', 'switch', 'checkbox', 'dropdown', 'roller']);
   const handles = [];
+  // Chart series are lv_chart_series_t * (not lv_obj_t *), so they need
+  // their own declaration block with the correct type.
+  const seriesHandles = [];
   const eventWidgets = [];
   function walk(arr, screen) {
     for (const w of arr) {
       handles.push(w.name);
       if (w.type === 'button') handles.push(w.name + '_label');
-      if (w.type === 'meter') {
+      if (w.type === 'meter' && (state.meta.lvglVersion || 'v9') === 'v9') {
+        // v9 meter is a composite (container + scale + arc). Expose the
+        // inner handles at file scope so user code (loop, event handlers)
+        // can update the indicator with lv_arc_set_value(mtr_indic, val).
+        // v8 uses lv_meter_scale_t* and lv_meter_indicator_t* which are
+        // different types, so they stay scoped inside the builder block.
         handles.push(w.name + '_scale');
         handles.push(w.name + '_indic');
+      }
+      // Tabview tab containers: each tab is an lv_obj_t * the user may
+      // want to add widgets into at runtime or restyle.
+      if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
+        for (let i = 0; i < w.props.tabs.length; i++) {
+          handles.push(w.name + '_tab_' + i);
+        }
+      }
+      // Chart series handles. Up to three per chart.
+      if (w.type === 'chart') {
+        const seriesCount = Math.max(1, Math.min(3, w.props.seriesCount || 1));
+        for (let i = 0; i < seriesCount; i++) {
+          seriesHandles.push(w.name + '_ser' + (i + 1));
+        }
       }
       if (interactiveTypes.has(w.type)) eventWidgets.push({ widget: w, screen });
       if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
@@ -5698,7 +5741,7 @@ function codegenContext() {
     }
   }
   for (const s of state.screens) walk(s.widgets, s);
-  return { dims, board, enabled, handles, eventWidgets, interactiveTypes };
+  return { dims, board, enabled, handles, seriesHandles, eventWidgets, interactiveTypes };
 }
 
 // Walk every widget in the project (including nested tabview children)
@@ -5835,11 +5878,14 @@ function emitScreenHandles(ctx, keyword) {
 }
 
 function emitWidgetHandles(ctx, keyword) {
-  if (!ctx.handles.length) return [];
+  if (!ctx.handles.length && !ctx.seriesHandles.length) return [];
   const out = [];
   out.push('// ---- Widget handles ----');
   const prefix = keyword ? keyword + ' ' : '';
   for (const h of ctx.handles) out.push(prefix + 'lv_obj_t * ' + h + ';');
+  // Chart series are a different LVGL type. Emit them in the same block
+  // so the user sees the full surface of file-scope handles together.
+  for (const h of ctx.seriesHandles) out.push(prefix + 'lv_chart_series_t * ' + h + ';');
   return out;
 }
 
@@ -5990,17 +6036,37 @@ function emitSetupFunction(ctx, opts) {
     out.push('  // ---- UI ----');
     out.push('  ui_init();');
   }
+  // Inject user setup code, if any. Lives in state.meta.setupCode and
+  // persists across regeneration so users do not have to hand-edit the
+  // .ino every time they tweak the UI.
+  const userSetup = (state.meta.setupCode || '').trim();
+  if (userSetup) {
+    out.push('');
+    out.push('  // ---- User setup code ----');
+    for (const ln of userSetup.split('\n')) out.push('  ' + ln);
+  }
   out.push('}');
   return out;
 }
 
 function emitLoopFunction(ctx) {
-  return [
+  const out = [
     'void loop() {',
-    '  lv_timer_handler();',
-    '  delay(5);',
-    '}'
+    '  lv_timer_handler();'
   ];
+  // Inject user loop code, if any. Runs every iteration after the LVGL
+  // timer handler, which is the right place for sensor reads / widget
+  // value updates / periodic logic.
+  const userLoop = (state.meta.loopCode || '').trim();
+  if (userLoop) {
+    out.push('');
+    out.push('  // ---- User loop code ----');
+    for (const ln of userLoop.split('\n')) out.push('  ' + ln);
+    out.push('');
+  }
+  out.push('  delay(5);');
+  out.push('}');
+  return out;
 }
 
 // ----- Peripheral code generation -------------------------
@@ -6351,35 +6417,33 @@ function genWidgetCode(w, screen, parentOverride) {
         lines.push(`lv_obj_set_style_bg_opa(${N}, LV_OPA_TRANSP, 0);`);
         lines.push(`lv_obj_set_style_border_opa(${N}, LV_OPA_TRANSP, 0);`);
         lines.push(`lv_obj_set_style_pad_all(${N}, 0, 0);`);
-        lines.push(`{`);
-        lines.push(`  // ---- Scale: ticks and labels ----`);
-        lines.push(`  lv_obj_t * sc = lv_scale_create(${N});`);
-        lines.push(`  lv_obj_remove_flag(sc, LV_OBJ_FLAG_SCROLLABLE);`);
-        lines.push(`  lv_obj_set_size(sc, lv_pct(100), lv_pct(100));`);
-        lines.push(`  lv_obj_center(sc);`);
-        lines.push(`  lv_scale_set_mode(sc, LV_SCALE_MODE_ROUND_INNER);`);
-        lines.push(`  lv_scale_set_total_tick_count(sc, 41);`);
-        lines.push(`  lv_scale_set_major_tick_every(sc, ${Math.max(2, Math.floor(40 / Math.max(1, w.props.majorTicks - 1)))});`);
-        lines.push(`  lv_scale_set_range(sc, ${w.props.min}, ${w.props.max});`);
-        lines.push(`  lv_scale_set_angle_range(sc, ${sweep});`);
-        lines.push(`  lv_scale_set_rotation(sc, ${w.props.angleStart});`);
-        lines.push(`  // ---- Arc: value indicator ----`);
-        lines.push(`  lv_obj_t * ind = lv_arc_create(${N});`);
-        lines.push(`  lv_obj_remove_flag(ind, LV_OBJ_FLAG_CLICKABLE);`);
-        lines.push(`  lv_obj_remove_flag(ind, LV_OBJ_FLAG_SCROLLABLE);`);
-        lines.push(`  lv_obj_set_size(ind, lv_pct(92), lv_pct(92));`);
-        lines.push(`  lv_obj_center(ind);`);
-        lines.push(`  lv_obj_set_style_bg_opa(ind, LV_OPA_TRANSP, 0);`);
-        lines.push(`  lv_obj_set_style_border_opa(ind, LV_OPA_TRANSP, 0);`);
-        lines.push(`  lv_arc_set_bg_angles(ind, ${w.props.angleStart}, ${w.props.angleStart + sweep});`);
-        lines.push(`  lv_arc_set_rotation(ind, 0);`);
-        lines.push(`  lv_arc_set_range(ind, ${w.props.min}, ${w.props.max});`);
-        lines.push(`  lv_arc_set_value(ind, ${w.props.value});`);
-        lines.push(`  lv_obj_set_style_arc_width(ind, 6, LV_PART_MAIN);`);
-        lines.push(`  lv_obj_set_style_arc_width(ind, 6, LV_PART_INDICATOR);`);
-        lines.push(`  lv_obj_set_style_arc_color(ind, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR);`);
-        lines.push(`  lv_obj_remove_style(ind, NULL, LV_PART_KNOB);`);
-        lines.push(`}`);
+        lines.push(`// ---- Scale: ticks and labels (handle: ${N}_scale) ----`);
+        lines.push(`${N}_scale = lv_scale_create(${N});`);
+        lines.push(`lv_obj_remove_flag(${N}_scale, LV_OBJ_FLAG_SCROLLABLE);`);
+        lines.push(`lv_obj_set_size(${N}_scale, lv_pct(100), lv_pct(100));`);
+        lines.push(`lv_obj_center(${N}_scale);`);
+        lines.push(`lv_scale_set_mode(${N}_scale, LV_SCALE_MODE_ROUND_INNER);`);
+        lines.push(`lv_scale_set_total_tick_count(${N}_scale, 41);`);
+        lines.push(`lv_scale_set_major_tick_every(${N}_scale, ${Math.max(2, Math.floor(40 / Math.max(1, w.props.majorTicks - 1)))});`);
+        lines.push(`lv_scale_set_range(${N}_scale, ${w.props.min}, ${w.props.max});`);
+        lines.push(`lv_scale_set_angle_range(${N}_scale, ${sweep});`);
+        lines.push(`lv_scale_set_rotation(${N}_scale, ${w.props.angleStart});`);
+        lines.push(`// ---- Arc: value indicator (handle: ${N}_indic) ----`);
+        lines.push(`${N}_indic = lv_arc_create(${N});`);
+        lines.push(`lv_obj_remove_flag(${N}_indic, LV_OBJ_FLAG_CLICKABLE);`);
+        lines.push(`lv_obj_remove_flag(${N}_indic, LV_OBJ_FLAG_SCROLLABLE);`);
+        lines.push(`lv_obj_set_size(${N}_indic, lv_pct(92), lv_pct(92));`);
+        lines.push(`lv_obj_center(${N}_indic);`);
+        lines.push(`lv_obj_set_style_bg_opa(${N}_indic, LV_OPA_TRANSP, 0);`);
+        lines.push(`lv_obj_set_style_border_opa(${N}_indic, LV_OPA_TRANSP, 0);`);
+        lines.push(`lv_arc_set_bg_angles(${N}_indic, ${w.props.angleStart}, ${w.props.angleStart + sweep});`);
+        lines.push(`lv_arc_set_rotation(${N}_indic, 0);`);
+        lines.push(`lv_arc_set_range(${N}_indic, ${w.props.min}, ${w.props.max});`);
+        lines.push(`lv_arc_set_value(${N}_indic, ${w.props.value});`);
+        lines.push(`lv_obj_set_style_arc_width(${N}_indic, 6, LV_PART_MAIN);`);
+        lines.push(`lv_obj_set_style_arc_width(${N}_indic, 6, LV_PART_INDICATOR);`);
+        lines.push(`lv_obj_set_style_arc_color(${N}_indic, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR);`);
+        lines.push(`lv_obj_remove_style(${N}_indic, NULL, LV_PART_KNOB);`);
       } else {
         // v8: lv_meter widget with scale + arc indicator + needle line
         lines.push(`${N} = lv_meter_create(${PARENT});`);
@@ -6455,7 +6519,9 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       for (let i = 0; i < tabs.length; i++) {
         const tabHandle = `${N}_tab_${i}`;
-        lines.push(`lv_obj_t * ${tabHandle} = lv_tabview_add_tab(${N}, ${cstr(tabs[i].name || ('Tab ' + (i+1)))});`);
+        // Tab handles are declared at file scope (see emitWidgetHandles)
+        // so user code can add widgets to a tab at runtime if needed.
+        lines.push(`${tabHandle} = lv_tabview_add_tab(${N}, ${cstr(tabs[i].name || ('Tab ' + (i+1)))});`);
         const childWidgets = Array.isArray(tabs[i].widgets) ? tabs[i].widgets : [];
         if (!childWidgets.length) {
           lines.push(`(void)${tabHandle};`);
@@ -6502,7 +6568,9 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`lv_chart_set_range(${N}, LV_CHART_AXIS_PRIMARY_Y, 0, 100);`);
       for (let s = 0; s < series; s++) {
         const v = `${N}_ser${s + 1}`;
-        lines.push(`lv_chart_series_t * ${v} = lv_chart_add_series(${N}, lv_color_hex(${hexToLvHex(colors[s])}), LV_CHART_AXIS_PRIMARY_Y);`);
+        // Series handle declared at file scope (see emitWidgetHandles).
+        // User code can push values with lv_chart_set_next_value(cht, ser, v).
+        lines.push(`${v} = lv_chart_add_series(${N}, lv_color_hex(${hexToLvHex(colors[s])}), LV_CHART_AXIS_PRIMARY_Y);`);
         // Provide a sample sine pattern at runtime
         lines.push(`for (int i = 0; i < ${points}; i++) {`);
         lines.push(`  float t = (float)i / ${points} * 6.28318f + ${(s * 0.7).toFixed(3)}f;`);
