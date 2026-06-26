@@ -342,6 +342,641 @@ and gyroscope work exactly as documented.
 
 ---
 
+## Cookbook: wiring widgets to hardware
+
+PANELWRIGHT generates the UI scaffolding. Making widgets actually do something usually comes down to a few lines of C++ wired in at the right place. There are three places to put code:
+
+**Event Code field** (per widget). Open the widget's properties and use the `Event Code` textarea. The snippet is inserted into that widget's LVGL event handler and runs when the widget is interacted with (slider value changes, button clicked, switch toggled). Local variable `e` is the `lv_event_t *`. The widget itself is available by its name (e.g. `sld_1`).
+
+**Setup code field** (project level). Open Project Details and use the `Setup code` textarea. Runs once at the end of `setup()` after the UI is built and any peripherals are initialised. Right place for `pinMode`, sensor library begins, serial protocols, etc.
+
+**Loop code field** (project level). Same Project Details modal. Inserted at the end of `loop()` after `lv_timer_handler()`. Right place for continuous polling: read a sensor, update a widget value, watch a flag.
+
+All three persist in the project JSON so they survive regeneration. You never have to hand-edit the generated .ino unless you want to.
+
+Every recipe below references widgets by their default auto-generated name (`btn_1`, `sld_1`, `mtr_1`, etc.). Rename your widget in the properties panel and use that name instead. Recipes assume LVGL v9 (the default). If you're on v8, button creation is `lv_btn_create` and the meter uses `lv_meter_*` instead of the v9 scale+arc composite, but the rest is identical.
+
+### Input widgets driving hardware
+
+**Button toggles a GPIO pin.** Drop a Button widget. Open its properties and put this in `Event Code`:
+
+```c
+static bool relay_on = false;
+relay_on = !relay_on;
+digitalWrite(2, relay_on ? HIGH : LOW);
+```
+
+In Project Details `Setup code`, declare the pin: `pinMode(2, OUTPUT);`. Tapping the button now toggles GPIO 2. If your button has visual feedback you want, also update its label: `lv_label_set_text(btn_1_label, relay_on ? "ON" : "OFF");`.
+
+**Switch enables a feature.** Drop a Switch widget named `sw_pump`. In its `Event Code`:
+
+```c
+bool on = lv_obj_has_state(sw_pump, LV_STATE_CHECKED);
+digitalWrite(3, on ? HIGH : LOW);
+Serial.print("pump: "); Serial.println(on);
+```
+
+Setup code: `pinMode(3, OUTPUT);`. The switch's checked state drives the pin directly.
+
+**Slider sets PWM duty cycle.** Drop a Slider widget named `sld_speed`, range 0 to 255. In its `Event Code`:
+
+```c
+int val = lv_slider_get_value(sld_speed);
+analogWrite(5, val);
+```
+
+Dragging the slider sends PWM out on pin 5 (motor driver, LED dimmer, fan controller).
+
+**Dropdown selects a mode.** Drop a Dropdown with options `Auto\nManual\nOff`, named `dd_mode`. In its `Event Code`:
+
+```c
+uint16_t sel = lv_dropdown_get_selected(dd_mode);
+switch (sel) {
+  case 0: Serial.println("AUTO");   break;
+  case 1: Serial.println("MANUAL"); break;
+  case 2: Serial.println("OFF");    digitalWrite(2, LOW); break;
+}
+```
+
+**Roller picks a numeric value.** Drop a Roller with options `1\n2\n5\n10\n20\n50`, named `rl_gain`. In its `Event Code`:
+
+```c
+uint16_t idx = lv_roller_get_selected(rl_gain);
+char opt[16];
+lv_roller_get_selected_str(rl_gain, opt, sizeof(opt));
+int gain = atoi(opt);
+// use gain for your DSP, amplifier, etc.
+```
+
+**Keyboard captures into a textarea.** Set a Keyboard widget's TextArea property to point to your textarea. Touch input flows automatically. To grab what was typed:
+
+```c
+const char * text = lv_textarea_get_text(ta_1);
+```
+
+Read this from your save button's Event Code or anywhere appropriate.
+
+### Sensors driving widgets
+
+These go in `Loop code`. Update widgets every iteration. Throttle if needed.
+
+**A0 → Meter (gauge).** Drop a Meter named `mtr_temp`, range 0 to 100. `Loop code`:
+
+```c
+static uint32_t last = 0;
+if (millis() - last > 50) {  // 20 Hz update
+  last = millis();
+  int raw = analogRead(A0);
+  int pct = map(raw, 0, 1023, 0, 100);
+  lv_arc_set_value(mtr_temp_indic, pct);
+}
+```
+
+The `mtr_temp_indic` handle is exposed at file scope as the inner arc. The throttling matters because LVGL repaints on every value change.
+
+**A0 → Bar (linear progress).** Drop a Bar named `bar_lvl`, range 0 to 1023. `Loop code`:
+
+```c
+static uint32_t last = 0;
+if (millis() - last > 50) {
+  last = millis();
+  lv_bar_set_value(bar_lvl, analogRead(A0), LV_ANIM_OFF);
+}
+```
+
+**A0 → Label (text readout).** Drop a Label named `lbl_temp`. `Loop code`:
+
+```c
+static uint32_t last = 0;
+if (millis() - last > 250) {  // 4 Hz, slow enough to read
+  last = millis();
+  float volts = analogRead(A0) * (3.3f / 1023.0f);
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%.2f V", volts);
+  lv_label_set_text(lbl_temp, buf);
+}
+```
+
+**A0 → Chart (time-series).** Drop a Chart named `cht_log` with type Line, 60 points. The series handle `cht_log_ser1` is exposed at file scope. `Loop code`:
+
+```c
+static uint32_t last = 0;
+if (millis() - last > 200) {  // 5 Hz
+  last = millis();
+  lv_chart_set_next_value(cht_log, cht_log_ser1, analogRead(A0));
+}
+```
+
+Five samples per second on a 60-point chart means a 12-second window. For multi-series charts the additional handles are `cht_log_ser2` and `cht_log_ser3`.
+
+**Digital pin → LED widget.** Drop an LED named `led_door`. `Loop code`:
+
+```c
+if (digitalRead(7) == HIGH) lv_led_on(led_door);
+else                        lv_led_off(led_door);
+```
+
+Setup: `pinMode(7, INPUT_PULLUP);` for a door-switch input.
+
+### Hardware devices
+
+Eight onboard peripherals can be enabled from the Onboard Hardware modal. Each one generates an init function and a set of helper globals you can use from `Setup code`, `Loop code`, or any widget's `Event Code`. The exact symbols are listed at the top of each subsection so you know what's available without reading the generated .ino.
+
+#### Microphone (PDM digital mic)
+
+**Available after enabling:**
+- `int16_t mic_buffer[N]`, circular PCM buffer, N is the sample count you picked
+- `volatile int mic_samples_ready`, number of fresh samples since you last cleared this flag; the PDM callback `on_mic_data()` sets it automatically
+- `MIC_CHANNELS`, `MIC_SAMPLE_RATE`, constants matching your settings
+
+**Peak meter on a Bar.** Bar `bar_mic` range 0 to 32767. `Loop code`:
+
+```c
+if (mic_samples_ready) {
+  int16_t peak = 0;
+  for (int i = 0; i < mic_samples_ready; i++) {
+    int16_t v = abs(mic_buffer[i]);
+    if (v > peak) peak = v;
+  }
+  mic_samples_ready = 0;
+  lv_bar_set_value(bar_mic, peak, LV_ANIM_OFF);
+}
+```
+
+The `mic_samples_ready` flag is the gate, so this only runs when fresh data arrives, no `millis()` throttle needed.
+
+**RMS level on an Arc (smoother VU meter).** Arc `arc_vu` range 0 to 100. `Loop code`:
+
+```c
+if (mic_samples_ready) {
+  uint64_t sumSq = 0;
+  for (int i = 0; i < mic_samples_ready; i++) {
+    sumSq += (int32_t)mic_buffer[i] * mic_buffer[i];
+  }
+  float rms = sqrtf((float)sumSq / mic_samples_ready);
+  mic_samples_ready = 0;
+  int pct = (int)(rms / 32767.0f * 100.0f);
+  lv_arc_set_value(arc_vu, constrain(pct, 0, 100));
+}
+```
+
+**Trigger something on a loud sound.** Button-style threshold detection in `Loop code`:
+
+```c
+if (mic_samples_ready) {
+  int16_t peak = 0;
+  for (int i = 0; i < mic_samples_ready; i++) {
+    if (abs(mic_buffer[i]) > peak) peak = abs(mic_buffer[i]);
+  }
+  mic_samples_ready = 0;
+  static uint32_t lastTrigger = 0;
+  if (peak > 8000 && millis() - lastTrigger > 500) {
+    lastTrigger = millis();
+    lv_led_on(led_alert);
+    // turn it off again after 200 ms via your own timer
+  }
+}
+```
+
+#### IMU (BMI270 6-axis)
+
+**Available after enabling:**
+- `IMU`, the library global (provides `accelerationAvailable()`, `gyroscopeAvailable()`, etc.)
+- `read_acceleration(ax, ay, az)`, helper, returns `bool`, fills g-units (-4 to +4 by default)
+- `read_gyroscope(gx, gy, gz)`, helper, returns `bool`, fills deg/sec
+
+**Bubble level: tilt on X axis drives an arc.** Arc `arc_tilt`, range 0 to 180. `Loop code`:
+
+```c
+float ax, ay, az;
+if (read_acceleration(ax, ay, az)) {
+  // ax in g's (-1 to +1 in normal use). Map to 0..180 for arc position.
+  int v = (int)((ax + 1.0f) * 90.0f);
+  lv_arc_set_value(arc_tilt, constrain(v, 0, 180));
+}
+```
+
+**Display pitch / roll on labels.** Labels `lbl_pitch` and `lbl_roll`. `Loop code`:
+
+```c
+static uint32_t last = 0;
+float ax, ay, az;
+if (millis() - last > 100 && read_acceleration(ax, ay, az)) {
+  last = millis();
+  int pitch = (int)(atan2f(ay, az) * 180.0f / PI);
+  int roll  = (int)(atan2f(ax, az) * 180.0f / PI);
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%+3d deg", pitch); lv_label_set_text(lbl_pitch, buf);
+  snprintf(buf, sizeof(buf), "%+3d deg", roll);  lv_label_set_text(lbl_roll, buf);
+}
+```
+
+**Shake to advance a roller.** Roller `rl_mode`. `Loop code`:
+
+```c
+float ax, ay, az;
+if (read_acceleration(ax, ay, az)) {
+  float mag = sqrtf(ax*ax + ay*ay + az*az);
+  // A normal still reading is ~1.0g. A shake exceeds 1.8g briefly.
+  static uint32_t lastShake = 0;
+  if (mag > 1.8f && millis() - lastShake > 600) {
+    lastShake = millis();
+    uint16_t cur = lv_roller_get_selected(rl_mode);
+    uint16_t total = lv_roller_get_option_cnt(rl_mode);
+    lv_roller_set_selected(rl_mode, (cur + 1) % total, LV_ANIM_ON);
+  }
+}
+```
+
+**Rotation rate on a chart.** Chart `cht_gyro` with one series, range -250 to 250. `Loop code`:
+
+```c
+static uint32_t last = 0;
+float gx, gy, gz;
+if (millis() - last > 50 && read_gyroscope(gx, gy, gz)) {
+  last = millis();
+  lv_chart_set_next_value(cht_gyro, cht_gyro_ser1, (lv_coord_t)gz);
+}
+```
+
+#### Camera
+
+**Available after enabling:**
+- `Camera cam`, the camera object
+- `FrameBuffer cam_fb`, destination buffer
+- `capture_camera_frame(timeout_ms)`, helper, returns 0 on success
+
+**Capture on button press, show status.** Button's `Event Code`:
+
+```c
+if (capture_camera_frame(3000) == 0) {
+  lv_label_set_text(lbl_status, "Frame captured");
+  // cam_fb.getBuffer() is the raw pixel data, length getBufferSize()
+} else {
+  lv_label_set_text(lbl_status, "Capture failed");
+}
+```
+
+**Capture and save to SD as raw bytes.** Enable both Camera and SD card. Button `Event Code`:
+
+```c
+if (capture_camera_frame(3000) != 0) {
+  lv_label_set_text(lbl_status, "Capture failed");
+  return;
+}
+char path[32];
+snprintf(path, sizeof(path), "/sd/cap_%lu.raw", millis());
+FILE * f = fopen(path, "wb");
+if (f) {
+  fwrite(cam_fb.getBuffer(), 1, cam_fb.getBufferSize(), f);
+  fclose(f);
+  lv_label_set_text(lbl_status, "Saved");
+}
+```
+
+For PNG or JPEG, you would need an encoder library on top of the raw buffer; that's outside PANELWRIGHT's scope.
+
+#### SD card
+
+**Available after enabling:**
+- `sd_block_device`, the SDMMC block device
+- `sd_fs`, `mbed::FATFileSystem` mounted at `/sd`
+- All access is through C stdio (`fopen`, `fprintf`, `fread`, `fclose`) with paths under `/sd/...`
+
+**Append to a CSV log on a button press.** Button `Event Code`:
+
+```c
+FILE * f = fopen("/sd/log.csv", "a");
+if (f) {
+  fprintf(f, "%lu,%d,%d\n",
+          millis(),
+          analogRead(A0),
+          lv_obj_has_state(sw_pump, LV_STATE_CHECKED) ? 1 : 0);
+  fclose(f);
+  lv_label_set_text(lbl_status, "Logged");
+}
+```
+
+**Read a single config value at boot.** Project `Setup code`:
+
+```c
+FILE * f = fopen("/sd/config.txt", "r");
+if (f) {
+  int threshold = 0;
+  if (fscanf(f, "threshold=%d", &threshold) == 1) {
+    lv_slider_set_value(sld_thresh, threshold, LV_ANIM_OFF);
+  }
+  fclose(f);
+}
+```
+
+**Continuous logging while a switch is on.** `Loop code`:
+
+```c
+static uint32_t last = 0;
+if (lv_obj_has_state(sw_log, LV_STATE_CHECKED) && millis() - last > 1000) {
+  last = millis();
+  FILE * f = fopen("/sd/stream.csv", "a");
+  if (f) {
+    fprintf(f, "%lu,%d\n", millis(), analogRead(A0));
+    fclose(f);
+  }
+}
+```
+
+`fclose` on every write is slow but safe. For high-rate logging, batch writes with `fwrite` into a buffer and flush periodically.
+
+#### WiFi
+
+**Available after enabling:**
+- `WIFI_SSID`, `WIFI_PASSWORD`, credential constants (from arduino_secrets.h or inlined)
+- `init_wifi()` runs in setup() and blocks for up to 20 seconds attempting to connect
+- Full Arduino WiFi API: `WiFi.RSSI()`, `WiFi.localIP()`, `WiFi.status()`
+
+**Show IP address at boot.** Label `lbl_ip`. Project `Setup code` (runs after init_wifi):
+
+```c
+char buf[24];
+IPAddress ip = WiFi.localIP();
+snprintf(buf, sizeof(buf), "%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+lv_label_set_text(lbl_ip, buf);
+```
+
+**Live RSSI readout.** Label `lbl_rssi`. `Loop code`:
+
+```c
+static uint32_t last = 0;
+if (millis() - last > 2000) {
+  last = millis();
+  char buf[32];
+  if (WiFi.status() == WL_CONNECTED) {
+    snprintf(buf, sizeof(buf), "WiFi %d dBm", WiFi.RSSI());
+  } else {
+    snprintf(buf, sizeof(buf), "WiFi: offline");
+  }
+  lv_label_set_text(lbl_rssi, buf);
+}
+```
+
+**HTTP GET on button press.** Button `Event Code`:
+
+```c
+#include <WiFiClient.h>  // put this at the top of the .ino in setup code? No,
+                          // includes must be hand-edited at the top of the file
+WiFiClient client;
+if (client.connect("example.com", 80)) {
+  client.println("GET / HTTP/1.0");
+  client.println("Host: example.com");
+  client.println();
+  // Read response, stuff first line into a label, etc.
+  lv_label_set_text(lbl_status, "Sent");
+  client.stop();
+} else {
+  lv_label_set_text(lbl_status, "Conn failed");
+}
+```
+
+For includes you genuinely have to edit the top of the generated .ino. The `#include` directives sit above the PANELWRIGHT-managed region; they don't get clobbered when you regenerate.
+
+#### BLE
+
+**Available after enabling:**
+- `BLE_LOCAL_NAME`, the advertised name constant
+- `init_ble()` runs in setup() and starts advertising
+- Full ArduinoBLE API: define your `BLEService` and `BLECharacteristic` objects manually
+
+The peripheral mode generated by PANELWRIGHT advertises a name but doesn't define any services. You wire those up yourself.
+
+**Switch state synced over BLE.** Add at the top of your .ino (above the PANELWRIGHT block) and the `Setup code` field, paired:
+
+Top of .ino (hand-edited; persists across regeneration since it's outside the managed region):
+```c
+BLEService    sw_svc("19B10000-E8F2-537E-4F6C-D104768A1214");
+BLEByteCharacteristic sw_char("19B10001-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite | BLENotify);
+```
+
+Project `Setup code`:
+```c
+sw_svc.addCharacteristic(sw_char);
+BLE.addService(sw_svc);
+sw_char.writeValue((uint8_t)0);
+sw_char.setEventHandler(BLEWritten, [](BLEDevice c, BLECharacteristic ch) {
+  uint8_t v;
+  ch.readValue(v);
+  if (v) lv_obj_add_state(sw_remote, LV_STATE_CHECKED);
+  else   lv_obj_remove_state(sw_remote, LV_STATE_CHECKED);
+});
+```
+
+The switch widget's own `Event Code` should echo state back over BLE so phone apps see toggles from the touch screen:
+
+```c
+bool on = lv_obj_has_state(sw_remote, LV_STATE_CHECKED);
+sw_char.writeValue((uint8_t)(on ? 1 : 0));
+```
+
+**Notify a sensor reading.** Notifying-only characteristic. After defining `temp_char` similarly, in `Loop code`:
+
+```c
+static uint32_t last = 0;
+if (BLE.connected() && millis() - last > 500) {
+  last = millis();
+  int16_t reading = analogRead(A0);
+  temp_char.writeValue(reading);  // BLENotify pushes to subscribers
+}
+BLE.poll();  // process incoming BLE events
+```
+
+The `BLE.poll()` call should run every loop iteration when BLE is enabled, otherwise incoming writes from the phone won't be handled.
+
+#### RGB LED (onboard, active-low)
+
+**Available after enabling:**
+- `set_rgb_led(r, g, b)`, drives all three channels at once (each 0 to 255)
+- `RGB_DEFAULT_R`, `RGB_DEFAULT_G`, `RGB_DEFAULT_B`, constants for the boot color you picked
+- `LEDR`, `LEDG`, `LEDB`, pin macros (drive individually with `analogWrite`, remember active-low so `analogWrite(LEDR, 0)` is FULL red)
+
+**Status indicator: green when WiFi connected, red otherwise.** `Loop code`:
+
+```c
+static uint32_t last = 0;
+static bool wasOnline = false;
+if (millis() - last > 500) {
+  last = millis();
+  bool online = (WiFi.status() == WL_CONNECTED);
+  if (online != wasOnline) {
+    wasOnline = online;
+    set_rgb_led(online ? 0 : 255, online ? 255 : 0, 0);
+  }
+}
+```
+
+**Driven by a color picker (three sliders).** Sliders `sld_r`, `sld_g`, `sld_b`, all 0 to 255. Put this in each slider's `Event Code`:
+
+```c
+set_rgb_led(lv_slider_get_value(sld_r),
+            lv_slider_get_value(sld_g),
+            lv_slider_get_value(sld_b));
+```
+
+The whole RGB triple updates on any slider change.
+
+**Brightness sweep from a single slider.** Slider `sld_bright` range 0 to 255. `Event Code`:
+
+```c
+int v = lv_slider_get_value(sld_bright);
+set_rgb_led(v, v, v);  // white at brightness v
+```
+
+**Pulse on button press.** Button `Event Code`:
+
+```c
+set_rgb_led(0, 0, 255);  // blue
+// Schedule turn-off ~150 ms later using an LVGL timer
+lv_timer_t * t = lv_timer_create([](lv_timer_t * t) {
+  set_rgb_led(0, 0, 0);
+  lv_timer_del(t);
+}, 150, NULL);
+```
+
+#### RTC (STM32H7 internal)
+
+**Available after enabling:**
+- `rtc_now_string()`, returns a `String` formatted `"YYYY-MM-DD HH:MM:SS"`
+- Raw access via C `time()`, `localtime()`, `strftime()`, `set_time()`
+- The clock is battery-backed only if your board has the VBAT coin cell populated
+
+**Live clock display.** Label `lbl_clock`. `Loop code`:
+
+```c
+static uint32_t last = 0;
+if (millis() - last > 1000) {
+  last = millis();
+  lv_label_set_text(lbl_clock, rtc_now_string().c_str());
+}
+```
+
+**Set the clock from a button.** Button "SET TIME NOW" `Event Code`:
+
+```c
+// Replace with the current epoch when flashing. Or use WiFi/NTP to fetch.
+set_time(1750000000);  // 2025-06-15 something
+lv_label_set_text(lbl_status, "Clock set");
+```
+
+**Timestamp every log entry.** Combine SD card + RTC. Button `Event Code`:
+
+```c
+FILE * f = fopen("/sd/log.csv", "a");
+if (f) {
+  fprintf(f, "%s,%d\n", rtc_now_string().c_str(), analogRead(A0));
+  fclose(f);
+}
+```
+
+**Schedule something at a specific time of day.** `Loop code`:
+
+```c
+static int lastFiredHour = -1;
+time_t now = time(NULL);
+struct tm * t = localtime(&now);
+if (t->tm_hour == 6 && t->tm_min == 0 && lastFiredHour != t->tm_hour) {
+  lastFiredHour = t->tm_hour;
+  // Once per day at 06:00:
+  set_rgb_led(255, 200, 100);  // sunrise color
+  digitalWrite(2, HIGH);        // turn on the coffee maker
+}
+if (t->tm_hour != 6) lastFiredHour = -1;  // arm again for tomorrow
+```
+
+### Cross-widget patterns
+
+**Slider drives a meter live.** Slider named `sld_x` (0 to 100), Meter named `mtr_x` (0 to 100). In the slider's `Event Code`:
+
+```c
+lv_arc_set_value(mtr_x_indic, lv_slider_get_value(sld_x));
+```
+
+That's it. The meter follows the slider without any loop code.
+
+**Button advances a roller.** Useful when the roller is a step-through wizard rather than a free-pick. Button's `Event Code`:
+
+```c
+uint16_t cur = lv_roller_get_selected(rl_wizard);
+uint16_t total = lv_roller_get_option_cnt(rl_wizard);
+lv_roller_set_selected(rl_wizard, (cur + 1) % total, LV_ANIM_ON);
+```
+
+**Threshold logic: slider sets a level, LED reflects whether A0 exceeds it.** Slider `sld_thresh` (0 to 1023), LED `led_alarm`. `Loop code`:
+
+```c
+static uint32_t last = 0;
+if (millis() - last > 50) {
+  last = millis();
+  int reading = analogRead(A0);
+  int threshold = lv_slider_get_value(sld_thresh);
+  if (reading > threshold) lv_led_on(led_alarm);
+  else                     lv_led_off(led_alarm);
+}
+```
+
+**Switch enables continuous logging to SD.** Switch `sw_log`, button `btn_savepoint`. `Loop code`:
+
+```c
+static uint32_t last = 0;
+if (lv_obj_has_state(sw_log, LV_STATE_CHECKED) && millis() - last > 1000) {
+  last = millis();
+  File f = SD.open("/stream.csv", FILE_WRITE);
+  if (f) {
+    f.print(millis()); f.print(",");
+    f.println(analogRead(A0));
+    f.close();
+  }
+}
+```
+
+### Notes and gotchas
+
+LVGL widget value setters do not trigger event callbacks. Setting `lv_slider_set_value(sld, 50)` from your code will not fire the slider's `Event Code`, only user touch will. Use Event Code for *reactions to user input*, and loop/setup code (or direct calls in event handlers of other widgets) for *programmatic updates*.
+
+The widget handle name in C++ is exactly the `Name` field in the properties panel. The editor sanitises invalid characters; if you rename a widget after writing custom code, update your code to match.
+
+LVGL event handlers run on the LVGL thread. Heavy work (SD writes, network calls) will pause the UI. For anything taking more than a few milliseconds, set a flag in the event handler and do the work from `loop()` instead.
+
+For sensor reads in `loop()`, always throttle with a `millis()` check. Without throttling you'll be calling `lv_arc_set_value` thousands of times per second, which churns LVGL's invalidate-and-redraw logic and can make the UI feel sluggish on the Giga.
+
+The meter widget exposes two extra file-scope handles in v9 mode: `<name>_scale` and `<name>_indic`. The indic is what you update with `lv_arc_set_value` to change the displayed value. The scale is the tick-marks layer underneath. You almost always want the indic.
+
+### Inner handles cheat sheet
+
+Most widgets expose just one file-scope C++ handle: the widget's `Name` from the properties panel. A few composite widgets expose additional handles for their inner parts so you can drive them from custom code.
+
+| Widget | Main handle | Inner handles | Notes |
+|--------|-------------|---------------|-------|
+| label | `lbl_1` | none | `lv_label_set_text(lbl_1, "x")` |
+| button | `btn_1` | `btn_1_label` | The button's text is in the child label. Use `lv_label_set_text(btn_1_label, "ok")` to change it. |
+| slider | `sld_1` | none | Value via `lv_slider_get_value` / `lv_slider_set_value`. |
+| switch | `sw_1` | none | State via `lv_obj_has_state(sw_1, LV_STATE_CHECKED)`. |
+| checkbox | `cb_1` | none | Same state pattern as switch. |
+| bar | `bar_1` | none | `lv_bar_set_value(bar_1, v, LV_ANIM_OFF)`. |
+| arc | `arc_1` | none | `lv_arc_set_value(arc_1, v)`. |
+| meter (v9) | `mtr_1` | `mtr_1_scale`, `mtr_1_indic` | Container + tick scale + value arc. Update the value with `lv_arc_set_value(mtr_1_indic, v)`. The scale is for restyling tick marks. |
+| meter (v8) | `mtr_1` | none exposed | v8 uses `lv_meter_scale_t *` and `lv_meter_indicator_t *` which are different types. Tracked inside the builder; reach them via `lv_meter_add_*` if you regenerate scales at runtime. |
+| dropdown | `dd_1` | none | Selection via `lv_dropdown_get_selected`. |
+| textarea | `ta_1` | none | Text via `lv_textarea_get_text` / `lv_textarea_set_text`. |
+| roller | `rl_1` | none | Selection via `lv_roller_get_selected` / `lv_roller_get_selected_str`. |
+| tabview | `tv_1` | `tv_1_tab_0`, `tv_1_tab_1`, ... | One handle per tab. Add widgets to a tab at runtime with `lv_obj_t * new_lbl = lv_label_create(tv_1_tab_2);`. Switch tabs programmatically with `lv_tabview_set_active(tv_1, idx, LV_ANIM_ON)`. |
+| list | `lst_1` | none | Items don't get individual handles. Access them at runtime with `lv_obj_get_child(lst_1, idx)`, or add new ones with `lv_list_add_btn(lst_1, LV_SYMBOL_FILE, "New")`. |
+| chart | `cht_1` | `cht_1_ser1`, `cht_1_ser2`, `cht_1_ser3` | One handle per series (up to 3). Push new values with `lv_chart_set_next_value(cht_1, cht_1_ser1, v)`. These are `lv_chart_series_t *`, not `lv_obj_t *`. |
+| led | `led_1` | none | `lv_led_on(led_1)` / `lv_led_off(led_1)` / `lv_led_set_color(led_1, lv_color_hex(0xff0000))`. |
+| icon | `icn_1` | none | Symbol is a label under the hood. Change with `lv_label_set_text(icn_1, LV_SYMBOL_WIFI)`. |
+| keyboard | `kbd_1` | none | Bound to a textarea via `lv_keyboard_set_textarea(kbd_1, ta_1)` (done automatically if you set the target in properties). |
+| calendar | `cal_1` | none | Get the highlighted date with `lv_calendar_get_pressed_date(cal_1, &date)`. |
+
+When in doubt, look at the generated `// ---- Widget handles ----` section near the top of the .ino. Everything declared there is fair game from anywhere in the file.
+
+---
+
 ## Hardware target
 
 Arduino Giga R1 WiFi with the Giga Display Shield attached. The shield provides
@@ -369,8 +1004,6 @@ The generated sketch targets LVGL v8 API, which is what the current Arduino
 LVGL library ships. If you have upgraded to v9 locally, `lv_meter` has been
 renamed to `lv_scale` and the meter widget's generated code will need a small
 edit. The other widgets remain source-compatible.
-
----
 
 ---
 
@@ -478,8 +1111,6 @@ no externs and compile cleanly.
 
 The validation pass, the `arduino_secrets.h` companion, the .gitignore, and
 the tab sub-canvas codegen all work in both layouts.
-
----
 
 ---
 
