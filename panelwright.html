@@ -3550,7 +3550,7 @@ function renderScreensStrip() {
 
 // ----- Redraw ---------------------------------------------
 
-function redrawAll() {
+function redrawAll(opts) {
   $canvas.innerHTML = '';
   $canvas.classList.toggle('theme-tradigital', state.theme === 'tradigital');
 
@@ -3649,7 +3649,11 @@ function redrawAll() {
   renderBreadcrumb();
   renderScreensStrip();
   renderHierarchy();
-  renderPropsPanel();
+  // The properties panel rebuilds by replacing innerHTML, which destroys
+  // any focused input inside it. Per-keystroke handlers pass skipProps
+  // so typing in a text field does not yank focus away after each
+  // character. The canvas and preview still refresh to reflect the edit.
+  if (!opts || !opts.skipProps) renderPropsPanel();
   renderPreview();
   updateStatus();
 }
@@ -4403,7 +4407,10 @@ function renderPropsPanel() {
         // so we don't lose widgets on every keystroke.
         if (inp.dataset.tabNames) return;
         w.props[k] = inp.value;
-        redrawAll();
+        // skipProps: rebuilding the panel here would destroy the focused
+        // input element under the user's cursor, dropping them out of
+        // the field after every character.
+        redrawAll({ skipProps: true });
       });
     }
     if (inp.type === 'number') {
