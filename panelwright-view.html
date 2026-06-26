@@ -693,19 +693,67 @@ const RENDERERS = {
   tabview(w) {
     const el = renderBase(w);
     const i = document.createElement('div');
-    i.className = 'lv-tabview tab-' + w.props.tabPosition;
-    i.style.cssText = 'width:100%;height:100%';
-    const tabs = (w.props.tabs || '').split('\n').filter(s => s.length);
-    const bar = document.createElement('div'); bar.className = 'tab-bar';
+    i.className = 'lv-tabview tab-' + (w.props.tabPosition || 'top');
+    i.style.cssText = 'width:100%;height:100%;position:relative';
+    // Tabs migrated from a newline-separated string to an array of
+    // { name, widgets } in Round 5. Handle both forms defensively.
+    let tabs = w.props.tabs;
+    if (typeof tabs === 'string') {
+      tabs = tabs.split('\n').filter(s => s.length).map(n => ({ name: n, widgets: [] }));
+    }
+    if (!Array.isArray(tabs)) tabs = [];
+    const activeTab = Math.max(0, Math.min(tabs.length - 1, w.props.activeTab | 0));
+    const tabSize = w.props.tabSize || 50;
+    const pos = w.props.tabPosition || 'top';
+    // Tab bar
+    const bar = document.createElement('div');
+    bar.className = 'tab-bar';
+    // Position the tab bar according to tabPosition
+    if (pos === 'top' || pos === 'bottom') {
+      bar.style.cssText = 'position:absolute;left:0;right:0;height:' + tabSize + 'px;' +
+        (pos === 'top' ? 'top:0' : 'bottom:0') + ';display:flex;background:#0a0a0a;';
+    } else {
+      bar.style.cssText = 'position:absolute;top:0;bottom:0;width:' + tabSize + 'px;' +
+        (pos === 'left' ? 'left:0' : 'right:0') + ';display:flex;flex-direction:column;background:#0a0a0a;';
+    }
     for (let k = 0; k < tabs.length; k++) {
       const btn = document.createElement('div');
-      btn.className = 'tab-btn' + (k === 0 ? ' active' : '');
-      btn.textContent = tabs[k];
+      btn.className = 'tab-btn' + (k === activeTab ? ' active' : '');
+      btn.style.flex = '1';
+      btn.style.cursor = 'pointer';
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.justifyContent = 'center';
+      btn.style.fontSize = '12px';
+      btn.style.color = k === activeTab ? '#d4a574' : '#8a8579';
+      btn.style.borderBottom = (pos === 'top' && k === activeTab) ? '2px solid #d4a574' : '2px solid transparent';
+      btn.textContent = tabs[k].name || ('Tab ' + (k + 1));
+      btn.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        setOverride(w.id, 'activeTab', k);
+      });
       bar.appendChild(btn);
     }
-    const c = document.createElement('div'); c.className = 'tab-content';
-    c.textContent = '(tab content set in your sketch)';
-    i.appendChild(bar); i.appendChild(c); el.appendChild(i); return el;
+    // Content area: render the active tab's child widgets inside it
+    const content = document.createElement('div');
+    content.className = 'tab-content';
+    content.style.position = 'absolute';
+    if (pos === 'top')         content.style.cssText += ';top:' + tabSize + 'px;left:0;right:0;bottom:0';
+    else if (pos === 'bottom') content.style.cssText += ';top:0;left:0;right:0;bottom:' + tabSize + 'px';
+    else if (pos === 'left')   content.style.cssText += ';top:0;left:' + tabSize + 'px;right:0;bottom:0';
+    else if (pos === 'right')  content.style.cssText += ';top:0;left:0;right:' + tabSize + 'px;bottom:0';
+    if (tabs[activeTab] && Array.isArray(tabs[activeTab].widgets)) {
+      for (const child of tabs[activeTab].widgets) {
+        // Children's coordinates are tab-content-relative already, so
+        // just render them at their stored x/y with no extra offset
+        // (the content div is the positioned container).
+        renderOneWidget(child, content, 0, 0);
+      }
+    }
+    i.appendChild(bar);
+    i.appendChild(content);
+    el.appendChild(i);
+    return el;
   },
   list(w) {
     const el = renderBase(w);
@@ -891,16 +939,7 @@ function renderScreen(screenId) {
   $canvas.classList.toggle('theme-tradigital', state.project.theme === 'tradigital');
 
   for (const w of screen.widgets) {
-    const r = RENDERERS[w.type];
-    if (!r) continue;
-    const effective = applyFillData(w);
-    const el = r(effective);
-    // Navigation: buttons with goto action become clickable
-    if (w.type === 'button' && w.props.action === 'goto' && w.props.actionTarget) {
-      el.classList.add('clickable');
-      el.addEventListener('click', () => renderScreen(w.props.actionTarget));
-    }
-    $canvas.appendChild(el);
+    renderOneWidget(w, $canvas, 0, 0);
   }
   const dims = (state.project.orientation === 'portrait') ? { w: 480, h: 800 } : { w: 800, h: 480 };
   $canvas.style.width = dims.w + 'px';
@@ -909,8 +948,97 @@ function renderScreen(screenId) {
                              ' // SCREEN: ' + screen.name.toUpperCase();
   $infoScreen.innerHTML = 'Screen: <b>' + escapeHtml(screen.name) + '</b>';
   $statusScreen.textContent = screen.name;
-  // Rebuild the fill-data panel for this screen's widgets
   renderFillRows();
+}
+
+// Render a single widget into `parent` with an optional position offset
+// (used by tabview to render child widgets at tab-content-relative
+// positions). Wrapped in try/catch so one broken renderer (e.g. an old
+// project with stale data) can't take down the entire screen.
+function renderOneWidget(w, parent, offsetX, offsetY) {
+  try {
+    const r = RENDERERS[w.type];
+    if (!r) return;
+    const effective = applyFillData(w);
+    const el = r(effective);
+    if (offsetX || offsetY) {
+      const baseLeft = parseInt(el.style.left, 10) || 0;
+      const baseTop  = parseInt(el.style.top,  10) || 0;
+      el.style.left = (baseLeft + offsetX) + 'px';
+      el.style.top  = (baseTop  + offsetY) + 'px';
+    }
+    attachInteractivity(el, w);
+    parent.appendChild(el);
+  } catch (err) {
+    console.warn('Render failed for', w.type, w.name, err);
+    // Insert a visible diagnostic box so the user can see where the
+    // widget should have been instead of silently dropping it.
+    const fallback = document.createElement('div');
+    fallback.style.cssText = 'position:absolute;left:' + (w.x + offsetX) + 'px;top:' +
+      (w.y + offsetY) + 'px;width:' + w.w + 'px;height:' + w.h +
+      'px;border:1px dashed #b9684a;color:#b9684a;font-family:monospace;font-size:10px;' +
+      'display:flex;align-items:center;justify-content:center;text-align:center;padding:4px;';
+    fallback.textContent = w.type + ' render error';
+    parent.appendChild(fallback);
+  }
+}
+
+// Wire up click and drag interactions for value-bearing widgets. Updates
+// flow through state.fillData so the visual change and the side panel's
+// override flag stay in sync. Buttons with goto navigate as before.
+function attachInteractivity(el, w) {
+  // Button: goto-screen navigation
+  if (w.type === 'button' && w.props.action === 'goto' && w.props.actionTarget) {
+    el.classList.add('clickable');
+    el.addEventListener('click', () => renderScreen(w.props.actionTarget));
+    return;
+  }
+  // Switch / checkbox: tap to toggle
+  if (w.type === 'switch' || w.type === 'checkbox') {
+    el.classList.add('clickable');
+    el.addEventListener('click', () => {
+      const cur = (applyFillData(w).props.checked) ? true : false;
+      setOverride(w.id, 'checked', !cur);
+    });
+    return;
+  }
+  // Slider: click anywhere on the track to set value
+  if (w.type === 'slider') {
+    el.classList.add('clickable');
+    const updateFromEvent = (clientX) => {
+      const rect = el.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const eff = applyFillData(w);
+      const min = eff.props.min, max = eff.props.max;
+      setOverride(w.id, 'value', Math.round(min + ratio * (max - min)));
+    };
+    el.addEventListener('mousedown', (e) => {
+      updateFromEvent(e.clientX);
+      const onMove = (ev) => updateFromEvent(ev.clientX);
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      e.preventDefault();
+    });
+    return;
+  }
+  // Dropdown / roller: click to cycle to the next option
+  if (w.type === 'dropdown' || w.type === 'roller') {
+    el.classList.add('clickable');
+    el.addEventListener('click', () => {
+      const eff = applyFillData(w);
+      const opts = String(eff.props.options || '').split('\n').filter(s => s.length);
+      if (!opts.length) return;
+      const cur = eff.props.selected | 0;
+      setOverride(w.id, 'selected', (cur + 1) % opts.length);
+    });
+    return;
+  }
+  // Tabview: tab buttons inside the rendered element get their own
+  // handlers attached during the tabview render itself (see RENDERERS.tabview)
 }
 
 // Returns a shallow widget clone whose props include any active fill-data
@@ -1095,15 +1223,7 @@ function renderCanvasOnly(screen) {
   $canvas.innerHTML = '';
   $canvas.classList.toggle('theme-tradigital', state.project.theme === 'tradigital');
   for (const w of screen.widgets) {
-    const r = RENDERERS[w.type];
-    if (!r) continue;
-    const effective = applyFillData(w);
-    const el = r(effective);
-    if (w.type === 'button' && w.props.action === 'goto' && w.props.actionTarget) {
-      el.classList.add('clickable');
-      el.addEventListener('click', () => renderScreen(w.props.actionTarget));
-    }
-    $canvas.appendChild(el);
+    renderOneWidget(w, $canvas, 0, 0);
   }
 }
 
