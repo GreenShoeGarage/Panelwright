@@ -53,6 +53,20 @@ header .brand .sub {
   color: var(--ink-mute); font-weight: 400; margin-left: 8px;
   letter-spacing: 0.08em; font-size: 10px;
 }
+header .brand .live-pulse {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: #4a525c; margin-left: 10px; vertical-align: middle;
+  transition: background 0.6s ease, box-shadow 0.6s ease;
+}
+header .brand .live-pulse.animate {
+  background: var(--amber);
+  box-shadow: 0 0 8px 2px rgba(212, 165, 116, 0.8);
+  animation: live-pulse-fade 0.9s ease-out 1;
+}
+@keyframes live-pulse-fade {
+  0%   { background: var(--amber); box-shadow: 0 0 10px 4px rgba(212, 165, 116, 0.9); }
+  100% { background: #4a525c;       box-shadow: 0 0 0 0 rgba(212, 165, 116, 0); }
+}
 header .toolbar { display: flex; gap: 6px; margin-left: auto; align-items: center; }
 header .toolbar button {
   background: var(--panel-2); border: 1px solid var(--border);
@@ -373,7 +387,9 @@ footer.status .spacer { flex: 1; }
 <div id="app">
 
 <header class="topbar">
-  <div class="brand">FI-042 // PANELWRIGHT VIEW <span class="sub">// PROJECT VIEWER</span></div>
+  <div class="brand">FI-042 // PANELWRIGHT VIEW <span class="sub">// PROJECT VIEWER</span>
+    <span class="live-pulse" id="live-pulse" title="Live: auto-refreshes when the editor saves"></span>
+  </div>
   <div class="toolbar">
     <span class="info" id="info-screen"></span>
     <a href="../" class="back-link">\u2190 Editor</a>
@@ -1306,18 +1322,76 @@ document.getElementById('stage').addEventListener('drop', e => {
   if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
 });
 
-// Auto-load a project the editor handed us via sessionStorage.
-// This is how the "Open Viewer" button in the editor passes the current
-// project to the viewer without a download / upload round trip.
+// Try to load a project from the editor's localStorage autosave. When
+// preserveView is true, the current screen and any fill-data overrides
+// are kept across the refresh so the user doesn't lose their place
+// during a cross-tab update.
+function applyAutosave(preserveView) {
+  try {
+    const raw = localStorage.getItem('panelwright_autosave');
+    if (!raw) return false;
+    const wrap = JSON.parse(raw);
+    if (!wrap || !wrap.snapshot) return false;
+    const project = JSON.parse(wrap.snapshot);
+    const prevScreen = state.activeScreenId;
+    const prevFill = state.fillData;
+    loadProject(project);
+    if (preserveView) {
+      if (prevFill) state.fillData = prevFill;
+      if (prevScreen && state.project.screens.find(s => s.id === prevScreen)) {
+        renderScreen(prevScreen);
+      }
+      pulseLiveIndicator();
+    }
+    return true;
+  } catch (err) {
+    console.warn('Could not apply autosave:', err);
+    return false;
+  }
+}
+
+// Brief amber pulse on the live indicator dot so the user can tell a
+// refresh actually happened (otherwise silent re-renders are easy to
+// miss when widget positions don't change).
+function pulseLiveIndicator() {
+  const dot = document.getElementById('live-pulse');
+  if (!dot) return;
+  dot.classList.remove('animate');
+  // Force a reflow so the same class can re-trigger the animation
+  // without the browser deduplicating it.
+  void dot.offsetWidth;
+  dot.classList.add('animate');
+}
+
+// Initial load priority:
+// 1. sessionStorage handoff (when user clicked "Open Viewer" in the editor)
+// 2. localStorage autosave fallback (direct viewer load picks up the
+//    last edit, useful when the editor was closed or the viewer is opened
+//    from a bookmark)
 try {
   const stashed = sessionStorage.getItem('panelwright_preview_project');
   if (stashed) {
     sessionStorage.removeItem('panelwright_preview_project');
     loadProject(JSON.parse(stashed));
+  } else {
+    applyAutosave(false);
   }
 } catch (err) {
-  // sessionStorage unavailable; fall through to empty state
+  // storage unavailable; empty state remains
 }
+
+// Live cross-tab updates. The editor writes to localStorage on every
+// debounced autosave (~500 ms after the last edit). The 'storage' event
+// fires in every OTHER tab on the same origin whenever the value
+// changes, so picking it up here gives the viewer push-style refresh
+// without any polling. The current tab does not get the event for
+// writes it issues itself, so this stays cleanly one-way: editor edits
+// to the viewer, never an echo back.
+window.addEventListener('storage', (e) => {
+  if (e.key === 'panelwright_autosave' && e.newValue) {
+    applyAutosave(true);
+  }
+});
 
 })();
 </script>
