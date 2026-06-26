@@ -1416,6 +1416,13 @@ button#btn-preview.active {
             </select>
           </div>
           <div class="ph-row">
+            <label>LVGL version</label>
+            <select id="meta-lvgl-version">
+              <option value="v9">LVGL 9.x (Arduino Library Manager default)</option>
+              <option value="v8">LVGL 8.x (legacy, lv_meter widget available)</option>
+            </select>
+          </div>
+          <div class="ph-row">
             <label>Code layout</label>
             <select id="meta-split-files">
               <option value="false">Single .ino file</option>
@@ -2091,7 +2098,7 @@ const state = {
   orientation: 'landscape',
   theme: 'lvgl_default',
   peripherals: defaultPeripherals(),
-  meta: { title: 'Untitled', author: '', targetBoard: 'Arduino Giga R1 + Display Shield', description: '', boardProfile: 'giga_display_shield' },
+  meta: { title: 'Untitled', author: '', targetBoard: 'Arduino Giga R1 + Display Shield', description: '', boardProfile: 'giga_display_shield', lvglVersion: 'v9' },
   dirty: false,           // unsaved changes since last save
   clipboard: null,        // copied widget data, in-session only
   editScope: null,        // null = editing screen root; { kind:'tab', widgetId, tabIndex } when inside a tab
@@ -5057,6 +5064,7 @@ const $metaAuthor = document.getElementById('meta-author');
 const $metaTarget = document.getElementById('meta-target');
 const $metaDescription = document.getElementById('meta-description');
 const $metaBoardProfile = document.getElementById('meta-board-profile');
+const $metaLvglVersion = document.getElementById('meta-lvgl-version');
 const $metaSplitFiles = document.getElementById('meta-split-files');
 
 function openProjectModal() {
@@ -5065,6 +5073,7 @@ function openProjectModal() {
   $metaTarget.value = state.meta.targetBoard || '';
   $metaDescription.value = state.meta.description || '';
   $metaBoardProfile.value = state.meta.boardProfile || 'giga_display_shield';
+  $metaLvglVersion.value = state.meta.lvglVersion || 'v9';
   $metaSplitFiles.value = state.meta.splitFiles ? 'true' : 'false';
   $projectModal.classList.add('open');
 }
@@ -5075,6 +5084,7 @@ function closeProjectModal() {
     targetBoard: $metaTarget.value.trim() || 'Arduino Giga R1 + Display Shield',
     description: $metaDescription.value,
     boardProfile: $metaBoardProfile.value || 'giga_display_shield',
+    lvglVersion: $metaLvglVersion.value || 'v9',
     splitFiles: $metaSplitFiles.value === 'true'
   };
   const changed = JSON.stringify(newMeta) !== JSON.stringify(state.meta);
@@ -5750,16 +5760,25 @@ function emitScreenForwardDecls(ctx, keyword) {
 
 function emitThemeFunction(ctx) {
   if (state.theme !== 'tradigital') return [];
+  const v9 = (state.meta.lvglVersion || 'v9') === 'v9';
+  // v9 renamed lv_disp_set_theme → lv_display_set_theme; the lv_disp_*
+  // family stays as deprecated aliases in v9 but is removed in v10.
+  const setTheme = v9 ? 'lv_display_set_theme' : 'lv_disp_set_theme';
   return [
     '// ---- Tradigital theme ----',
     'static void apply_theme(void) {',
+    '#if LV_FONT_MONTSERRAT_16',
+    '  const lv_font_t * theme_font = &lv_font_montserrat_16;',
+    '#else',
+    '  const lv_font_t * theme_font = LV_FONT_DEFAULT;',
+    '#endif',
     '  lv_theme_t * th = lv_theme_default_init(',
     '      NULL,',
     '      lv_color_hex(0xD4A574),   // primary: amber',
     '      lv_color_hex(0x6FB5A8),   // secondary: teal',
     '      true,                     // dark mode',
-    '      &lv_font_montserrat_16);',
-    '  lv_disp_set_theme(NULL, th);',
+    '      theme_font);',
+    '  ' + setTheme + '(NULL, th);',
     '}',
     ''
   ];
@@ -6152,7 +6171,7 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       lines.push(`lv_obj_set_style_text_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), 0);`);
-      lines.push(`lv_obj_set_style_text_font(${N}, &lv_font_montserrat_${nearestFont(w.props.fontSize)}, 0);`);
+      for (const l of emitFontStyle(N, w.props.fontSize)) lines.push(l);
       if (w.props.align === 'center')
         lines.push(`lv_obj_set_style_text_align(${N}, LV_TEXT_ALIGN_CENTER, 0);`);
       else if (w.props.align === 'right')
@@ -6219,22 +6238,70 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`lv_obj_set_style_arc_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR);`);
       break;
 
-    case 'meter':
-      lines.push(`${N} = lv_meter_create(${PARENT});`);
-      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
-      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
-      lines.push(`{`);
-      lines.push(`  lv_meter_scale_t * sc = lv_meter_add_scale(${N});`);
-      lines.push(`  lv_meter_set_scale_ticks(${N}, sc, 41, 2, 10, lv_palette_main(LV_PALETTE_GREY));`);
-      lines.push(`  lv_meter_set_scale_major_ticks(${N}, sc, ${Math.max(2, Math.floor(40 / Math.max(1, w.props.majorTicks - 1)))}, 4, 15, lv_color_white(), 10);`);
-      lines.push(`  lv_meter_set_scale_range(${N}, sc, ${w.props.min}, ${w.props.max}, ${normalizeAngle(w.props.angleStart, w.props.angleEnd)}, ${w.props.angleStart});`);
-      lines.push(`  lv_meter_indicator_t * arc_ind = lv_meter_add_arc(${N}, sc, 6, lv_color_hex(${hexToLvHex(w.props.color)}), 0);`);
-      lines.push(`  lv_meter_set_indicator_start_value(${N}, arc_ind, ${w.props.min});`);
-      lines.push(`  lv_meter_set_indicator_end_value(${N}, arc_ind, ${w.props.value});`);
-      lines.push(`  lv_meter_indicator_t * ndl = lv_meter_add_needle_line(${N}, sc, 4, lv_color_hex(${hexToLvHex(w.props.needleColor)}), -10);`);
-      lines.push(`  lv_meter_set_indicator_value(${N}, ndl, ${w.props.value});`);
-      lines.push(`}`);
+    case 'meter': {
+      // lv_meter was removed in LVGL 9. For v9 we composite an lv_scale
+      // (tick marks + labels) and an lv_arc (value indicator) inside an
+      // empty container. The visual result is close to v8's meter, minus
+      // the needle line (v9 has no first-class needle indicator on
+      // lv_scale; the arc itself communicates the current value).
+      const v9 = (state.meta.lvglVersion || 'v9') === 'v9';
+      const sweep = normalizeAngle(w.props.angleStart, w.props.angleEnd);
+      if (v9) {
+        lines.push(`${N} = lv_obj_create(${PARENT});`);
+        lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+        lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+        lines.push(`lv_obj_remove_flag(${N}, LV_OBJ_FLAG_SCROLLABLE);`);
+        lines.push(`lv_obj_set_style_bg_opa(${N}, LV_OPA_TRANSP, 0);`);
+        lines.push(`lv_obj_set_style_border_opa(${N}, LV_OPA_TRANSP, 0);`);
+        lines.push(`lv_obj_set_style_pad_all(${N}, 0, 0);`);
+        lines.push(`{`);
+        lines.push(`  // ---- Scale: ticks and labels ----`);
+        lines.push(`  lv_obj_t * sc = lv_scale_create(${N});`);
+        lines.push(`  lv_obj_remove_flag(sc, LV_OBJ_FLAG_SCROLLABLE);`);
+        lines.push(`  lv_obj_set_size(sc, lv_pct(100), lv_pct(100));`);
+        lines.push(`  lv_obj_center(sc);`);
+        lines.push(`  lv_scale_set_mode(sc, LV_SCALE_MODE_ROUND_INNER);`);
+        lines.push(`  lv_scale_set_total_tick_count(sc, 41);`);
+        lines.push(`  lv_scale_set_major_tick_every(sc, ${Math.max(2, Math.floor(40 / Math.max(1, w.props.majorTicks - 1)))});`);
+        lines.push(`  lv_scale_set_range(sc, ${w.props.min}, ${w.props.max});`);
+        lines.push(`  lv_scale_set_angle_range(sc, ${sweep});`);
+        lines.push(`  lv_scale_set_rotation(sc, ${w.props.angleStart});`);
+        lines.push(`  // ---- Arc: value indicator ----`);
+        lines.push(`  lv_obj_t * ind = lv_arc_create(${N});`);
+        lines.push(`  lv_obj_remove_flag(ind, LV_OBJ_FLAG_CLICKABLE);`);
+        lines.push(`  lv_obj_remove_flag(ind, LV_OBJ_FLAG_SCROLLABLE);`);
+        lines.push(`  lv_obj_set_size(ind, lv_pct(92), lv_pct(92));`);
+        lines.push(`  lv_obj_center(ind);`);
+        lines.push(`  lv_obj_set_style_bg_opa(ind, LV_OPA_TRANSP, 0);`);
+        lines.push(`  lv_obj_set_style_border_opa(ind, LV_OPA_TRANSP, 0);`);
+        lines.push(`  lv_arc_set_bg_angles(ind, ${w.props.angleStart}, ${w.props.angleStart + sweep});`);
+        lines.push(`  lv_arc_set_rotation(ind, 0);`);
+        lines.push(`  lv_arc_set_range(ind, ${w.props.min}, ${w.props.max});`);
+        lines.push(`  lv_arc_set_value(ind, ${w.props.value});`);
+        lines.push(`  lv_obj_set_style_arc_width(ind, 6, LV_PART_MAIN);`);
+        lines.push(`  lv_obj_set_style_arc_width(ind, 6, LV_PART_INDICATOR);`);
+        lines.push(`  lv_obj_set_style_arc_color(ind, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR);`);
+        lines.push(`  lv_obj_remove_style(ind, NULL, LV_PART_KNOB);`);
+        lines.push(`}`);
+      } else {
+        // v8: lv_meter widget with scale + arc indicator + needle line
+        lines.push(`${N} = lv_meter_create(${PARENT});`);
+        lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+        lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+        lines.push(`{`);
+        lines.push(`  lv_meter_scale_t * sc = lv_meter_add_scale(${N});`);
+        lines.push(`  lv_meter_set_scale_ticks(${N}, sc, 41, 2, 10, lv_palette_main(LV_PALETTE_GREY));`);
+        lines.push(`  lv_meter_set_scale_major_ticks(${N}, sc, ${Math.max(2, Math.floor(40 / Math.max(1, w.props.majorTicks - 1)))}, 4, 15, lv_color_white(), 10);`);
+        lines.push(`  lv_meter_set_scale_range(${N}, sc, ${w.props.min}, ${w.props.max}, ${sweep}, ${w.props.angleStart});`);
+        lines.push(`  lv_meter_indicator_t * arc_ind = lv_meter_add_arc(${N}, sc, 6, lv_color_hex(${hexToLvHex(w.props.color)}), 0);`);
+        lines.push(`  lv_meter_set_indicator_start_value(${N}, arc_ind, ${w.props.min});`);
+        lines.push(`  lv_meter_set_indicator_end_value(${N}, arc_ind, ${w.props.value});`);
+        lines.push(`  lv_meter_indicator_t * ndl = lv_meter_add_needle_line(${N}, sc, 4, lv_color_hex(${hexToLvHex(w.props.needleColor)}), -10);`);
+        lines.push(`  lv_meter_set_indicator_value(${N}, ndl, ${w.props.value});`);
+        lines.push(`}`);
+      }
       break;
+    }
 
     case 'dropdown': {
       const opts = (w.props.options || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
@@ -6276,7 +6343,17 @@ function genWidgetCode(w, screen, parentOverride) {
       }
       if (!Array.isArray(tabs)) tabs = [];
       const posMap = { top: 'LV_DIR_TOP', bottom: 'LV_DIR_BOTTOM', left: 'LV_DIR_LEFT', right: 'LV_DIR_RIGHT' };
-      lines.push(`${N} = lv_tabview_create(${PARENT}, ${posMap[w.props.tabPosition] || 'LV_DIR_TOP'}, ${w.props.tabSize});`);
+      const v9 = (state.meta.lvglVersion || 'v9') === 'v9';
+      if (v9) {
+        // v9: lv_tabview_create takes only the parent; the bar position
+        // and size are set via separate setters.
+        lines.push(`${N} = lv_tabview_create(${PARENT});`);
+        lines.push(`lv_tabview_set_tab_bar_position(${N}, ${posMap[w.props.tabPosition] || 'LV_DIR_TOP'});`);
+        lines.push(`lv_tabview_set_tab_bar_size(${N}, ${w.props.tabSize});`);
+      } else {
+        // v8: position and size are constructor arguments.
+        lines.push(`${N} = lv_tabview_create(${PARENT}, ${posMap[w.props.tabPosition] || 'LV_DIR_TOP'}, ${w.props.tabSize});`);
+      }
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       for (let i = 0; i < tabs.length; i++) {
@@ -6355,7 +6432,7 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       lines.push(`lv_obj_set_style_text_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), 0);`);
-      lines.push(`lv_obj_set_style_text_font(${N}, &lv_font_montserrat_${nearestFont(w.props.fontSize)}, 0);`);
+      for (const l of emitFontStyle(N, w.props.fontSize)) lines.push(l);
       lines.push(`lv_obj_set_style_text_align(${N}, LV_TEXT_ALIGN_CENTER, 0);`);
       break;
     }
@@ -6415,6 +6492,23 @@ function nearestFont(size) {
     if (Math.abs(s - size) < bestDelta) { best = s; bestDelta = Math.abs(s - size); }
   }
   return best;
+}
+
+// Emit font assignment with a compile-time guard. The Montserrat fonts
+// are only compiled if the corresponding LV_FONT_MONTSERRAT_X flag is
+// set in lv_conf.h; many Arduino board packages ship a stripped-down
+// config with only a subset enabled. The #if guard falls back to
+// LV_FONT_DEFAULT (always defined) so the sketch compiles even when
+// the requested size isn't built. Returns an array of lines to push.
+function emitFontStyle(handle, size) {
+  const nearest = nearestFont(size);
+  return [
+    `#if LV_FONT_MONTSERRAT_${nearest}`,
+    `  lv_obj_set_style_text_font(${handle}, &lv_font_montserrat_${nearest}, 0);`,
+    `#else`,
+    `  lv_obj_set_style_text_font(${handle}, LV_FONT_DEFAULT, 0);`,
+    `#endif`
+  ];
 }
 
 // ----- ZIP writer (stored, no compression) ---------------

@@ -372,6 +372,38 @@ edit. The other widgets remain source-compatible.
 
 ---
 
+---
+
+## LVGL version compatibility
+
+The **LVGL version** dropdown in Project Details switches the codegen
+between two API targets:
+
+- **LVGL 9.x** (default, current Arduino Library Manager version)
+- **LVGL 8.x** (legacy, ships in older Arduino board packages)
+
+The differences live entirely in the generator, not the editor. Picking
+v9 emits `lv_scale_create` + `lv_arc_create` for the Meter widget (the
+v9 way; `lv_meter` was removed in v9) and the single-argument
+`lv_tabview_create(parent)` with separate `lv_tabview_set_tab_bar_*`
+calls. Picking v8 emits the old `lv_meter_create` + scale + indicator
+chain and the three-argument `lv_tabview_create(parent, dir, size)`.
+
+If you compile and see `lv_meter_create was not declared in this
+scope` (along with errors mentioning `lv_meter_scale_t`,
+`lv_meter_indicator_t`, `lv_meter_add_arc`, etc.), the project is set
+to v8 but your installed LVGL is v9. Switch the project to v9 and
+regenerate.
+
+Font sizes (`lv_font_montserrat_X`) are emitted with `#if
+LV_FONT_MONTSERRAT_X` compile-time guards. If the board package's
+`lv_conf.h` does not enable the requested size, the code falls back to
+`LV_FONT_DEFAULT` (always defined). This avoids the "undeclared"
+compile error when a generated sketch asks for a font size that your
+board's configuration didn't compile in.
+
+---
+
 ## Anatomy of the generated sketch
 
 The output is organized into clearly labeled sections so it is easy to extend.
