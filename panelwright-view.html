@@ -541,6 +541,7 @@ const RENDERERS = {
     i.style.background = 'linear-gradient(180deg, ' + w.props.bgColor + ', ' + darken(w.props.bgColor, 0.3) + ')';
     i.style.color = w.props.textColor;
     i.style.borderRadius = w.props.radius + 'px';
+    i.style.fontSize = (w.props.fontSize || 14) + 'px';
     i.textContent = w.props.text || '';
     el.appendChild(i); return el;
   },

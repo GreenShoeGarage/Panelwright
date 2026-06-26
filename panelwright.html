@@ -1679,6 +1679,7 @@ const WIDGET_TYPES = {
     defaultName: 'btn',
     defaultProps: {
       text: 'BUTTON', bgColor: '#2e6cda', textColor: '#ffffff', radius: 5,
+      fontSize: 14,
       action: 'none', actionTarget: '', customLogic: ''
     },
     render: renderButton,
@@ -1687,6 +1688,12 @@ const WIDGET_TYPES = {
       { key: 'bgColor', label: 'BG', type: 'color' },
       { key: 'textColor', label: 'Text', type: 'color' },
       { key: 'radius', label: 'Radius', type: 'number', min: 0, max: 100 },
+      { key: 'fontSize', label: 'Font', type: 'select', options: [
+          { v: 10, l: '10 px' }, { v: 12, l: '12 px' }, { v: 14, l: '14 px' },
+          { v: 16, l: '16 px' }, { v: 18, l: '18 px' }, { v: 20, l: '20 px' },
+          { v: 24, l: '24 px' }, { v: 28, l: '28 px' }, { v: 32, l: '32 px' },
+          { v: 36, l: '36 px' }, { v: 40, l: '40 px' }, { v: 48, l: '48 px' }
+      ]},
       { key: 'action', label: 'On Click', type: 'select', options: [
           { v: 'none', l: 'None' }, { v: 'goto', l: 'Go to screen' }
       ]},
@@ -2314,6 +2321,7 @@ function renderButton(w) {
   inner.style.background = `linear-gradient(180deg, ${w.props.bgColor}, ${darken(w.props.bgColor, 0.3)})`;
   inner.style.color = w.props.textColor;
   inner.style.borderRadius = w.props.radius + 'px';
+  inner.style.fontSize = (w.props.fontSize || 14) + 'px';
   inner.textContent = w.props.text || '';
   // Visual hint for navigation buttons
   if (w.props.action === 'goto' && w.props.actionTarget) {
@@ -6194,6 +6202,9 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`${N}_label = lv_label_create(${N});`);
       lines.push(`lv_label_set_text(${N}_label, ${cstr(w.props.text)});`);
       lines.push(`lv_obj_set_style_text_color(${N}_label, lv_color_hex(${hexToLvHex(w.props.textColor)}), 0);`);
+      // Apply font size with the standard #if guard so the sketch still
+      // compiles when the user's lv_conf.h does not enable that size.
+      for (const l of emitFontStyle(N + '_label', w.props.fontSize || 14)) lines.push(l);
       lines.push(`lv_obj_center(${N}_label);`);
       cb('LV_EVENT_CLICKED');
       break;
@@ -6606,11 +6617,12 @@ function svgButton(w) {
   const bg = p.bgColor || '#2e6cda';
   const fg = p.textColor || '#ffffff';
   const r = p.radius != null ? p.radius : 5;
+  const fs = p.fontSize || 14;
   return svgGroup(w,
     '<rect width="' + w.w + '" height="' + w.h + '" rx="' + r + '" ry="' + r +
       '" fill="' + svgEsc(bg) + '"/>' +
-    '<text x="' + (w.w / 2) + '" y="' + svgTextY(w.h / 2, 14) + '" ' +
-      'fill="' + svgEsc(fg) + '" font-size="14" font-weight="600" ' +
+    '<text x="' + (w.w / 2) + '" y="' + svgTextY(w.h / 2, fs) + '" ' +
+      'fill="' + svgEsc(fg) + '" font-size="' + fs + '" font-weight="600" ' +
       'font-family="' + SVG_FONT + '" text-anchor="middle">' +
       svgEsc(p.text || 'BUTTON') + '</text>'
   );
