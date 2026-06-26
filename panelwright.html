@@ -6034,19 +6034,34 @@ function emitSetupFunction(ctx, opts) {
   // Peripheral init calls. These run after the UI is already on screen,
   // so a fault here leaves the display showing (the screen will just be
   // static until lv_timer_handler runs again in loop()).
+  //
+  // Each init is sandwiched between Serial diagnostics AND a single
+  // lv_timer_handler() call, so:
+  //   1. You can see in Serial Monitor (115200) which init succeeded or
+  //      hung, narrowing a HardFault to a specific peripheral.
+  //   2. The touch and display refresh stay alive between inits, so
+  //      tapping a widget will still respond if you tap fast enough
+  //      between one init and the next.
   const en = ctx.enabled;
-  const calls = [];
-  if (en('microphone')) calls.push('  init_microphone();');
-  if (en('imu'))        calls.push('  init_imu();');
-  if (en('camera'))     calls.push('  init_camera();');
-  if (en('sdcard'))     calls.push('  init_sdcard();');
-  if (en('wifi'))       calls.push('  init_wifi();');
-  if (en('ble'))        calls.push('  init_ble();');
-  if (en('rgbLed'))     calls.push('  init_rgb_led();');
-  if (en('rtc'))        calls.push('  init_rtc();');
-  if (calls.length) {
-    out.push('  // ---- Onboard peripherals ----');
-    for (const c of calls) out.push(c);
+  const periphCalls = [
+    ['microphone', 'init_microphone'],
+    ['imu',        'init_imu'],
+    ['camera',     'init_camera'],
+    ['sdcard',     'init_sdcard'],
+    ['wifi',       'init_wifi'],
+    ['ble',        'init_ble'],
+    ['rgbLed',     'init_rgb_led'],
+    ['rtc',        'init_rtc']
+  ].filter(([k]) => en(k));
+  if (periphCalls.length) {
+    out.push('  // ---- Onboard peripherals (with progress diagnostics) ----');
+    for (const [k, fn] of periphCalls) {
+      out.push(`  Serial.print("[boot] ${fn}...");`);
+      out.push('  Serial.flush();');
+      out.push(`  ${fn}();`);
+      out.push('  Serial.println(" done");');
+      out.push('  lv_timer_handler();  // keep UI responsive between inits');
+    }
   }
   // Inject user setup code, if any. Lives in state.meta.setupCode and
   // persists across regeneration so users do not have to hand-edit the
@@ -6057,6 +6072,7 @@ function emitSetupFunction(ctx, opts) {
     out.push('  // ---- User setup code ----');
     for (const ln of userSetup.split('\n')) out.push('  ' + ln);
   }
+  out.push('  Serial.println("[boot] setup() complete");');
   out.push('}');
   return out;
 }
