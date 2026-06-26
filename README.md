@@ -354,6 +354,8 @@ PANELWRIGHT generates the UI scaffolding. Making widgets actually do something u
 
 All three persist in the project JSON so they survive regeneration. You never have to hand-edit the generated .ino unless you want to.
 
+**Boot ordering.** The generated `setup()` initialises the display first, then **builds and loads the UI**, then forces a paint with one `lv_timer_handler()` call, and only then runs the peripheral inits. This means the screen comes up as soon as the board boots: if a peripheral init crashes or hangs (camera with no sensor attached, WiFi with placeholder credentials, SD with a missing card), you'll see the UI already on the display rather than a dark screen and the red HardFault LED. The trade-off is that your `Setup code` (which runs after peripherals) cannot assume the UI hasn't been touched yet, but for everything in this cookbook that's fine.
+
 Every recipe below references widgets by their default auto-generated name (`btn_1`, `sld_1`, `mtr_1`, etc.). Rename your widget in the properties panel and use that name instead. Recipes assume LVGL v9 (the default). If you're on v8, button creation is `lv_btn_create` and the meter uses `lv_meter_*` instead of the v9 scale+arc composite, but the rest is identical.
 
 ### Input widgets driving hardware

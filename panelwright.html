@@ -6008,7 +6008,32 @@ function emitSetupFunction(ctx, opts) {
   out.push('  Serial.begin(115200);');
   for (const ln of ctx.board.setupBegin) out.push('  ' + ln);
   out.push('');
-  // Peripheral init calls
+
+  // CRITICAL: build and render the UI BEFORE peripheral init. If any
+  // peripheral init crashes, hangs, or faults (camera with no module
+  // attached, WiFi blocking 20s on bad credentials, SD with mbed static
+  // init-order quirks), the display is already up so the user can see
+  // the board is alive. Putting peripheral init first is the standard
+  // STM32H7 red-LED-flash-of-death scenario.
+  if (inlineUiInit) {
+    out.push('  // ---- UI (build first so screen renders before any peripheral risk) ----');
+    if (state.theme === 'tradigital') out.push('  apply_theme();');
+    for (const s of state.screens) out.push('  build_screen_' + s.name + '();');
+    const def = defaultScreen();
+    if (def) out.push('  lv_scr_load(scr_' + def.name + ');');
+    out.push('  lv_timer_handler();  // force first paint before peripheral init');
+    out.push('');
+  } else {
+    // Split: delegate to ui_init() in ui.cpp
+    out.push('  // ---- UI ----');
+    out.push('  ui_init();');
+    out.push('  lv_timer_handler();  // force first paint before peripheral init');
+    out.push('');
+  }
+
+  // Peripheral init calls. These run after the UI is already on screen,
+  // so a fault here leaves the display showing (the screen will just be
+  // static until lv_timer_handler runs again in loop()).
   const en = ctx.enabled;
   const calls = [];
   if (en('microphone')) calls.push('  init_microphone();');
@@ -6022,19 +6047,6 @@ function emitSetupFunction(ctx, opts) {
   if (calls.length) {
     out.push('  // ---- Onboard peripherals ----');
     for (const c of calls) out.push(c);
-    out.push('');
-  }
-  if (inlineUiInit) {
-    // Single-file: theme + build screens + load default inline
-    if (state.theme === 'tradigital') out.push('  apply_theme();');
-    for (const s of state.screens) out.push('  build_screen_' + s.name + '();');
-    out.push('');
-    const def = defaultScreen();
-    if (def) out.push('  lv_scr_load(scr_' + def.name + ');');
-  } else {
-    // Split: delegate to ui_init() in ui.cpp
-    out.push('  // ---- UI ----');
-    out.push('  ui_init();');
   }
   // Inject user setup code, if any. Lives in state.meta.setupCode and
   // persists across regeneration so users do not have to hand-edit the
@@ -6194,11 +6206,16 @@ function genPeripheralCode(lines) {
 
   if (en('sdcard')) {
     lines.push('// ---- SD card (microSD slot on the Display Shield) ----');
-    lines.push('SDMMCBlockDevice sd_block_device;');
-    lines.push('mbed::FATFileSystem sd_fs("sd");');
+    lines.push('// Globals are pointers initialized lazily inside init_sdcard().');
+    lines.push('// Constructing mbed::FATFileSystem at file scope can crash on');
+    lines.push('// some Giga builds due to static initialization order vs mbed-os.');
+    lines.push('static SDMMCBlockDevice * sd_block_device = nullptr;');
+    lines.push('static mbed::FATFileSystem * sd_fs = nullptr;');
     lines.push('');
     lines.push('static void init_sdcard(void) {');
-    lines.push('  int err = sd_fs.mount(&sd_block_device);');
+    lines.push('  if (!sd_block_device) sd_block_device = new SDMMCBlockDevice();');
+    lines.push('  if (!sd_fs) sd_fs = new mbed::FATFileSystem("sd");');
+    lines.push('  int err = sd_fs->mount(sd_block_device);');
     lines.push('  if (err) {');
     lines.push('    Serial.print("SD card mount failed (");');
     lines.push('    Serial.print(err);');
@@ -6228,10 +6245,16 @@ function genPeripheralCode(lines) {
     }
     lines.push('');
     lines.push('static void init_wifi(void) {');
+    lines.push('  // Skip if credentials are still the placeholder. This avoids');
+    lines.push('  // wasting ~6 seconds at boot when WiFi was enabled but not configured.');
+    lines.push('  if (strcmp(WIFI_SSID, "YOUR_SSID") == 0 || strlen(WIFI_SSID) == 0) {');
+    lines.push('    Serial.println("WiFi enabled but no SSID set, skipping connect.");');
+    lines.push('    return;');
+    lines.push('  }');
     lines.push('  Serial.print("Connecting to WiFi");');
     lines.push('  int status = WL_IDLE_STATUS;');
     lines.push('  int attempts = 0;');
-    lines.push('  while (status != WL_CONNECTED && attempts < 10) {');
+    lines.push('  while (status != WL_CONNECTED && attempts < 3) {');
     lines.push('    Serial.print(".");');
     lines.push('    status = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);');
     lines.push('    delay(2000);');
@@ -6241,7 +6264,7 @@ function genPeripheralCode(lines) {
     lines.push('    Serial.print(" connected. IP: ");');
     lines.push('    Serial.println(WiFi.localIP());');
     lines.push('  } else {');
-    lines.push('    Serial.println(" failed.");');
+    lines.push('    Serial.println(" failed. Continuing without WiFi.");');
     lines.push('  }');
     lines.push('}');
     lines.push('');
