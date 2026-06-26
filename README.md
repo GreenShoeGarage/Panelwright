@@ -794,9 +794,11 @@ The `BLE.poll()` call should run every loop iteration when BLE is enabled, other
 #### RGB LED (onboard, active-low)
 
 **Available after enabling:**
-- `set_rgb_led(r, g, b)`, drives all three channels at once (each 0 to 255)
+- `set_rgb_led(r, g, b)`, drives all three channels at once. **Each channel is binary** (on for any value >= 1, off for 0). This is intentional, see note below.
 - `RGB_DEFAULT_R`, `RGB_DEFAULT_G`, `RGB_DEFAULT_B`, constants for the boot color you picked
-- `LEDR`, `LEDG`, `LEDB`, pin macros (drive individually with `analogWrite`, remember active-low so `analogWrite(LEDR, 0)` is FULL red)
+- `LEDR`, `LEDG`, `LEDB`, pin macros (active-low)
+
+**Why binary and not PWM:** The Giga's RGB LED pins share PWM timer hardware with the Arduino_H7_Video peripheral. Calling `analogWrite()` on `LEDR`/`LEDG`/`LEDB` after `Display.begin()` corrupts the timer state and triggers a HardFault (red LED flashing, board unresponsive). `digitalWrite()` doesn't touch any timer, so it's safe alongside the display. The trade-off is 8 colors (000, 001, 010, 011, 100, 101, 110, 111) instead of 16.7 million. For most status-indicator uses this is fine.
 
 **Status indicator: green when WiFi connected, red otherwise.** `Loop code`:
 
@@ -808,38 +810,39 @@ if (millis() - last > 500) {
   bool online = (WiFi.status() == WL_CONNECTED);
   if (online != wasOnline) {
     wasOnline = online;
-    set_rgb_led(online ? 0 : 255, online ? 255 : 0, 0);
+    set_rgb_led(online ? 0 : 1, online ? 1 : 0, 0);
   }
 }
 ```
 
-**Driven by a color picker (three sliders).** Sliders `sld_r`, `sld_g`, `sld_b`, all 0 to 255. Put this in each slider's `Event Code`:
+**Switch toggles white indicator.** Switch widget `Event Code`:
 
 ```c
-set_rgb_led(lv_slider_get_value(sld_r),
-            lv_slider_get_value(sld_g),
-            lv_slider_get_value(sld_b));
+bool on = lv_obj_has_state(sw_busy, LV_STATE_CHECKED);
+set_rgb_led(on ? 1 : 0, on ? 1 : 0, on ? 1 : 0);
 ```
 
-The whole RGB triple updates on any slider change.
-
-**Brightness sweep from a single slider.** Slider `sld_bright` range 0 to 255. `Event Code`:
+**Color picker from three switches.** Switches `sw_r`, `sw_g`, `sw_b`. Put this in each switch's `Event Code`:
 
 ```c
-int v = lv_slider_get_value(sld_bright);
-set_rgb_led(v, v, v);  // white at brightness v
+set_rgb_led(lv_obj_has_state(sw_r, LV_STATE_CHECKED) ? 1 : 0,
+            lv_obj_has_state(sw_g, LV_STATE_CHECKED) ? 1 : 0,
+            lv_obj_has_state(sw_b, LV_STATE_CHECKED) ? 1 : 0);
 ```
+
+Eight colors total. Use a dropdown widget with named options if you want a friendlier UX than three switches.
 
 **Pulse on button press.** Button `Event Code`:
 
 ```c
-set_rgb_led(0, 0, 255);  // blue
-// Schedule turn-off ~150 ms later using an LVGL timer
+set_rgb_led(0, 0, 1);  // blue on
 lv_timer_t * t = lv_timer_create([](lv_timer_t * t) {
   set_rgb_led(0, 0, 0);
   lv_timer_del(t);
 }, 150, NULL);
 ```
+
+**If you really need brightness/PWM** on the RGB LED, you need to either (a) drive an external RGB LED on a different PWM-capable pin that doesn't conflict with the H7 video timers, or (b) write a manual software-PWM loop using a fast `lv_timer` that toggles the digital pins at a duty cycle. The official Arduino guidance for the Giga + Display Shield is to leave the onboard RGB LED in digital mode while the display is active.
 
 #### RTC (STM32H7 internal)
 
