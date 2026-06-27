@@ -260,6 +260,27 @@ The choice is saved with the project file and applies to every screen at
 runtime. Per-widget color overrides still win wherever you set them
 explicitly in the properties panel.
 
+### Editor light mode
+
+The toolbar has a small moon (☾) / sun (☀) button between the
+Grid/Snap toggles and the Undo/Redo group. Click it to toggle the editor
+itself (toolbar, palette, properties panel, modals) between dark mode
+(default) and a warm cream/sepia light mode tuned for the tradigital paper
+aesthetic. The choice persists in `localStorage` under
+`panelwright_editor_theme`.
+
+The editor theme is independent of the LVGL canvas theme. Two specific
+implications worth knowing:
+
+- You can preview a Tradigital (dark) screen on a light editor or an LVGL
+  Default (light) screen on a dark editor; the canvas honors its own theme.
+- The device shell (the black frame around the canvas) always stays dark
+  because it represents the physical Giga board; only the surrounding
+  chrome shifts.
+
+Things that stay consistent across editor modes by design: the serial
+monitor log (terminal feel), the device shell, and the LVGL canvas itself.
+
 Next to the Theme selector there is an **Apply** button. It walks every widget
 on every screen and recolors them to match the current theme palette: buttons
 go to the theme primary, slider and bar fills go to the theme primary, chart

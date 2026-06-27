@@ -74,6 +74,53 @@
   --lv-grid: rgba(212,165,116,0.05);
   --lv-shadow: rgba(0,0,0,0.4);
 }
+
+/* Editor chrome light theme. The default :root values above paint the
+   editor (toolbar, palette, panels, properties pane) in dark brass.
+   When body.editor-light is set, override the chrome variables with a
+   warm cream/sepia "tradigital paper" palette. This is independent of
+   the LVGL canvas theme (--lv-* variables): you can preview a dark
+   tradigital screen on a light editor, or an lvgl_default light screen
+   on a dark editor. The canvas itself always honors its own theme.
+   The light palette keeps the same accent hues (amber/teal/rust) but
+   darkens them for legible contrast on a cream background. */
+body.editor-light {
+  --bg: #f5f1e8;        /* warm aged-paper cream */
+  --panel: #faf6ec;     /* slightly lighter panel */
+  --panel-2: #ede4d2;   /* secondary panel */
+  --border: #c9b896;    /* tan border */
+  --border-hot: #a08860;
+  --ink: #2a1f12;       /* dark sepia */
+  --ink-dim: #5c4a32;
+  --ink-mute: #8a755a;
+  --amber: #8b6428;     /* darker brass for contrast on cream */
+  --amber-bright: #a87938;
+  --teal: #2f7068;
+  --rust: #8e3a1f;
+  --select: #8b6428;
+  --grid: rgba(60, 40, 20, 0.06);
+  --grid-strong: rgba(60, 40, 20, 0.12);
+  /* --canvas-bg is the code-modal pre background and the dark surround
+     that frames the device shell. In light editor we tint it cream so
+     the device shell still reads as the focal "physical" element. */
+  --canvas-bg: #e8e1d0;
+}
+
+/* Syntax highlighting in the code preview modal needs light-mode
+   variants since the dark colors (#e0e0e0 for functions, #585348 for
+   comments) would be unreadable on a light pre background. */
+body.editor-light .tok-kw  { color: #2f7068; }
+body.editor-light .tok-str { color: #8e3a1f; }
+body.editor-light .tok-num { color: #6b3f17; }
+body.editor-light .tok-cmt { color: #8a755a; font-style: italic; }
+body.editor-light .tok-pp  { color: #5b3aa8; }
+body.editor-light .tok-fn  { color: #2a1f12; }
+
+/* Template card thumbnail frame defaults to a deep slate so the
+   light-LVGL SVG inside pops. In light editor mode, that dark frame
+   looks jarring against the cream card, so swap it for a softer tone. */
+body.editor-light .template-card .thumb { background: #d6cbb0; }
+
 @font-face {
   font-family: 'LVGL Montserrat';
   font-style: normal;
@@ -91,7 +138,13 @@ html, body {
   font-family: var(--mono);
   font-size: 12px;
   line-height: 1.5;
-  overflow: hidden;
+  /* Allow horizontal scroll when the workbench (palette + canvas +
+     properties + optional preview) is wider than the viewport.
+     Previously this was overflow:hidden which silently clipped the
+     right-side properties panel on narrower displays. Vertical scroll
+     stays hidden because every internal pane handles its own scroll. */
+  overflow-x: auto;
+  overflow-y: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -114,6 +167,15 @@ button {
 }
 button:hover { background: var(--border); border-color: var(--border-hot); color: var(--amber-bright); }
 button.primary { background: var(--amber); color: var(--bg); border-color: var(--amber); font-weight: 600; }
+button.icon-only {
+  /* Compact glyph-only toolbar button (sun/moon for editor theme).
+     Keeps the toolbar visually balanced when sitting next to text
+     buttons of varying widths. */
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0;
+}
 button.primary:hover { background: var(--amber-bright); color: var(--bg); }
 button.danger:hover { background: var(--rust); border-color: var(--rust); color: var(--ink); }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -143,23 +205,40 @@ input[type=checkbox] { accent-color: var(--amber); }
 /* === Layout === */
 #app {
   display: grid;
-  grid-template-rows: 38px 34px 1fr;
+  /* topbar height is `auto` so the wrap CSS in header.topbar can let it
+     grow to a second row when there's not enough width for all buttons;
+     screens strip is fixed; workbench fills the rest. min-width keeps
+     the three workbench columns from compressing below usable sizes
+     and lets the browser provide a horizontal scrollbar instead. */
+  grid-template-rows: auto 34px 1fr;
   height: 100vh;
+  min-width: 1280px;
 }
 
 header.topbar {
   display: flex;
   align-items: center;
-  padding: 0 14px;
+  padding: 6px 14px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
   gap: 16px;
+  /* Allow the toolbar to wrap below the brand on narrow viewports.
+     Without this, buttons added over time (Templates, Serial, Export,
+     ...) eventually push the right-side toolbar off-screen and the
+     properties panel can't be reached. */
+  flex-wrap: wrap;
+  row-gap: 8px;
+  min-height: 44px;
 }
 header.topbar .brand {
   font-weight: 700;
   letter-spacing: 0.18em;
   color: var(--amber);
   font-size: 13px;
+  /* Keep the brand on one line; if there's truly not enough width the
+     toolbar wraps to a second row but the brand stays intact. */
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 header.topbar .brand .sub {
   color: var(--ink-mute);
@@ -173,6 +252,11 @@ header.topbar .toolbar {
   gap: 6px;
   margin-left: auto;
   align-items: center;
+  /* The toolbar itself wraps to a second row of buttons when the
+     viewport is too narrow for one. */
+  flex-wrap: wrap;
+  row-gap: 6px;
+  justify-content: flex-end;
 }
 header.topbar .toolbar .sep {
   width: 1px;
@@ -1519,6 +1603,7 @@ button#btn-serial.active {
     <span class="sep"></span>
     <label class="opt"><input type="checkbox" id="grid-toggle" checked> Grid</label>
     <label class="opt"><input type="checkbox" id="snap-toggle" checked> Snap</label>
+    <button id="btn-editor-theme" class="icon-only" title="Switch editor to light mode" aria-label="Toggle editor light/dark mode">&#x263E;</button>
     <span class="sep"></span>
     <button id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
     <button id="btn-redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
@@ -1534,7 +1619,7 @@ button#btn-serial.active {
     <button id="btn-serial" title="Toggle the Web Serial monitor (live device output + send)">Serial</button>
     <button id="btn-export" title="Export the current screen as PNG or SVG">Export</button>
     <button id="btn-code" class="primary">Generate Code</button>
-    <button id="btn-viewer" title="Preview current project in the viewer (opens in a new tab)">Open Viewer \u2197</button>
+    <button id="btn-viewer" title="Preview current project in the viewer (opens in a new tab)">Open Viewer &#x2197;</button>
     <button id="btn-help">?</button>
   </div>
 </header>
@@ -3792,6 +3877,67 @@ const $gridToggle = document.getElementById('grid-toggle');
 const $snapToggle = document.getElementById('snap-toggle');
 const $screensStrip = document.getElementById('screens-strip');
 const $shellBanner = document.getElementById('shell-banner');
+const $editorThemeBtn = document.getElementById('btn-editor-theme');
+
+// ----- Editor light/dark theme ----------------------------
+// The editor "chrome" (toolbar, palette, panels, properties pane) can
+// run in dark (default) or light (warm cream/sepia) mode. This is
+// independent of the LVGL canvas theme; the device-shell preview keeps
+// its own theme via .theme-tradigital or the lvgl_default :root values.
+// Preference persists across sessions via localStorage. The dark mode
+// glyph is a moon (clicking goes to light) and the light mode glyph is
+// a sun (clicking goes to dark), with matching tooltips.
+
+const EDITOR_THEME_KEY = 'panelwright_editor_theme';
+const EDITOR_THEME_DARK_GLYPH  = '\u263E'; // last quarter moon
+const EDITOR_THEME_LIGHT_GLYPH = '\u2600'; // black sun with rays
+
+function getEditorTheme() {
+  try {
+    const v = localStorage.getItem(EDITOR_THEME_KEY);
+    return v === 'light' ? 'light' : 'dark';
+  } catch (e) {
+    return 'dark';
+  }
+}
+
+function applyEditorTheme(theme) {
+  // Apply the class to <body> so the CSS variable cascade rebinds the
+  // editor chrome to the light palette. Then update the button glyph
+  // and tooltip to point at the inverse action ("currently dark, click
+  // to go light", and vice versa).
+  if (theme === 'light') {
+    document.body.classList.add('editor-light');
+    if ($editorThemeBtn) {
+      $editorThemeBtn.innerHTML = EDITOR_THEME_LIGHT_GLYPH;
+      $editorThemeBtn.title = 'Switch editor to dark mode';
+    }
+  } else {
+    document.body.classList.remove('editor-light');
+    if ($editorThemeBtn) {
+      $editorThemeBtn.innerHTML = EDITOR_THEME_DARK_GLYPH;
+      $editorThemeBtn.title = 'Switch editor to light mode';
+    }
+  }
+}
+
+function setEditorTheme(theme) {
+  try { localStorage.setItem(EDITOR_THEME_KEY, theme); } catch (e) { /* full disk */ }
+  applyEditorTheme(theme);
+}
+
+function toggleEditorTheme() {
+  const next = getEditorTheme() === 'light' ? 'dark' : 'light';
+  setEditorTheme(next);
+}
+
+// Apply saved preference immediately so the editor doesn't flash dark
+// before going light (and vice versa) on every load.
+applyEditorTheme(getEditorTheme());
+
+if ($editorThemeBtn) {
+  $editorThemeBtn.addEventListener('click', toggleEditorTheme);
+}
 
 // ----- Populate palette -----------------------------------
 
@@ -4651,8 +4797,10 @@ function estimateMemoryBudget() {
 
   // Font size impact. Each Montserrat size we use adds roughly 3KB of
   // flash for the Latin subset shipped with the Arduino LVGL library.
+  // collectFontSizes returns a sorted array of distinct sizes, so use
+  // .length here (not .size, which is undefined on arrays).
   const fontSizes = collectFontSizes(state.screens);
-  const fontBytes = fontSizes.size * 3072;
+  const fontBytes = fontSizes.length * 3072;
 
   const sramBytes = widgetCount * PER_WIDGET_SRAM;
   const flashBytes = imageBytes + fontBytes;
@@ -4666,14 +4814,14 @@ function estimateMemoryBudget() {
   const breakdown =
     'Flash assets: ' + fmt(flashBytes) +
     '\n  Images (' + imageCount + '): ' + fmt(imageBytes) +
-    '\n  Fonts (' + fontSizes.size + ' sizes): ' + fmt(fontBytes) +
+    '\n  Fonts (' + fontSizes.length + ' sizes): ' + fmt(fontBytes) +
     '\nSRAM (estimate): ' + fmt(sramBytes) +
     '\n  Widgets (' + widgetCount + ' x ~' + PER_WIDGET_SRAM + ' B): ' + fmt(sramBytes) +
     '\n\nThese figures are rough; actual flash and SRAM usage depends on\n' +
     'LVGL configuration, libraries linked, and user code in setup / loop.';
 
   return { flashBytes, sramBytes, imageBytes, imageCount, fontBytes,
-           fontSizes: fontSizes.size, widgetCount, breakdown, fmt };
+           fontSizes: fontSizes.length, widgetCount, breakdown, fmt };
 }
 
 function updateStatus() {
