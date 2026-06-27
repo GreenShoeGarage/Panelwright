@@ -39,6 +39,40 @@
      the editor canvas pixel-accurate WYSIWYG. The subset covers basic
      Latin + Latin-1 + a few arrows, weighing in around 12 KB. */
   --lvgl-font: 'LVGL Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* LVGL widget theme variables. These parameterise canvas + preview
+     rendering so the editor closely matches what LVGL actually renders
+     on the Giga. Default values here are the lvgl_default LIGHT theme
+     (LVGL's true default on the Giga Display Shield); .theme-tradigital
+     overrides them with dark brass values. Widget primary colors still
+     come from per-widget props for stored projects; these variables
+     control surroundings: backgrounds, borders, tracks, text, shadows. */
+  --lv-bg: #ffffff;
+  --lv-card: #f5f5f5;
+  --lv-text: #1e1e1e;
+  --lv-text-dim: #757575;
+  --lv-text-mute: #bdbdbd;
+  --lv-border: #e0e0e0;
+  --lv-track: #d0d0d0;
+  --lv-primary: #2196f3;        /* LV_PALETTE_BLUE main */
+  --lv-primary-text: #ffffff;
+  --lv-canvas-bg: #ffffff;
+  --lv-grid: rgba(0,0,0,0.07);
+  --lv-shadow: rgba(0,0,0,0.18);
+}
+.theme-tradigital {
+  --lv-bg: #0e0a06;
+  --lv-card: #1a1208;
+  --lv-text: #f0e0c8;
+  --lv-text-dim: #b0a090;
+  --lv-text-mute: #6a5340;
+  --lv-border: #604838;
+  --lv-track: #3a2a18;
+  --lv-primary: #d4a574;
+  --lv-primary-text: #1a1208;
+  --lv-canvas-bg: #0e0a06;
+  --lv-grid: rgba(212,165,116,0.05);
+  --lv-shadow: rgba(0,0,0,0.4);
 }
 @font-face {
   font-family: 'LVGL Montserrat';
@@ -246,7 +280,8 @@ aside.preview-dock {
 main.workbench.preview-on aside.preview-dock { display: flex; }
 
 /* Active state on the toolbar Preview button */
-button#btn-preview.active {
+button#btn-preview.active,
+button#btn-serial.active {
   background: var(--amber);
   color: var(--bg);
   border-color: var(--amber);
@@ -290,10 +325,10 @@ button#btn-preview.active {
   position: absolute;
   top: 0; left: 0;
   transform-origin: top left;
-  color: #d3d3d3;
+  background: var(--lv-canvas-bg);
+  color: var(--lv-text);
   font-family: var(--lvgl-font);
 }
-.preview-dock .preview-stage-canvas.theme-tradigital { background: #0e0a06; }
 .preview-dock .preview-stage-canvas .widget {
   cursor: default;
 }
@@ -409,26 +444,17 @@ button#btn-preview.active {
 
 #canvas {
   position: relative;
-  background: var(--canvas-bg);
+  background: var(--lv-canvas-bg);
   overflow: hidden;
-  color: #d3d3d3;
+  color: var(--lv-text);
   font-family: var(--lvgl-font);
   user-select: none;
 }
 #canvas.grid-on {
   background-image:
-    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    linear-gradient(var(--lv-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--lv-grid) 1px, transparent 1px);
   background-size: 10px 10px, 10px 10px;
-}
-/* Tradigital theme tint on canvas background */
-#canvas.theme-tradigital {
-  background: #0e0a06;
-}
-#canvas.theme-tradigital.grid-on {
-  background-image:
-    linear-gradient(rgba(212,165,116,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(212,165,116,0.05) 1px, transparent 1px);
 }
 
 /* Widget visual representations on canvas */
@@ -458,7 +484,12 @@ button#btn-preview.active {
 .widget .resize-handle.e { top: 50%; right: -5px; transform: translateY(-50%); cursor: ew-resize; }
 .widget .resize-handle.w { top: 50%; left: -5px; transform: translateY(-50%); cursor: ew-resize; }
 
-/* LVGL approximate styles */
+/* LVGL approximate styles, parameterised by --lv-* variables above.
+   Variables are set by :root (lvgl_default light) and overridden by
+   .theme-tradigital (dark brass). Colors and radii match LVGL v9
+   default theme so the editor closely matches device rendering.
+   Widget primary colors (button bg, slider fill) still come from
+   per-widget props so existing project data is preserved. */
 .lv-label {
   display: flex;
   align-items: center;
@@ -470,69 +501,72 @@ button#btn-preview.active {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #2e6cda, #1f4ea0);
-  color: white;
+  background: var(--lv-primary);
+  color: var(--lv-primary-text);
   border-radius: 5px;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.3);
+  box-shadow: 0 3px 5px var(--lv-shadow);
   font-weight: 500;
-  text-shadow: 0 1px 1px rgba(0,0,0,0.4);
 }
 .lv-slider { display: flex; align-items: center; position: relative; }
-.lv-slider .track { width: 100%; height: 6px; background: #404750; border-radius: 3px; position: relative; overflow: visible; }
-.lv-slider .fill { height: 100%; background: linear-gradient(180deg, #2e6cda, #1f4ea0); border-radius: 3px; }
+.lv-slider .track {
+  width: 100%; height: 4px;
+  background: var(--lv-track); border-radius: 2px;
+  position: relative; overflow: visible;
+}
+.lv-slider .fill { height: 100%; background: var(--lv-primary); border-radius: 2px; }
 .lv-slider .knob {
   position: absolute; top: 50%;
-  width: 18px; height: 18px;
-  background: linear-gradient(180deg, #4a85e8, #2a5cb8);
+  width: 20px; height: 20px;
+  background: var(--lv-primary);
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  border: 1px solid #1a3a78;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  box-shadow: 0 1px 3px var(--lv-shadow);
 }
-.lv-switch { background: #404750; border-radius: 999px; position: relative; }
-.lv-switch.checked { background: linear-gradient(180deg, #2e6cda, #1f4ea0); }
+.lv-switch { background: var(--lv-track); border-radius: 999px; position: relative; }
+.lv-switch.checked { background: var(--lv-primary); }
 .lv-switch .knob {
   position: absolute; top: 50%; transform: translateY(-50%);
-  background: #d8d8d8; border-radius: 50%; transition: left 0.15s;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  background: #ffffff; border-radius: 50%; transition: left 0.15s;
+  box-shadow: 0 1px 2px var(--lv-shadow);
 }
-.lv-checkbox { display: flex; align-items: center; gap: 6px; color: #d3d3d3; }
+.lv-checkbox { display: flex; align-items: center; gap: 6px; color: var(--lv-text); }
 .lv-checkbox .box {
-  width: 18px; height: 18px; border: 2px solid #707880;
-  border-radius: 3px; flex-shrink: 0;
+  width: 20px; height: 20px; border: 2px solid var(--lv-border);
+  border-radius: 4px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
+  background: var(--lv-bg);
 }
 .lv-checkbox.checked .box {
-  background: linear-gradient(180deg, #2e6cda, #1f4ea0);
-  border-color: #1f4ea0;
+  background: var(--lv-primary);
+  border-color: var(--lv-primary);
 }
-.lv-checkbox.checked .box::after { content: '\2713'; color: white; font-size: 12px; font-weight: bold; }
-.lv-bar { background: #404750; border-radius: 4px; overflow: hidden; position: relative; }
-.lv-bar .fill { height: 100%; background: linear-gradient(180deg, #2e6cda, #1f4ea0); }
+.lv-checkbox.checked .box::after { content: '\2713'; color: var(--lv-primary-text); font-size: 14px; font-weight: bold; }
+.lv-bar { background: var(--lv-track); border-radius: 4px; overflow: hidden; position: relative; }
+.lv-bar .fill { height: 100%; background: var(--lv-primary); }
 .lv-arc { position: relative; display: flex; align-items: center; justify-content: center; }
 .lv-dropdown {
   display: flex; align-items: center; justify-content: space-between;
-  background: #2a2f37; border: 1px solid #4a525c; border-radius: 4px;
-  padding: 0 10px; color: #d3d3d3;
+  background: var(--lv-bg); border: 1px solid var(--lv-border); border-radius: 4px;
+  padding: 0 10px; color: var(--lv-text);
 }
-.lv-dropdown .caret { font-size: 10px; color: #888; }
+.lv-dropdown .caret { font-size: 10px; color: var(--lv-text-dim); }
 .lv-textarea {
-  background: #1a1d22; border: 1px solid #4a525c; border-radius: 4px;
-  padding: 6px 8px; color: #d3d3d3; overflow: hidden;
+  background: var(--lv-bg); border: 1px solid var(--lv-border); border-radius: 4px;
+  padding: 6px 8px; color: var(--lv-text); overflow: hidden;
 }
-.lv-textarea.placeholder { color: #6a7078; font-style: italic; }
+.lv-textarea.placeholder { color: var(--lv-text-mute); font-style: italic; }
 .lv-roller {
-  background: #2a2f37; border-radius: 4px; padding: 4px 8px; color: #d3d3d3;
+  background: var(--lv-card); border-radius: 4px; padding: 4px 8px; color: var(--lv-text-dim);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   text-align: center; overflow: hidden; line-height: 1.3; font-size: 13px;
 }
-.lv-roller .dim { color: #6a7078; }
-.lv-roller .sel { color: #4a85e8; font-weight: 600; }
+.lv-roller .dim { color: var(--lv-text-mute); }
+.lv-roller .sel { color: var(--lv-primary); font-weight: 600; }
 
-/* New widgets */
+/* Composite widgets */
 .lv-tabview {
-  background: #1a1d22;
-  border: 1px solid #4a525c;
+  background: var(--lv-bg);
+  border: 1px solid var(--lv-border);
   border-radius: 4px;
   display: flex;
   flex-direction: column;
@@ -545,34 +579,34 @@ button#btn-preview.active {
 .lv-tabview.tab-right { flex-direction: row-reverse; }
 .lv-tabview .tab-bar {
   display: flex;
-  background: #2a2f37;
-  border-bottom: 1px solid #4a525c;
+  background: var(--lv-card);
+  border-bottom: 1px solid var(--lv-border);
   overflow: hidden;
   flex-shrink: 0;
 }
-.lv-tabview.tab-bottom .tab-bar { border-bottom: none; border-top: 1px solid #4a525c; }
+.lv-tabview.tab-bottom .tab-bar { border-bottom: none; border-top: 1px solid var(--lv-border); }
 .lv-tabview.tab-left .tab-bar, .lv-tabview.tab-right .tab-bar {
   flex-direction: column;
   border-bottom: none;
 }
-.lv-tabview.tab-left .tab-bar { border-right: 1px solid #4a525c; }
-.lv-tabview.tab-right .tab-bar { border-left: 1px solid #4a525c; }
+.lv-tabview.tab-left .tab-bar { border-right: 1px solid var(--lv-border); }
+.lv-tabview.tab-right .tab-bar { border-left: 1px solid var(--lv-border); }
 .lv-tabview .tab-btn {
   padding: 8px 14px;
-  color: #888;
+  color: var(--lv-text-dim);
   font-size: 12px;
   white-space: nowrap;
   border-bottom: 2px solid transparent;
 }
 .lv-tabview .tab-btn.active {
-  color: #4a85e8;
-  border-bottom-color: #4a85e8;
-  background: #1a1d22;
+  color: var(--lv-primary);
+  border-bottom-color: var(--lv-primary);
+  background: var(--lv-bg);
 }
 .lv-tabview .tab-content {
   flex: 1;
   padding: 8px;
-  color: #888;
+  color: var(--lv-text-dim);
   font-size: 11px;
   font-style: italic;
   display: flex;
@@ -582,8 +616,8 @@ button#btn-preview.active {
 }
 
 .lv-list {
-  background: #1a1d22;
-  border: 1px solid #4a525c;
+  background: var(--lv-bg);
+  border: 1px solid var(--lv-border);
   border-radius: 4px;
   overflow: hidden;
   display: flex;
@@ -591,16 +625,16 @@ button#btn-preview.active {
 }
 .lv-list .list-item {
   padding: 8px 12px;
-  border-bottom: 1px solid #2a2f37;
-  color: #d3d3d3;
+  border-bottom: 1px solid var(--lv-border);
+  color: var(--lv-text);
   font-size: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .lv-list .list-item.header {
-  background: #2a2f37;
-  color: #888;
+  background: var(--lv-card);
+  color: var(--lv-text-dim);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -610,15 +644,15 @@ button#btn-preview.active {
 .lv-list .list-item .icon {
   width: 14px;
   height: 14px;
-  background: #4a85e8;
+  background: var(--lv-primary);
   border-radius: 2px;
   flex-shrink: 0;
-  opacity: 0.6;
+  opacity: 0.8;
 }
 
 .lv-chart {
-  background: #1a1d22;
-  border: 1px solid #4a525c;
+  background: var(--lv-bg);
+  border: 1px solid var(--lv-border);
   border-radius: 4px;
   position: relative;
   overflow: hidden;
@@ -630,28 +664,6 @@ button#btn-preview.active {
   align-items: center;
   justify-content: center;
 }
-
-/* Theme variants for default widget colors */
-.theme-tradigital .lv-btn {
-  background: linear-gradient(180deg, #d4a574, #a07a4f);
-  color: #1a1208;
-  text-shadow: none;
-  box-shadow: 0 2px 0 rgba(0,0,0,0.4);
-}
-.theme-tradigital .lv-slider .fill,
-.theme-tradigital .lv-bar .fill { background: linear-gradient(180deg, #d4a574, #a07a4f); }
-.theme-tradigital .lv-slider .knob { background: linear-gradient(180deg, #f0c896, #d4a574); border-color: #7a5a35; }
-.theme-tradigital .lv-switch.checked { background: linear-gradient(180deg, #d4a574, #a07a4f); }
-.theme-tradigital .lv-checkbox.checked .box {
-  background: linear-gradient(180deg, #d4a574, #a07a4f);
-  border-color: #a07a4f;
-}
-.theme-tradigital .lv-tabview .tab-btn.active {
-  color: #d4a574;
-  border-bottom-color: #d4a574;
-}
-.theme-tradigital .lv-list .list-item .icon { background: #d4a574; }
-.theme-tradigital .lv-roller .sel { color: #d4a574; }
 
 /* Status bar */
 .status-bar {
@@ -846,6 +858,153 @@ button#btn-preview.active {
 }
 .project-tag .project-title { color: inherit; }
 
+/* Web Serial drawer. Slides up from the bottom of the viewport; sits
+   over the status bar and (when fully open) over the canvas. Keeps the
+   canvas + preview undisturbed when closed, which matters because
+   serial work is auxiliary to the main design flow. */
+.serial-drawer {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border-hot);
+  display: flex;
+  flex-direction: column;
+  transition: height 0.18s ease;
+  z-index: 90;
+  overflow: hidden;
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+}
+.serial-drawer.open {
+  height: 300px;
+}
+.serial-drawer .serial-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+  flex-shrink: 0;
+}
+.serial-drawer .serial-header .title {
+  color: var(--amber);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.serial-drawer .serial-header .status-text {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  letter-spacing: 0.08em;
+}
+.serial-drawer .serial-header .sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+  margin: 0 2px;
+}
+.serial-drawer .status-dot {
+  width: 8px; height: 8px;
+  background: var(--ink-mute);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.serial-drawer .status-dot.connected {
+  background: var(--teal);
+  box-shadow: 0 0 6px var(--teal);
+  animation: serial-pulse 2s ease-in-out infinite;
+}
+@keyframes serial-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.serial-drawer .serial-header button {
+  font-size: 10px;
+  padding: 3px 10px;
+}
+.serial-drawer .serial-header select {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.serial-drawer .serial-header label.opt {
+  font-size: 9px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.serial-drawer .serial-note {
+  flex: 1;
+  font-size: 10px;
+  color: var(--rust);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.serial-drawer .close-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink-dim);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 6px;
+  line-height: 1;
+}
+.serial-drawer .close-btn:hover { color: var(--amber); }
+
+.serial-drawer .serial-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+.serial-drawer .serial-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.55;
+  background: #0a0a0a;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.serial-drawer .serial-log .line { }
+.serial-drawer .serial-log .line.boot { color: #7fd8d8; }
+.serial-drawer .serial-log .line.warn { color: #f4c97c; }
+.serial-drawer .serial-log .line.err  { color: #f48c8c; }
+.serial-drawer .serial-log .line.sys  { color: var(--ink-dim); font-style: italic; }
+.serial-drawer .serial-log .line.tx   { color: var(--amber-bright); }
+.serial-drawer .serial-log .line.dim  { color: var(--ink-mute); }
+
+.serial-drawer .serial-input-row {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--border);
+  padding: 6px 10px;
+  gap: 8px;
+  background: var(--panel-2);
+  flex-shrink: 0;
+}
+.serial-drawer .serial-input-row input[type="text"] {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.serial-drawer .serial-input-row label.opt {
+  font-size: 9px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
 /* Hardware modal */
 .hardware-modal {
   position: fixed; inset: 0;
@@ -878,6 +1037,101 @@ button#btn-preview.active {
 .hardware-modal .hardware-help {
   color: var(--ink-mute); font-size: 10px;
   text-transform: uppercase; letter-spacing: 0.06em;
+}
+
+/* Templates modal. Shares look with hardware modal so it feels like
+   part of the same modal family. The grid hosts large picker cards
+   with thumbnail + name + description + tags. */
+.templates-modal {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: none; align-items: center; justify-content: center;
+  z-index: 100; padding: 40px;
+}
+.templates-modal.open { display: flex; }
+.templates-modal .box {
+  background: var(--panel); border: 1px solid var(--border-hot);
+  width: 100%; max-width: 1100px; max-height: 100%;
+  display: grid; grid-template-rows: auto 1fr auto;
+}
+.templates-modal .box header {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.templates-modal .box header h2 {
+  font-size: 12px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--amber);
+}
+.templates-modal .box header .close {
+  background: transparent; border: none; color: var(--ink-dim);
+  font-size: 20px; cursor: pointer; padding: 0; line-height: 1;
+}
+.templates-modal .box .actions {
+  padding: 10px 16px; border-top: 1px solid var(--border);
+  display: flex; gap: 12px; justify-content: space-between; align-items: center;
+}
+.templates-modal .templates-help {
+  color: var(--ink-mute); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.templates-grid {
+  overflow: auto; padding: 16px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+.template-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.12s;
+}
+.template-card:hover {
+  border-color: var(--amber);
+  transform: translateY(-1px);
+}
+.template-card .thumb {
+  background: #0a0a0a;
+  border-bottom: 1px solid var(--border);
+  width: 100%; aspect-ratio: 5/3;
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.template-card .thumb svg {
+  width: 100%; height: 100%;
+}
+.template-card .meta {
+  padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.template-card .name {
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+  font-weight: 600;
+}
+.template-card .desc {
+  color: var(--ink-dim);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.template-card .tags {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  margin-top: 4px;
+}
+.template-card .tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+}
+.template-card .tag.periph {
+  border-color: var(--amber);
+  color: var(--amber);
 }
 
 .hardware-grid {
@@ -1272,10 +1526,12 @@ button#btn-preview.active {
     <button id="btn-new" class="danger">New</button>
     <button id="btn-save">Save .json</button>
     <button id="btn-load">Load</button>
+    <button id="btn-templates" title="Browse starter templates (multimeter, thermostat, weather station, ...)">Templates</button>
     <input type="file" id="file-input" accept=".json" style="display:none">
     <span class="sep"></span>
     <button id="btn-hardware" title="Configure onboard peripherals (microphone, camera, SD, WiFi, BLE, LED, RTC)">Hardware</button>
     <button id="btn-preview" title="Toggle the docked live preview pane">Preview</button>
+    <button id="btn-serial" title="Toggle the Web Serial monitor (live device output + send)">Serial</button>
     <button id="btn-export" title="Export the current screen as PNG or SVG">Export</button>
     <button id="btn-code" class="primary">Generate Code</button>
     <button id="btn-viewer" title="Preview current project in the viewer (opens in a new tab)">Open Viewer \u2197</button>
@@ -1320,6 +1576,7 @@ button#btn-preview.active {
       <div class="item"><span class="key">Selected</span><span class="val" id="status-selected">none</span></div>
       <div class="item"><span class="key">Screen</span><span class="val" id="status-screen">main</span></div>
       <div class="item"><span class="key">Widgets</span><span class="val" id="status-count">0</span></div>
+      <div class="item" id="status-mem-item" title="Estimated flash + SRAM impact of this UI. Hover for breakdown."><span class="key">Memory</span><span class="val" id="status-mem">0 KB</span></div>
       <div class="spacer"></div>
       <div class="periph-indicators" id="periph-indicators"></div>
       <div class="item"><span class="key">Display</span><span class="val" id="status-display">800 x 480</span></div>
@@ -1365,9 +1622,73 @@ button#btn-preview.active {
       <div class="actions-buttons">
         <button id="code-copy">Copy</button>
         <button id="code-download">Download .ino</button>
-        <button id="code-download-zip" class="primary">Download .zip</button>
+        <button id="code-download-zip" class="primary" title="Sketch + lv_conf.h + README + library list">Download project bundle</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Templates gallery modal. Each card shows a name, description, and
+     a live SVG thumbnail rendered from the template's widget tree
+     so the user previews exactly what loading it will look like. -->
+<div class="templates-modal" id="templates-modal">
+  <div class="box">
+    <header>
+      <h2>Starter Templates</h2>
+      <button class="close" id="templates-close">&times;</button>
+    </header>
+    <div class="templates-grid" id="templates-grid">
+      <!-- populated by JS -->
+    </div>
+    <div class="actions">
+      <span class="templates-help">
+        Each template is a complete project; picking one replaces your current canvas.
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Web Serial monitor drawer. Slides up from the bottom; uses the
+     Chromium-family Web Serial API to read live UART output from the
+     Giga over USB and (optionally) send commands back. Skips connect
+     gracefully if the browser doesn't expose navigator.serial. -->
+<div class="serial-drawer" id="serial-drawer">
+  <div class="serial-header">
+    <span class="status-dot" id="serial-status-dot"></span>
+    <span class="title">Serial Monitor</span>
+    <span class="status-text" id="serial-status-text">Disconnected</span>
+    <button id="serial-connect">Connect</button>
+    <label class="opt">Baud
+      <select id="serial-baud">
+        <option value="9600">9600</option>
+        <option value="19200">19200</option>
+        <option value="38400">38400</option>
+        <option value="57600">57600</option>
+        <option value="115200" selected>115200</option>
+        <option value="230400">230400</option>
+        <option value="460800">460800</option>
+        <option value="921600">921600</option>
+      </select>
+    </label>
+    <button id="serial-clear">Clear</button>
+    <label class="opt"><input type="checkbox" id="serial-autoscroll" checked> Auto-scroll</label>
+    <span class="sep"></span>
+    <span class="serial-note" id="serial-note"></span>
+    <button class="close-btn" id="serial-close" title="Close (Esc)">&times;</button>
+  </div>
+  <div class="serial-body">
+    <div class="serial-log" id="serial-log"></div>
+  </div>
+  <div class="serial-input-row">
+    <input type="text" id="serial-input" placeholder="Type a command, press Enter to send" disabled>
+    <label class="opt">Line ending
+      <select id="serial-line-ending">
+        <option value="\n" selected>LF (\n)</option>
+        <option value="\r\n">CRLF (\r\n)</option>
+        <option value="">None</option>
+      </select>
+    </label>
+    <button id="serial-send" disabled>Send</button>
   </div>
 </div>
 
@@ -1709,7 +2030,7 @@ const WIDGET_TYPES = {
     defaultSize: { w: 140, h: 50 },
     defaultName: 'btn',
     defaultProps: {
-      text: 'BUTTON', bgColor: '#2e6cda', textColor: '#ffffff', radius: 5,
+      text: 'BUTTON', bgColor: '#2196f3', textColor: '#ffffff', radius: 5,
       fontSize: 14,
       action: 'none', actionTarget: '', customLogic: ''
     },
@@ -1737,7 +2058,7 @@ const WIDGET_TYPES = {
     label: 'Slider', glyph: '\u2500\u25CF\u2500',
     defaultSize: { w: 200, h: 20 },
     defaultName: 'sld',
-    defaultProps: { min: 0, max: 100, value: 50, color: '#2e6cda', customLogic: '' },
+    defaultProps: { min: 0, max: 100, value: 50, color: '#2196f3', customLogic: '' },
     render: renderSlider,
     properties: [
       { key: 'min', label: 'Min', type: 'number' },
@@ -1752,7 +2073,7 @@ const WIDGET_TYPES = {
     label: 'Switch', glyph: '\u25CB\u2500',
     defaultSize: { w: 50, h: 28 },
     defaultName: 'sw',
-    defaultProps: { checked: false, color: '#2e6cda', customLogic: '' },
+    defaultProps: { checked: false, color: '#2196f3', customLogic: '' },
     render: renderSwitch,
     properties: [
       { key: 'checked', label: 'On', type: 'boolean' },
@@ -1765,7 +2086,7 @@ const WIDGET_TYPES = {
     label: 'Checkbox', glyph: '\u2611',
     defaultSize: { w: 140, h: 24 },
     defaultName: 'chk',
-    defaultProps: { text: 'Option', checked: false, color: '#2e6cda', customLogic: '' },
+    defaultProps: { text: 'Option', checked: false, color: '#2196f3', customLogic: '' },
     render: renderCheckbox,
     properties: [
       { key: 'text', label: 'Label', type: 'text' },
@@ -1779,7 +2100,7 @@ const WIDGET_TYPES = {
     label: 'Bar', glyph: '\u2588\u2588\u2591',
     defaultSize: { w: 200, h: 14 },
     defaultName: 'bar',
-    defaultProps: { min: 0, max: 100, value: 60, color: '#2e6cda' },
+    defaultProps: { min: 0, max: 100, value: 60, color: '#2196f3' },
     render: renderBar,
     properties: [
       { key: 'min', label: 'Min', type: 'number' },
@@ -1792,7 +2113,7 @@ const WIDGET_TYPES = {
     label: 'Arc', glyph: '\u25DC',
     defaultSize: { w: 120, h: 120 },
     defaultName: 'arc',
-    defaultProps: { min: 0, max: 100, value: 40, color: '#2e6cda' },
+    defaultProps: { min: 0, max: 100, value: 40, color: '#2196f3' },
     render: renderArc,
     properties: [
       { key: 'min', label: 'Min', type: 'number' },
@@ -1805,7 +2126,7 @@ const WIDGET_TYPES = {
     label: 'Meter', glyph: '\u25D4',
     defaultSize: { w: 160, h: 160 },
     defaultName: 'mtr',
-    defaultProps: { min: 0, max: 100, value: 70, color: '#2e6cda', needleColor: '#ff8050',
+    defaultProps: { min: 0, max: 100, value: 70, color: '#2196f3', needleColor: '#ff8050',
                     angleStart: 135, angleEnd: 45, majorTicks: 8 },
     render: renderMeter,
     properties: [
@@ -1902,7 +2223,7 @@ const WIDGET_TYPES = {
     defaultName: 'cht',
     defaultProps: {
       chartType: 'line', pointCount: 16, seriesCount: 1,
-      color1: '#2e6cda', color2: '#d4a574', color3: '#6fb5a8'
+      color1: '#2196f3', color2: '#d4a574', color3: '#6fb5a8'
     },
     render: renderChart,
     properties: [
@@ -1970,12 +2291,40 @@ const WIDGET_TYPES = {
       { key: 'month', label: 'Month', type: 'number', min: 1, max: 12 },
       { key: 'day',   label: 'Day',   type: 'number', min: 1, max: 31 }
     ]
+  },
+  image: {
+    label: 'Image', glyph: '\u29C8',
+    defaultSize: { w: 120, h: 90 },
+    defaultName: 'img',
+    defaultProps: {
+      // Original (pre-resize) data URL for preview only. Codegen reads
+      // imageRGB565 which is the resized + RGB565-converted byte cache
+      // base64-encoded for storage. fitMode controls how the image fits
+      // within the widget box: 'cover' fills + crops, 'contain' fits +
+      // letterboxes, 'stretch' distorts to fill.
+      imageData: '',        // base64 data URL for preview
+      imageRGB565: '',      // base64-encoded RGB565 bytes for codegen
+      imageW: 0,            // pixel width of the cached buffer
+      imageH: 0,            // pixel height of the cached buffer
+      fitMode: 'cover',
+      opacity: 100
+    },
+    render: renderImage,
+    properties: [
+      { key: 'imageData', label: 'Image', type: 'image-upload' },
+      { key: 'fitMode', label: 'Fit', type: 'select', options: [
+          { v: 'cover', l: 'Cover (fill, crop)' },
+          { v: 'contain', l: 'Contain (fit, letterbox)' },
+          { v: 'stretch', l: 'Stretch (distort to fill)' }
+      ]},
+      { key: 'opacity', label: 'Opacity', type: 'number', min: 0, max: 100 }
+    ]
   }
 };
 
 // Default theme accents (used for new widgets when theme is active)
 const THEME_DEFAULTS = {
-  lvgl_default: { primary: '#2e6cda', secondary: '#6fb5a8' },
+  lvgl_default: { primary: '#2196f3', secondary: '#6fb5a8' },
   tradigital:   { primary: '#d4a574', secondary: '#6fb5a8' }
 };
 
@@ -2122,6 +2471,258 @@ function defaultPeripherals() {
   }
   return p;
 }
+
+// ----- Starter templates ----------------------------------
+// Each template is a complete v3-compatible project blob that
+// applyProjectData() can ingest. Goal: give new users (and Mike,
+// when sketching) a credible starting point for common Field
+// Instrument categories instead of a blank canvas. Templates are
+// hand-curated with sensible widget sizes and positions for the
+// 800x480 landscape Giga Display Shield default.
+//
+// Adding a new template: define a name, description, optional tags,
+// optional peripherals, and a widgets array using tplWidget() to
+// avoid hand-writing every prop. The gallery picks them up
+// automatically.
+
+function tplWidget(type, id, name, x, y, w, h, propOverrides) {
+  // Deep-clone the type's default props so multiple templates don't
+  // accidentally share the same object reference (mutations propagate).
+  const defaults = WIDGET_TYPES[type] ? WIDGET_TYPES[type].defaultProps : {};
+  const props = JSON.parse(JSON.stringify(defaults));
+  if (propOverrides) Object.assign(props, propOverrides);
+  return { id, type, name, x, y, w, h, props };
+}
+
+function buildTemplate(opts) {
+  // Compute nextId from the highest widget id used so future widgets
+  // added in the editor don't collide. nameCounts is rebuilt by walking
+  // the widget list once.
+  const widgets = opts.widgets || [];
+  const nextId = widgets.reduce((m, w) => Math.max(m, w.id + 1), 1);
+  const nameCounts = {};
+  for (const w of widgets) {
+    nameCounts[w.type] = (nameCounts[w.type] || 0) + 1;
+  }
+  const peripherals = defaultPeripherals();
+  if (opts.peripherals) {
+    for (const [k, v] of Object.entries(opts.peripherals)) {
+      if (peripherals[k]) Object.assign(peripherals[k], v);
+    }
+  }
+  return {
+    version: 3,
+    tool: 'PANELWRIGHT',
+    orientation: opts.orientation || 'landscape',
+    theme: opts.theme || 'lvgl_default',
+    screens: [{
+      id: 'scr_1', name: 'main', widgets,
+      isDefault: true,
+      bgColor: opts.bgColor
+    }],
+    activeScreenId: 'scr_1',
+    nextId,
+    nextScreenId: 2,
+    nameCounts,
+    peripherals,
+    meta: Object.assign({
+      title: opts.title || 'Untitled',
+      author: '',
+      targetBoard: 'Arduino Giga R1 + Display Shield',
+      description: opts.description || '',
+      boardProfile: 'giga_display_shield',
+      lvglVersion: 'v9'
+    }, opts.meta || {})
+  };
+}
+
+const TEMPLATES = [
+  {
+    id: 'blank',
+    name: 'Blank',
+    description: 'Empty 800 x 480 landscape canvas. Start from scratch.',
+    tags: ['starter'],
+    build: () => buildTemplate({
+      title: 'Untitled',
+      widgets: []
+    })
+  },
+  {
+    id: 'multimeter',
+    name: 'Bench Multimeter',
+    description: 'Large value readout with mode + range selectors and HOLD / REL / MAX-MIN buttons. Wire A0 to your probe; the loop polls and updates the label.',
+    tags: ['instrument', 'sensors'],
+    build: () => buildTemplate({
+      title: 'Bench Multimeter',
+      description: 'Big number readout with mode + range selection.',
+      widgets: [
+        tplWidget('label', 1, 'lbl_title', 20, 10, 760, 30,
+          { text: 'BENCH MULTIMETER', fontSize: 18, align: 'center' }),
+        tplWidget('label', 2, 'lbl_value', 40, 70, 720, 180,
+          { text: '0.000 V', fontSize: 96, align: 'center' }),
+        tplWidget('dropdown', 3, 'dd_mode', 40, 280, 160, 50,
+          { options: 'DC Volts\nAC Volts\nDC Amps\nAC Amps\nOhms\nFreq\nCap', selected: 0 }),
+        tplWidget('dropdown', 4, 'dd_range', 220, 280, 160, 50,
+          { options: 'Auto\n200 mV\n2 V\n20 V\n200 V\n1000 V', selected: 0 }),
+        tplWidget('button', 5, 'btn_hold', 420, 280, 100, 50,
+          { text: 'HOLD' }),
+        tplWidget('button', 6, 'btn_rel', 540, 280, 100, 50,
+          { text: 'REL' }),
+        tplWidget('button', 7, 'btn_maxmin', 660, 280, 100, 50,
+          { text: 'MAX/MIN' }),
+        tplWidget('label', 8, 'lbl_status', 20, 430, 760, 30,
+          { text: 'READY', fontSize: 14, align: 'center' })
+      ]
+    })
+  },
+  {
+    id: 'thermostat',
+    name: 'Thermostat',
+    description: 'Large arc for setpoint, current temperature beneath, and HEAT / COOL / OFF / AUTO mode buttons across the bottom. Drop your temperature probe into the loop and bind the slider to your relay.',
+    tags: ['hvac', 'control'],
+    build: () => buildTemplate({
+      title: 'Thermostat',
+      description: 'Temperature setpoint with mode selection.',
+      widgets: [
+        tplWidget('label', 1, 'lbl_title', 20, 10, 760, 30,
+          { text: 'THERMOSTAT', fontSize: 18, align: 'center' }),
+        tplWidget('arc', 2, 'arc_setpoint', 225, 50, 350, 300,
+          { min: 60, max: 85, value: 72 }),
+        tplWidget('label', 3, 'lbl_setpoint', 325, 150, 150, 80,
+          { text: '72', fontSize: 64, align: 'center' }),
+        tplWidget('label', 4, 'lbl_setpoint_unit', 325, 220, 150, 30,
+          { text: 'SETPOINT (\u00B0F)', fontSize: 12, align: 'center' }),
+        tplWidget('label', 5, 'lbl_current', 325, 260, 150, 50,
+          { text: 'CURRENT 68\u00B0F', fontSize: 16, align: 'center' }),
+        tplWidget('button', 6, 'btn_heat', 30, 410, 175, 50,
+          { text: 'HEAT', bgColor: '#b9684a' }),
+        tplWidget('button', 7, 'btn_cool', 215, 410, 175, 50,
+          { text: 'COOL' }),
+        tplWidget('button', 8, 'btn_off', 400, 410, 175, 50,
+          { text: 'OFF' }),
+        tplWidget('button', 9, 'btn_auto', 585, 410, 175, 50,
+          { text: 'AUTO' }),
+        tplWidget('label', 10, 'lbl_status', 20, 370, 760, 30,
+          { text: 'Heating to 72\u00B0F', fontSize: 13, align: 'center' })
+      ]
+    })
+  },
+  {
+    id: 'weather',
+    name: 'Weather Station',
+    description: 'Four readouts (temperature, humidity, pressure, wind) in a 2 x 2 grid plus a 24-hour trend chart. WiFi peripheral is pre-enabled so your loop can pull from an API or local sensor stack.',
+    tags: ['sensors', 'dashboard'],
+    build: () => buildTemplate({
+      title: 'Weather Station',
+      description: 'Multi-sensor dashboard with trend chart.',
+      peripherals: { wifi: { enabled: true } },
+      widgets: [
+        tplWidget('label', 1, 'lbl_title', 20, 10, 600, 30,
+          { text: 'WEATHER STATION', fontSize: 18, align: 'left' }),
+        tplWidget('label', 2, 'lbl_time', 640, 10, 140, 30,
+          { text: '14:32', fontSize: 18, align: 'right' }),
+        // Temp panel
+        tplWidget('label', 3, 'lbl_temp_tag', 30, 60, 370, 20,
+          { text: 'TEMPERATURE', fontSize: 11, align: 'left' }),
+        tplWidget('label', 4, 'lbl_temp_val', 30, 80, 370, 70,
+          { text: '72.4\u00B0F', fontSize: 56, align: 'left' }),
+        // Humidity panel
+        tplWidget('label', 5, 'lbl_hum_tag', 420, 60, 360, 20,
+          { text: 'HUMIDITY', fontSize: 11, align: 'left' }),
+        tplWidget('label', 6, 'lbl_hum_val', 420, 80, 360, 70,
+          { text: '45%', fontSize: 56, align: 'left' }),
+        // Pressure panel
+        tplWidget('label', 7, 'lbl_pres_tag', 30, 175, 370, 20,
+          { text: 'PRESSURE', fontSize: 11, align: 'left' }),
+        tplWidget('label', 8, 'lbl_pres_val', 30, 195, 370, 70,
+          { text: '1013 hPa', fontSize: 44, align: 'left' }),
+        // Wind panel
+        tplWidget('label', 9, 'lbl_wind_tag', 420, 175, 360, 20,
+          { text: 'WIND', fontSize: 11, align: 'left' }),
+        tplWidget('label', 10, 'lbl_wind_val', 420, 195, 360, 70,
+          { text: '5 mph NE', fontSize: 44, align: 'left' }),
+        // Trend chart
+        tplWidget('label', 11, 'lbl_trend_tag', 30, 285, 200, 20,
+          { text: '24-HOUR TEMPERATURE TREND', fontSize: 10, align: 'left' }),
+        tplWidget('chart', 12, 'cht_temp', 20, 310, 760, 150,
+          { chartType: 'line', pointCount: 24, seriesCount: 1 })
+      ]
+    })
+  },
+  {
+    id: 'recorder',
+    name: 'Sensor Recorder',
+    description: 'Live data chart with sample rate, threshold sliders, record toggle, and export button. SD card peripheral pre-enabled so you can stream samples to /sd/log.csv.',
+    tags: ['logger', 'sensors'],
+    build: () => buildTemplate({
+      title: 'Sensor Recorder',
+      description: 'Live data chart with sample rate and threshold controls.',
+      peripherals: { sdcard: { enabled: true } },
+      widgets: [
+        tplWidget('label', 1, 'lbl_title', 20, 10, 760, 30,
+          { text: 'SENSOR RECORDER', fontSize: 18, align: 'center' }),
+        tplWidget('chart', 2, 'cht_data', 20, 50, 540, 320,
+          { chartType: 'line', pointCount: 32, seriesCount: 1 }),
+        tplWidget('label', 3, 'lbl_rate_tag', 580, 60, 200, 18,
+          { text: 'SAMPLE RATE (Hz)', fontSize: 11, align: 'left' }),
+        tplWidget('slider', 4, 'sld_rate', 580, 80, 200, 30,
+          { min: 1, max: 100, value: 10 }),
+        tplWidget('label', 5, 'lbl_thresh_tag', 580, 140, 200, 18,
+          { text: 'THRESHOLD', fontSize: 11, align: 'left' }),
+        tplWidget('slider', 6, 'sld_thresh', 580, 160, 200, 30,
+          { min: 0, max: 1023, value: 512 }),
+        tplWidget('label', 7, 'lbl_rec_tag', 580, 220, 200, 18,
+          { text: 'RECORDING', fontSize: 11, align: 'left' }),
+        tplWidget('switch', 8, 'sw_rec', 580, 240, 80, 40,
+          { checked: false }),
+        tplWidget('label', 9, 'lbl_count', 20, 390, 540, 30,
+          { text: 'Samples: 0', fontSize: 14, align: 'left' }),
+        tplWidget('button', 10, 'btn_export', 580, 410, 200, 50,
+          { text: 'EXPORT TO SD' })
+      ]
+    })
+  },
+  {
+    id: 'audio',
+    name: 'Audio Spectrum',
+    description: 'Bar widget per frequency band plus a peak meter and gain slider. Microphone (PDM) peripheral pre-enabled. Drop in an FFT in your loop and feed lv_bar_set_value to each band.',
+    tags: ['audio', 'sensors'],
+    build: () => buildTemplate({
+      title: 'Audio Spectrum',
+      description: 'Spectrum bars + peak meter for PDM microphone input.',
+      peripherals: { microphone: { enabled: true } },
+      widgets: [
+        tplWidget('label', 1, 'lbl_title', 20, 10, 760, 30,
+          { text: 'AUDIO SPECTRUM', fontSize: 18, align: 'center' }),
+        // 8 frequency band bars across the canvas
+        tplWidget('bar', 2,  'bar_b1', 60,  60, 60, 300, { min: 0, max: 100, value: 20 }),
+        tplWidget('bar', 3,  'bar_b2', 140, 60, 60, 300, { min: 0, max: 100, value: 35 }),
+        tplWidget('bar', 4,  'bar_b3', 220, 60, 60, 300, { min: 0, max: 100, value: 55 }),
+        tplWidget('bar', 5,  'bar_b4', 300, 60, 60, 300, { min: 0, max: 100, value: 75 }),
+        tplWidget('bar', 6,  'bar_b5', 380, 60, 60, 300, { min: 0, max: 100, value: 60 }),
+        tplWidget('bar', 7,  'bar_b6', 460, 60, 60, 300, { min: 0, max: 100, value: 40 }),
+        tplWidget('bar', 8,  'bar_b7', 540, 60, 60, 300, { min: 0, max: 100, value: 25 }),
+        tplWidget('bar', 9,  'bar_b8', 620, 60, 60, 300, { min: 0, max: 100, value: 15 }),
+        // Peak meter on the right
+        tplWidget('label', 10, 'lbl_peak_tag', 705, 60, 80, 18,
+          { text: 'PEAK', fontSize: 11, align: 'center' }),
+        tplWidget('meter', 11, 'mtr_peak', 705, 85, 80, 130,
+          { min: 0, max: 100, value: 75 }),
+        // Gain slider underneath
+        tplWidget('label', 12, 'lbl_gain_tag', 705, 230, 80, 16,
+          { text: 'GAIN', fontSize: 10, align: 'center' }),
+        tplWidget('slider', 13, 'sld_gain', 715, 250, 60, 110,
+          { min: 0, max: 100, value: 50 }),
+        // Frequency label row
+        tplWidget('label', 14, 'lbl_band_tag', 20, 380, 670, 20,
+          { text: '63       125     250    500       1k      2k       4k       8k        Hz', fontSize: 10, align: 'left' }),
+        // Status row
+        tplWidget('label', 15, 'lbl_status', 20, 430, 760, 30,
+          { text: 'Listening at 16 kHz / 8 bands', fontSize: 12, align: 'center' })
+      ]
+    })
+  }
+];
 
 // ----- Application state ----------------------------------
 
@@ -2349,7 +2950,8 @@ function renderButton(w) {
   inner.className = 'lv-btn';
   inner.style.width = '100%';
   inner.style.height = '100%';
-  inner.style.background = `linear-gradient(180deg, ${w.props.bgColor}, ${darken(w.props.bgColor, 0.3)})`;
+  // LVGL uses flat colors, not gradients. Apply the button color solid.
+  inner.style.background = w.props.bgColor;
   inner.style.color = w.props.textColor;
   inner.style.borderRadius = w.props.radius + 'px';
   inner.style.fontSize = (w.props.fontSize || 14) + 'px';
@@ -2389,11 +2991,11 @@ function renderSlider(w) {
   fill.className = 'fill';
   const pct = (w.props.value - w.props.min) / (w.props.max - w.props.min);
   fill.style.width = (pct * 100) + '%';
-  fill.style.background = `linear-gradient(180deg, ${w.props.color}, ${darken(w.props.color, 0.3)})`;
+  fill.style.background = w.props.color;
   const knob = document.createElement('div');
   knob.className = 'knob';
   knob.style.left = (pct * 100) + '%';
-  knob.style.background = `linear-gradient(180deg, ${lighten(w.props.color, 0.2)}, ${w.props.color})`;
+  knob.style.background = w.props.color;
   track.appendChild(fill);
   track.appendChild(knob);
   wrap.appendChild(track);
@@ -2408,7 +3010,7 @@ function renderSwitch(w) {
   inner.style.width = '100%';
   inner.style.height = '100%';
   if (w.props.checked) {
-    inner.style.background = `linear-gradient(180deg, ${w.props.color}, ${darken(w.props.color, 0.3)})`;
+    inner.style.background = w.props.color;
   }
   const knob = document.createElement('div');
   knob.className = 'knob';
@@ -2430,7 +3032,7 @@ function renderCheckbox(w) {
   const box = document.createElement('div');
   box.className = 'box';
   if (w.props.checked) {
-    box.style.background = `linear-gradient(180deg, ${w.props.color}, ${darken(w.props.color, 0.3)})`;
+    box.style.background = w.props.color;
     box.style.borderColor = darken(w.props.color, 0.3);
   }
   inner.appendChild(box);
@@ -2451,7 +3053,7 @@ function renderBar(w) {
   fill.className = 'fill';
   const pct = (w.props.value - w.props.min) / (w.props.max - w.props.min);
   fill.style.width = (pct * 100) + '%';
-  fill.style.background = `linear-gradient(180deg, ${w.props.color}, ${darken(w.props.color, 0.3)})`;
+  fill.style.background = w.props.color;
   inner.appendChild(fill);
   el.appendChild(inner);
   return el;
@@ -2999,7 +3601,7 @@ function renderCalendar(w) {
     c.style.fontSize = '9px';
     c.textContent = d;
     if (d === today) {
-      c.style.background = '#2e6cda';
+      c.style.background = '#2196f3';
       c.style.color = '#fff';
       c.style.borderRadius = '2px';
     }
@@ -3008,6 +3610,140 @@ function renderCalendar(w) {
   inner.appendChild(grid);
 
   el.appendChild(inner);
+  return el;
+}
+
+// ----- Image widget helpers --------------------------------
+
+// Decode a PNG/JPEG/GIF data URL into a 16-bit RGB565 byte buffer,
+// resizing to (targetW, targetH). Returns a Promise<Uint8Array>. The
+// LVGL v9 / v8 image descriptor reads these bytes verbatim as the
+// pixel data when LV_COLOR_DEPTH is 16 (the Giga default). RGB565 is
+// stored little-endian, matching LVGL's expectation on STM32H7.
+function imageToRGB565(dataUrl, targetW, targetH) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+        const px = ctx.getImageData(0, 0, targetW, targetH).data;
+        const bytes = new Uint8Array(targetW * targetH * 2);
+        for (let i = 0; i < targetW * targetH; i++) {
+          const r = px[i * 4];
+          const g = px[i * 4 + 1];
+          const b = px[i * 4 + 2];
+          // RGB565: 5 bits R, 6 bits G, 5 bits B
+          const rgb565 = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+          // Little-endian byte order matches LVGL on STM32H7
+          bytes[i * 2]     = rgb565 & 0xFF;
+          bytes[i * 2 + 1] = (rgb565 >> 8) & 0xFF;
+        }
+        resolve(bytes);
+      } catch (e) { reject(e); }
+    };
+    img.onerror = () => reject(new Error('image decode failed'));
+    img.src = dataUrl;
+  });
+}
+
+// Base64 encode a Uint8Array. Used to stash the RGB565 buffer inside
+// the project JSON without inflating it 33% (which Uint8Array→string
+// via spread + JSON would). Reversal via base64ToBytes below.
+function bytesToBase64(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+function base64ToBytes(b64) {
+  const s = atob(b64);
+  const bytes = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) bytes[i] = s.charCodeAt(i);
+  return bytes;
+}
+
+// Upload pipeline: read a File, decode, resize to a sane cap (240x180
+// max so flash usage stays reasonable for the Giga), cache RGB565
+// bytes alongside the original data URL, then commit to the widget.
+// Returns a Promise that resolves once props are updated.
+const IMG_MAX_W = 240;
+const IMG_MAX_H = 180;
+async function uploadImageToWidget(file, widget) {
+  // Read file as data URL
+  const dataUrl = await new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = () => reject(fr.error);
+    fr.readAsDataURL(file);
+  });
+  // Decode to get natural dimensions
+  const naturalImg = await new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = reject;
+    im.src = dataUrl;
+  });
+  // Resize: keep aspect ratio, fit within IMG_MAX_W x IMG_MAX_H and
+  // within the widget's current box (whichever is smaller).
+  const boxW = Math.max(8, widget.w);
+  const boxH = Math.max(8, widget.h);
+  const capW = Math.min(IMG_MAX_W, boxW);
+  const capH = Math.min(IMG_MAX_H, boxH);
+  const aspect = naturalImg.width / naturalImg.height;
+  let tw = capW, th = Math.round(capW / aspect);
+  if (th > capH) { th = capH; tw = Math.round(capH * aspect); }
+  tw = Math.max(2, tw); th = Math.max(2, th);
+  // Generate the resized preview data URL
+  const previewCanvas = document.createElement('canvas');
+  previewCanvas.width = tw;
+  previewCanvas.height = th;
+  previewCanvas.getContext('2d').drawImage(naturalImg, 0, 0, tw, th);
+  const resizedDataUrl = previewCanvas.toDataURL('image/png');
+  // Convert to RGB565
+  const bytes = await imageToRGB565(dataUrl, tw, th);
+  widget.props.imageData   = resizedDataUrl;
+  widget.props.imageRGB565 = bytesToBase64(bytes);
+  widget.props.imageW = tw;
+  widget.props.imageH = th;
+}
+
+// Render an Image widget on the editor canvas. Uses an <img> with the
+// stored preview data URL; falls back to a placeholder rectangle when
+// no image has been uploaded yet.
+function renderImage(w) {
+  const el = renderBase(w);
+  const p = w.props || {};
+  if (p.imageData) {
+    const img = document.createElement('img');
+    img.src = p.imageData;
+    img.draggable = false;
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = ({cover:'cover', contain:'contain', stretch:'fill'}[p.fitMode]) || 'cover';
+    img.style.opacity = ((p.opacity != null ? p.opacity : 100) / 100).toString();
+    img.style.pointerEvents = 'none';
+    el.appendChild(img);
+  } else {
+    const ph = document.createElement('div');
+    ph.style.width = '100%';
+    ph.style.height = '100%';
+    ph.style.display = 'flex';
+    ph.style.flexDirection = 'column';
+    ph.style.alignItems = 'center';
+    ph.style.justifyContent = 'center';
+    ph.style.background = 'var(--lv-card)';
+    ph.style.border = '2px dashed var(--lv-border)';
+    ph.style.color = 'var(--lv-text-dim)';
+    ph.style.fontSize = '10px';
+    ph.style.letterSpacing = '0.08em';
+    ph.style.textTransform = 'uppercase';
+    ph.style.gap = '4px';
+    ph.innerHTML = '<div style="font-size:18px">\u29C8</div><div>No image</div>';
+    el.appendChild(ph);
+  }
   return el;
 }
 
@@ -3048,6 +3784,8 @@ const $statusSelected = document.getElementById('status-selected');
 const $statusScreen = document.getElementById('status-screen');
 const $statusCount = document.getElementById('status-count');
 const $statusDisplay = document.getElementById('status-display');
+const $statusMem = document.getElementById('status-mem');
+const $statusMemItem = document.getElementById('status-mem-item');
 const $orientSelect = document.getElementById('orient-select');
 const $themeSelect = document.getElementById('theme-select');
 const $gridToggle = document.getElementById('grid-toggle');
@@ -3873,6 +4611,71 @@ function attachResizeHandles(el, w) {
   }
 }
 
+// Estimate the memory impact of the current project. Returns:
+//   - flashBytes: image assets + fonts (the big constant items)
+//   - sramBytes:  rough widget allocation (each LVGL widget is ~280 B
+//                 on STM32H7; tabview tabs and chart series add their
+//                 own modest overhead; this is a working estimate, not
+//                 a guarantee)
+//   - breakdown:  human-readable text for the tooltip
+//
+// These numbers are intentionally approximate. The goal is to surface
+// "this image is 40KB" before the user is surprised by it at link time,
+// not to predict flash usage to the byte. Real-world overhead from the
+// LVGL core, Arduino libs, and user code dwarfs PANELWRIGHT's slice.
+function estimateMemoryBudget() {
+  let imageBytes = 0;
+  let imageCount = 0;
+  let widgetCount = 0;
+  // Per-widget SRAM estimate. lv_obj_t is ~228 B on STM32H7; we round
+  // up to 280 to leave headroom for the style table each widget allocs.
+  const PER_WIDGET_SRAM = 280;
+  function visit(arr) {
+    for (const w of arr) {
+      widgetCount++;
+      if (w.type === 'image' && w.props.imageRGB565) {
+        // The descriptor itself is ~16 B; the pixel buffer is w*h*2.
+        const wpx = w.props.imageW || 0;
+        const hpx = w.props.imageH || 0;
+        imageBytes += wpx * hpx * 2;
+        imageCount++;
+      }
+      if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
+        for (const t of w.props.tabs) {
+          if (Array.isArray(t.widgets)) visit(t.widgets);
+        }
+      }
+    }
+  }
+  for (const s of state.screens) visit(s.widgets);
+
+  // Font size impact. Each Montserrat size we use adds roughly 3KB of
+  // flash for the Latin subset shipped with the Arduino LVGL library.
+  const fontSizes = collectFontSizes(state.screens);
+  const fontBytes = fontSizes.size * 3072;
+
+  const sramBytes = widgetCount * PER_WIDGET_SRAM;
+  const flashBytes = imageBytes + fontBytes;
+
+  const fmt = b => {
+    if (b < 1024) return b + ' B';
+    if (b < 102400) return (b / 1024).toFixed(1) + ' KB';
+    return Math.round(b / 1024) + ' KB';
+  };
+
+  const breakdown =
+    'Flash assets: ' + fmt(flashBytes) +
+    '\n  Images (' + imageCount + '): ' + fmt(imageBytes) +
+    '\n  Fonts (' + fontSizes.size + ' sizes): ' + fmt(fontBytes) +
+    '\nSRAM (estimate): ' + fmt(sramBytes) +
+    '\n  Widgets (' + widgetCount + ' x ~' + PER_WIDGET_SRAM + ' B): ' + fmt(sramBytes) +
+    '\n\nThese figures are rough; actual flash and SRAM usage depends on\n' +
+    'LVGL configuration, libraries linked, and user code in setup / loop.';
+
+  return { flashBytes, sramBytes, imageBytes, imageCount, fontBytes,
+           fontSizes: fontSizes.size, widgetCount, breakdown, fmt };
+}
+
 function updateStatus() {
   if (state.selectedIds.length > 1) {
     $statusSelected.textContent = state.selectedIds.length + ' widgets';
@@ -3884,6 +4687,16 @@ function updateStatus() {
   $statusCount.textContent = curWidgets().length;
   const dims = getCanvasDims();
   $statusDisplay.textContent = `${dims.w} x ${dims.h}`;
+  // Memory budget readout. Compact value in the bar; full breakdown in
+  // the title tooltip so the user can hover for the detail.
+  const mem = estimateMemoryBudget();
+  if ($statusMem) {
+    $statusMem.textContent =
+      mem.fmt(mem.flashBytes) + ' flash \u00b7 ~' + mem.fmt(mem.sramBytes) + ' SRAM';
+  }
+  if ($statusMemItem) {
+    $statusMemItem.title = mem.breakdown;
+  }
   updatePeripheralIndicators();
 }
 
@@ -4414,6 +5227,25 @@ function renderPropsPanel() {
   });
 
   $propsPanel.querySelectorAll('[data-prop]').forEach(inp => {
+    // Image upload (file input): convert async to RGB565 + data URL,
+    // store on the widget, then redraw. Handled separately because the
+    // async/Promise flow doesn't fit the synchronous "change" pattern
+    // used by all other prop types.
+    if (inp.dataset.propKind === 'image-upload') {
+      inp.addEventListener('change', async () => {
+        const file = inp.files && inp.files[0];
+        if (!file) return;
+        pushHistory();
+        try {
+          await uploadImageToWidget(file, w);
+          redrawAll();
+        } catch (err) {
+          console.error('image upload failed:', err);
+          alert('Image upload failed: ' + err.message);
+        }
+      });
+      return;
+    }
     inp.addEventListener('change', () => {
       pushHistory();
       const k = inp.dataset.prop;
@@ -4459,6 +5291,19 @@ function renderPropsPanel() {
         redrawAll();
       });
     }
+  });
+
+  // Image "Clear" button: drop the cached image bytes off the widget
+  // so the placeholder re-appears and flash usage falls to zero.
+  $propsPanel.querySelectorAll('[data-prop-clear]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      pushHistory();
+      w.props.imageData = '';
+      w.props.imageRGB565 = '';
+      w.props.imageW = 0;
+      w.props.imageH = 0;
+      redrawAll();
+    });
   });
 
   $propsPanel.querySelectorAll('[data-act]').forEach(btn => {
@@ -4516,6 +5361,36 @@ function renderPropInput(w, p) {
       .map(s => `<option value="${s.id}"${s.id === val ? ' selected' : ''}>${escapeHtml(s.name)}</option>`)
       .join('');
     return `<div class="prop-row"><label>${p.label}</label><select data-prop="${p.key}"><option value="">--</option>${opts}</select></div>`;
+  }
+  if (p.type === 'image-upload') {
+    // File picker + thumbnail. The actual file load + RGB565 conversion
+    // is triggered by the change handler in renderPropsPanel; we just
+    // emit the UI here. Shows the file size impact so users see the
+    // flash cost of larger images before they commit.
+    const hasImg = !!val;
+    const bytesKB = w.props.imageRGB565
+      ? Math.round((w.props.imageRGB565.length * 0.75) / 102.4) / 10
+      : 0;
+    const dim = (w.props.imageW || 0) + ' x ' + (w.props.imageH || 0);
+    return '<div class="prop-row full"><label>' + p.label + '</label>' +
+      '<div style="display: flex; flex-direction: column; gap: 6px;">' +
+        (hasImg
+          ? '<img src="' + escapeAttr(val) + '" style="max-width: 100%; max-height: 80px; ' +
+            'object-fit: contain; background: var(--lv-card); border: 1px solid var(--border); padding: 2px;">'
+          : '<div style="height: 60px; display: flex; align-items: center; justify-content: center; ' +
+            'background: var(--bg); border: 1px dashed var(--border); color: var(--ink-mute); ' +
+            'font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;">No image</div>') +
+        (hasImg ? '<div style="font-size: 9px; color: var(--ink-mute); text-transform: uppercase; ' +
+          'letter-spacing: 0.06em;">' + dim + ' \u00b7 ' + bytesKB + ' KB flash</div>' : '') +
+        '<div style="display: flex; gap: 4px;">' +
+          '<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" ' +
+          'data-prop="' + p.key + '" data-prop-kind="image-upload" ' +
+          'style="font-size: 10px; flex: 1;">' +
+          (hasImg ? '<button data-prop-clear="' + p.key + '" ' +
+            'style="font-size: 10px; padding: 2px 8px;">Clear</button>' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>';
   }
   if (p.type === 'symbol_select') {
     const opts = Object.entries(LV_SYMBOLS)
@@ -4953,47 +5828,7 @@ document.getElementById('file-input').addEventListener('change', e => {
     try {
       const data = JSON.parse(ev.target.result);
       pushHistory();
-      // Migration: v1 had single widgets array, no screens
-      if (data.version === 1 || (!data.screens && Array.isArray(data.widgets))) {
-        state.screens = [{
-          id: 'scr_1',
-          name: 'main',
-          widgets: data.widgets || [],
-          isDefault: true
-        }];
-        state.nextScreenId = 2;
-      } else {
-        state.screens = data.screens || [];
-        state.nextScreenId = data.nextScreenId || (state.screens.length + 1);
-      }
-      state.orientation = data.orientation || 'landscape';
-      state.theme = data.theme || 'lvgl_default';
-      state.nextId = data.nextId || 1;
-      state.nameCounts = data.nameCounts || {};
-      // Metadata: pre-v3 files don't have any; default to sane values.
-      state.meta = Object.assign(
-        { title: 'Untitled', author: '', targetBoard: 'Arduino Giga R1 + Display Shield', description: '', boardProfile: 'giga_display_shield' },
-        data.meta || {}
-      );
-      if (!state.meta.boardProfile) state.meta.boardProfile = 'giga_display_shield';
-      // Peripherals: merge stored values over defaults, so v1/v2 files
-      // get all peripherals at their disabled defaults and v3 files
-      // pick up any new peripherals added since the file was written.
-      const peripherals = defaultPeripherals();
-      if (data.peripherals) {
-        for (const [k, v] of Object.entries(data.peripherals)) {
-          if (peripherals[k]) Object.assign(peripherals[k], v);
-        }
-      }
-      state.peripherals = peripherals;
-      // Migrate tabview tabs from legacy string format to array of objects
-      migrateTabviews(state.screens);
-      state.activeScreenId = (state.screens[0] || {}).id;
-      clearSelection();
-      $orientSelect.value = state.orientation;
-      $themeSelect.value = state.theme;
-      applyOrientation();
-      redrawAll();
+      applyProjectData(data);
       markClean();
     } catch (err) {
       alert('Could not load file: ' + err.message);
@@ -5002,6 +5837,49 @@ document.getElementById('file-input').addEventListener('change', e => {
   reader.readAsText(file);
   e.target.value = '';
 });
+
+// Apply a parsed project data blob into the running editor state.
+// Used by file load (.json) and the template gallery; centralizes the
+// migration + state merge so both paths share migration rules.
+// Caller is responsible for pushHistory() before and for markClean()
+// after when the source represents a saved-state baseline.
+function applyProjectData(data) {
+  if (data.version === 1 || (!data.screens && Array.isArray(data.widgets))) {
+    state.screens = [{
+      id: 'scr_1',
+      name: 'main',
+      widgets: data.widgets || [],
+      isDefault: true
+    }];
+    state.nextScreenId = 2;
+  } else {
+    state.screens = data.screens || [];
+    state.nextScreenId = data.nextScreenId || (state.screens.length + 1);
+  }
+  state.orientation = data.orientation || 'landscape';
+  state.theme = data.theme || 'lvgl_default';
+  state.nextId = data.nextId || 1;
+  state.nameCounts = data.nameCounts || {};
+  state.meta = Object.assign(
+    { title: 'Untitled', author: '', targetBoard: 'Arduino Giga R1 + Display Shield', description: '', boardProfile: 'giga_display_shield' },
+    data.meta || {}
+  );
+  if (!state.meta.boardProfile) state.meta.boardProfile = 'giga_display_shield';
+  const peripherals = defaultPeripherals();
+  if (data.peripherals) {
+    for (const [k, v] of Object.entries(data.peripherals)) {
+      if (peripherals[k]) Object.assign(peripherals[k], v);
+    }
+  }
+  state.peripherals = peripherals;
+  migrateTabviews(state.screens);
+  state.activeScreenId = (state.screens[0] || {}).id;
+  clearSelection();
+  $orientSelect.value = state.orientation;
+  $themeSelect.value = state.theme;
+  applyOrientation();
+  redrawAll();
+}
 
 $orientSelect.addEventListener('change', () => {
   pushHistory();
@@ -5064,6 +5942,236 @@ document.getElementById('btn-apply-theme').addEventListener('click', () => {
 // empty if storage is unavailable.
 document.getElementById('btn-preview').addEventListener('click', togglePreview);
 
+// ----- Web Serial monitor ----------------------------------
+// Reads live UART output from the connected Giga (or any USB-CDC
+// device) and lets the user send commands back. Uses the standard
+// Web Serial API (navigator.serial), available in Chromium-family
+// browsers over HTTPS or file://. Falls back to a "not supported"
+// note in browsers that lack the API; everything else keeps working.
+
+const serialState = {
+  port: null,
+  reader: null,
+  readerCanceled: false,
+  connected: false,
+  baudRate: 115200,
+  // The browser may deliver bytes split across read() returns, so we
+  // buffer partial lines and only emit complete ones to the log. This
+  // keeps Arduino-style Serial.print + Serial.println output on the
+  // right line boundaries even when frames are tiny.
+  buffer: ''
+};
+
+const $serialDrawer = document.getElementById('serial-drawer');
+const $serialLog = document.getElementById('serial-log');
+const $serialDot = document.getElementById('serial-status-dot');
+const $serialText = document.getElementById('serial-status-text');
+const $serialConnect = document.getElementById('serial-connect');
+const $serialBaud = document.getElementById('serial-baud');
+const $serialAutoscroll = document.getElementById('serial-autoscroll');
+const $serialInput = document.getElementById('serial-input');
+const $serialSend = document.getElementById('serial-send');
+const $serialLineEnd = document.getElementById('serial-line-ending');
+const $serialNote = document.getElementById('serial-note');
+
+function serialHasSupport() {
+  // Property may be defined but undefined (e.g. headless test env, or
+  // intentionally cleared); require an object with the requestPort
+  // method to consider Web Serial actually usable.
+  return typeof navigator !== 'undefined' &&
+         navigator.serial &&
+         typeof navigator.serial.requestPort === 'function';
+}
+
+function toggleSerialDrawer(forceOpen) {
+  const open = (typeof forceOpen === 'boolean')
+    ? forceOpen
+    : !$serialDrawer.classList.contains('open');
+  $serialDrawer.classList.toggle('open', open);
+  document.getElementById('btn-serial').classList.toggle('active', open);
+  if (open && !$serialLog.dataset.greeted) {
+    if (!serialHasSupport()) {
+      $serialNote.textContent =
+        'Web Serial not supported in this browser. Use Chrome, Edge, or Opera (Firefox/Safari do not expose it).';
+      $serialConnect.disabled = true;
+    } else {
+      appendSerialLine(
+        'Click Connect to pick a USB device. The Giga shows up after you flash a sketch with Serial.begin().',
+        'sys'
+      );
+    }
+    $serialLog.dataset.greeted = '1';
+  }
+}
+
+// Append one line to the log with a CSS class for color-coding by
+// type. Caps the log at 2000 lines so a noisy device doesn't blow up
+// memory. Auto-scroll honors the user's toggle so scrolling back to
+// inspect history isn't constantly yanked away.
+function appendSerialLine(text, forceClass) {
+  const cls = forceClass || classifySerialLine(text);
+  const el = document.createElement('div');
+  el.className = 'line' + (cls ? ' ' + cls : '');
+  el.textContent = text;
+  $serialLog.appendChild(el);
+  while ($serialLog.children.length > 2000) {
+    $serialLog.firstChild.remove();
+  }
+  if ($serialAutoscroll && $serialAutoscroll.checked) {
+    $serialLog.scrollTop = $serialLog.scrollHeight;
+  }
+}
+
+// Heuristic classification so the log highlights bring trouble to
+// the user's eye without them having to scan. Boot prefix matches the
+// [boot] init_X markers the generated sketch already emits during
+// the staged peripheral init, which makes startup faults obvious.
+function classifySerialLine(line) {
+  const s = String(line || '');
+  if (/^\[boot\]/i.test(s))                      return 'boot';
+  if (/\b(error|fail(ed)?|panic|hardfault|fault|assert)\b/i.test(s)) return 'err';
+  if (/\b(warn|warning|deprecated)\b/i.test(s))  return 'warn';
+  if (/^\[debug\]/i.test(s))                     return 'dim';
+  return '';
+}
+
+function setSerialUiState(connected) {
+  serialState.connected = connected;
+  $serialDot.classList.toggle('connected', connected);
+  $serialText.textContent = connected
+    ? 'Connected at ' + serialState.baudRate + ' baud'
+    : 'Disconnected';
+  $serialConnect.textContent = connected ? 'Disconnect' : 'Connect';
+  $serialBaud.disabled = connected;
+  $serialInput.disabled = !connected;
+  $serialSend.disabled = !connected;
+  if (connected) $serialNote.textContent = '';
+}
+
+async function connectSerial() {
+  if (!serialHasSupport()) {
+    $serialNote.textContent = 'navigator.serial unavailable in this browser.';
+    return;
+  }
+  try {
+    const port = await navigator.serial.requestPort();
+    const baud = parseInt($serialBaud.value, 10) || 115200;
+    await port.open({ baudRate: baud });
+    serialState.port = port;
+    serialState.baudRate = baud;
+    serialState.readerCanceled = false;
+    setSerialUiState(true);
+    appendSerialLine('--- Connected at ' + baud + ' baud ---', 'sys');
+    serialReadLoop();  // fire-and-forget; drains until port closes
+  } catch (err) {
+    // User-canceled the port picker → not really an error, stay quiet.
+    if (err && err.name === 'NotFoundError') return;
+    appendSerialLine('Connection failed: ' + (err && err.message ? err.message : err), 'err');
+  }
+}
+
+async function disconnectSerial() {
+  serialState.readerCanceled = true;
+  try {
+    if (serialState.reader) {
+      await serialState.reader.cancel();
+      serialState.reader = null;
+    }
+    if (serialState.port) {
+      await serialState.port.close();
+      serialState.port = null;
+    }
+  } catch (err) {
+    appendSerialLine('Disconnect error: ' + (err && err.message ? err.message : err), 'err');
+  }
+  setSerialUiState(false);
+  appendSerialLine('--- Disconnected ---', 'sys');
+}
+
+async function serialReadLoop() {
+  if (!serialState.port || !serialState.port.readable) return;
+  const decoder = new TextDecoder();
+  while (serialState.port && serialState.port.readable && !serialState.readerCanceled) {
+    const reader = serialState.port.readable.getReader();
+    serialState.reader = reader;
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        serialState.buffer += decoder.decode(value, { stream: true });
+        let idx;
+        while ((idx = serialState.buffer.indexOf('\n')) >= 0) {
+          const line = serialState.buffer.slice(0, idx).replace(/\r$/, '');
+          serialState.buffer = serialState.buffer.slice(idx + 1);
+          appendSerialLine(line);
+        }
+      }
+    } catch (err) {
+      if (!serialState.readerCanceled) {
+        appendSerialLine('Read error: ' + (err && err.message ? err.message : err), 'err');
+      }
+    } finally {
+      try { reader.releaseLock(); } catch (_) {}
+      serialState.reader = null;
+    }
+    // If the loop exits because of an unplugged device, surface that
+    // and reset the UI state so the user sees a clear "Disconnected"
+    // instead of a stuck "Connected" indicator.
+    if (!serialState.readerCanceled) {
+      // Flush any partial trailing data without a newline
+      if (serialState.buffer.length) {
+        appendSerialLine(serialState.buffer);
+        serialState.buffer = '';
+      }
+      try { await serialState.port.close(); } catch (_) {}
+      serialState.port = null;
+      setSerialUiState(false);
+      appendSerialLine('--- Device disconnected ---', 'sys');
+      return;
+    }
+  }
+}
+
+async function sendSerial() {
+  if (!serialState.port || !serialState.port.writable) return;
+  const text = $serialInput.value;
+  if (!text.length && $serialLineEnd.value === '') return;
+  const ending = ({ '\\n': '\n', '\\r\\n': '\r\n' })[$serialLineEnd.value] ||
+                 ($serialLineEnd.value === '' ? '' : '\n');
+  try {
+    const writer = serialState.port.writable.getWriter();
+    await writer.write(new TextEncoder().encode(text + ending));
+    writer.releaseLock();
+    appendSerialLine('> ' + text, 'tx');
+    $serialInput.value = '';
+  } catch (err) {
+    appendSerialLine('Send error: ' + (err && err.message ? err.message : err), 'err');
+  }
+}
+
+// Wire up DOM events
+document.getElementById('btn-serial').addEventListener('click', () => toggleSerialDrawer());
+document.getElementById('serial-close').addEventListener('click', () => toggleSerialDrawer(false));
+$serialConnect.addEventListener('click', () => {
+  if (serialState.connected) disconnectSerial();
+  else connectSerial();
+});
+document.getElementById('serial-clear').addEventListener('click', () => {
+  $serialLog.innerHTML = '';
+});
+$serialSend.addEventListener('click', sendSerial);
+$serialInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); sendSerial(); }
+});
+// Esc inside the drawer closes it. Doesn't conflict with the canvas
+// Esc handler because the drawer captures focus when its input has it.
+$serialDrawer.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    e.stopPropagation();
+    toggleSerialDrawer(false);
+  }
+});
+
 document.getElementById('btn-viewer').addEventListener('click', () => {
   const data = {
     version: 3,
@@ -5101,6 +6209,129 @@ document.getElementById('hardware-done').addEventListener('click', () => {
 });
 $hardwareModal.addEventListener('click', (e) => {
   if (e.target === $hardwareModal) $hardwareModal.classList.remove('open');
+});
+
+// ----- Templates gallery ---------------------------------
+// Renders the TEMPLATES list as picker cards with live SVG previews
+// produced by the same buildScreenSvgNative used for the export. The
+// thumbnails match exactly what the loaded project will look like.
+
+const $templatesModal = document.getElementById('templates-modal');
+const $templatesGrid  = document.getElementById('templates-grid');
+
+function buildTemplateThumbnail(tplBlob) {
+  // Generate the SVG by temporarily swapping a synthetic screen into
+  // the existing native SVG renderer. The renderer reads from the
+  // active state's screens; for the thumbnail we directly pass the
+  // template's first screen. The renderer uses state.theme for colors
+  // so we honor the template's theme too.
+  const screen = tplBlob.screens[0];
+  if (!screen) {
+    return '<svg viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg">' +
+      '<rect width="800" height="480" fill="#ffffff"/>' +
+      '<text x="400" y="240" fill="#bdbdbd" font-size="32" ' +
+      'font-family="' + SVG_FONT + '" text-anchor="middle">Empty canvas</text>' +
+      '</svg>';
+  }
+  // Temporarily swap the relevant state fields so buildScreenSvgNative
+  // emits the right colors. We deliberately restore even on errors so
+  // a faulty template can't corrupt the editor state.
+  const savedTheme = state.theme;
+  const savedOrient = state.orientation;
+  state.theme = tplBlob.theme || 'lvgl_default';
+  state.orientation = tplBlob.orientation || 'landscape';
+  let svg;
+  try {
+    svg = buildScreenSvgNative(screen, { includeShell: false });
+  } finally {
+    state.theme = savedTheme;
+    state.orientation = savedOrient;
+  }
+  return svg;
+}
+
+function renderTemplatesGrid() {
+  $templatesGrid.innerHTML = '';
+  for (const tpl of TEMPLATES) {
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    card.dataset.tplId = tpl.id;
+    const blob = tpl.build();
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    thumb.innerHTML = buildTemplateThumbnail(blob);
+    card.appendChild(thumb);
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.innerHTML =
+      '<div class="name">' + escapeHtml(tpl.name) + '</div>' +
+      '<div class="desc">' + escapeHtml(tpl.description) + '</div>';
+    const tags = document.createElement('div');
+    tags.className = 'tags';
+    for (const t of (tpl.tags || [])) {
+      const span = document.createElement('span');
+      span.className = 'tag';
+      span.textContent = t;
+      tags.appendChild(span);
+    }
+    // Highlight pre-enabled peripherals so the user sees the
+    // hardware dependency before loading.
+    const enabledPeriphs = Object.entries(blob.peripherals || {})
+      .filter(([_k, v]) => v && v.enabled)
+      .map(([k]) => k);
+    for (const p of enabledPeriphs) {
+      const span = document.createElement('span');
+      span.className = 'tag periph';
+      span.textContent = p;
+      tags.appendChild(span);
+    }
+    meta.appendChild(tags);
+    card.appendChild(meta);
+    card.addEventListener('click', () => {
+      // Warn if the user has unsaved work. If they truly want to start
+      // over and they've never saved, autosave still preserves the
+      // previous state separately so this isn't catastrophic, but the
+      // confirm guard is the principled defense.
+      if (state.dirty && hasNontrivialContent()) {
+        const ok = confirm(
+          'Load "' + tpl.name + '"? Your current project will be replaced. ' +
+          'Save first if you want to keep it.'
+        );
+        if (!ok) return;
+      }
+      pushHistory();
+      applyProjectData(blob);
+      // Templates explicitly mark the project as dirty since the user
+      // just made a meaningful change. They'll save .json if they want
+      // to keep the template-derived project as a baseline.
+      markDirty && markDirty();
+      $templatesModal.classList.remove('open');
+    });
+    $templatesGrid.appendChild(card);
+  }
+}
+
+function hasNontrivialContent() {
+  // "Empty" means: one default screen with no widgets, no peripherals
+  // enabled. We don't want to nag the user about discarding nothing.
+  if (!state.screens || state.screens.length === 0) return false;
+  const widgetCount = state.screens.reduce((n, s) =>
+    n + (Array.isArray(s.widgets) ? s.widgets.length : 0), 0);
+  if (widgetCount > 0) return true;
+  const anyPeriph = state.peripherals &&
+    Object.values(state.peripherals).some(p => p && p.enabled);
+  return !!anyPeriph;
+}
+
+document.getElementById('btn-templates').addEventListener('click', () => {
+  renderTemplatesGrid();
+  $templatesModal.classList.add('open');
+});
+document.getElementById('templates-close').addEventListener('click', () => {
+  $templatesModal.classList.remove('open');
+});
+$templatesModal.addEventListener('click', (e) => {
+  if (e.target === $templatesModal) $templatesModal.classList.remove('open');
 });
 
 // ----- Project metadata modal -----------------------------
@@ -5584,6 +6815,7 @@ function generateCode() {
   pushLines(out, emitWidgetHandles(ctx, 'static'));
   pushLines(out, emitScreenForwardDecls(ctx, 'static'));
   out.push('');
+  pushLines(out, emitImageAssets(ctx));
   pushLines(out, emitThemeFunction(ctx));
   pushLines(out, emitEventHandlers(ctx));
   pushLines(out, emitScreenBuilders(ctx));
@@ -5646,6 +6878,7 @@ function generateSplitCode() {
   pushLines(ui_cpp, emitWidgetHandles(ctx, ''));
   pushLines(ui_cpp, emitScreenForwardDecls(ctx, 'static'));
   ui_cpp.push('');
+  pushLines(ui_cpp, emitImageAssets(ctx));
   pushLines(ui_cpp, emitThemeFunction(ctx));
   pushLines(ui_cpp, emitEventHandlers(ctx));
   pushLines(ui_cpp, emitScreenBuilders(ctx));
@@ -5705,32 +6938,32 @@ function codegenContext() {
   // their own declaration block with the correct type.
   const seriesHandles = [];
   const eventWidgets = [];
+  // Image widgets with cached RGB565 bytes get a static byte array and
+  // lv_image_dsc_t emitted at file scope ahead of the widget builders.
+  // Only widgets that actually have an upload contribute to this list;
+  // empty image widgets render a placeholder and skip the asset block.
+  const images = [];
   function walk(arr, screen) {
     for (const w of arr) {
       handles.push(w.name);
       if (w.type === 'button') handles.push(w.name + '_label');
       if (w.type === 'meter' && (state.meta.lvglVersion || 'v9') === 'v9') {
-        // v9 meter is a composite (container + scale + arc). Expose the
-        // inner handles at file scope so user code (loop, event handlers)
-        // can update the indicator with lv_arc_set_value(mtr_indic, val).
-        // v8 uses lv_meter_scale_t* and lv_meter_indicator_t* which are
-        // different types, so they stay scoped inside the builder block.
         handles.push(w.name + '_scale');
         handles.push(w.name + '_indic');
       }
-      // Tabview tab containers: each tab is an lv_obj_t * the user may
-      // want to add widgets into at runtime or restyle.
       if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
         for (let i = 0; i < w.props.tabs.length; i++) {
           handles.push(w.name + '_tab_' + i);
         }
       }
-      // Chart series handles. Up to three per chart.
       if (w.type === 'chart') {
         const seriesCount = Math.max(1, Math.min(3, w.props.seriesCount || 1));
         for (let i = 0; i < seriesCount; i++) {
           seriesHandles.push(w.name + '_ser' + (i + 1));
         }
+      }
+      if (w.type === 'image' && w.props.imageRGB565 && w.props.imageW && w.props.imageH) {
+        images.push({ name: w.name, w: w.props.imageW, h: w.props.imageH, b64: w.props.imageRGB565 });
       }
       if (interactiveTypes.has(w.type)) eventWidgets.push({ widget: w, screen });
       if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
@@ -5741,7 +6974,7 @@ function codegenContext() {
     }
   }
   for (const s of state.screens) walk(s.widgets, s);
-  return { dims, board, enabled, handles, seriesHandles, eventWidgets, interactiveTypes };
+  return { dims, board, enabled, handles, seriesHandles, eventWidgets, interactiveTypes, images };
 }
 
 // Walk every widget in the project (including nested tabview children)
@@ -5775,6 +7008,360 @@ function collectFontSizes(screens) {
   if (state.theme === 'tradigital') sizes.add(16);
   return [...sizes].sort((a, b) => a - b);
 }
+
+// Walk the project once and return everything the bundle generators need:
+// the set of widget types in use, font sizes, enabled peripherals, theme,
+// and LVGL version. Used by emitLvConfH, emitProjectReadme, and
+// emitLibraryDeps so they share one source of truth.
+function collectUsage() {
+  const widgetTypes = new Set();
+  function visit(arr) {
+    for (const w of arr) {
+      widgetTypes.add(w.type);
+      if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
+        for (const tab of w.props.tabs) {
+          if (Array.isArray(tab.widgets)) visit(tab.widgets);
+        }
+      }
+    }
+  }
+  for (const s of state.screens) visit(s.widgets || []);
+  const periphs = new Set();
+  for (const k of Object.keys(state.peripherals || {})) {
+    if (state.peripherals[k] && state.peripherals[k].enabled) periphs.add(k);
+  }
+  return {
+    widgetTypes,
+    fontSizes: collectFontSizes(state.screens),
+    peripherals: periphs,
+    theme: state.theme,
+    lvglVersion: (state.meta && state.meta.lvglVersion) || 'v9',
+    screenCount: state.screens.length,
+    targetBoard: (state.meta && state.meta.targetBoard) || 'Arduino Giga R1 + Display Shield'
+  };
+}
+
+// Map a PANELWRIGHT widget type to the LV_USE_* defines it requires.
+// Several widgets pull in dependent classes (tabview needs buttonmatrix,
+// list needs button + label, etc.) so the mapping is a list.
+function lvUsesForWidget(type, lvglVersion) {
+  const v8 = lvglVersion === 'v8';
+  switch (type) {
+    case 'label':    return ['LV_USE_LABEL'];
+    case 'icon':     return ['LV_USE_LABEL'];
+    case 'button':   return [v8 ? 'LV_USE_BTN' : 'LV_USE_BUTTON', 'LV_USE_LABEL'];
+    case 'slider':   return ['LV_USE_SLIDER', 'LV_USE_BAR'];
+    case 'switch':   return ['LV_USE_SWITCH'];
+    case 'checkbox': return ['LV_USE_CHECKBOX'];
+    case 'bar':      return ['LV_USE_BAR'];
+    case 'arc':      return ['LV_USE_ARC'];
+    case 'meter':    return v8 ? ['LV_USE_METER'] : ['LV_USE_SCALE', 'LV_USE_ARC'];
+    case 'dropdown': return ['LV_USE_DROPDOWN'];
+    case 'textarea': return ['LV_USE_TEXTAREA', 'LV_USE_LABEL'];
+    case 'roller':   return ['LV_USE_ROLLER'];
+    case 'tabview':  return ['LV_USE_TABVIEW', v8 ? 'LV_USE_BTNMATRIX' : 'LV_USE_BUTTONMATRIX'];
+    case 'list':     return ['LV_USE_LIST', v8 ? 'LV_USE_BTN' : 'LV_USE_BUTTON', 'LV_USE_LABEL'];
+    case 'chart':    return ['LV_USE_CHART'];
+    case 'led':      return ['LV_USE_LED'];
+    case 'keyboard': return ['LV_USE_KEYBOARD', v8 ? 'LV_USE_BTNMATRIX' : 'LV_USE_BUTTONMATRIX', 'LV_USE_TEXTAREA'];
+    case 'calendar': return ['LV_USE_CALENDAR'];
+    case 'image':    return v8 ? ['LV_USE_IMG'] : ['LV_USE_IMAGE'];
+    default:         return [];
+  }
+}
+
+// Generate a complete, project-tuned lv_conf.h. Enables exactly the
+// widget classes and font sizes this project uses, sets a Giga-appropriate
+// memory pool and DPI, and wires LVGL's tick to Arduino millis().
+// Anything not explicitly enabled here stays at the LVGL default (off),
+// which keeps the binary small.
+function emitLvConfH(usage) {
+  const v9 = usage.lvglVersion !== 'v8';
+  const L = [];
+  L.push('/**');
+  L.push(' * lv_conf.h');
+  L.push(' *');
+  L.push(' * PANELWRIGHT-generated LVGL configuration tuned to this project.');
+  L.push(' * Replaces the lv_conf.h shipped with the Arduino LVGL library.');
+  L.push(' *');
+  L.push(' * Project:    ' + ((state.meta && state.meta.title) || 'Untitled'));
+  L.push(' * LVGL:       ' + (v9 ? 'v9' : 'v8'));
+  L.push(' * Theme:      ' + usage.theme);
+  L.push(' * Widgets:    ' + [...usage.widgetTypes].sort().join(', '));
+  L.push(' * Font sizes: ' + (usage.fontSizes.length ? usage.fontSizes.join(', ') : 'default 14 only'));
+  L.push(' *');
+  L.push(' * Install: copy this file into your Arduino libraries/lvgl/ folder,');
+  L.push(' * replacing the existing lv_conf.h. Restart the Arduino IDE.');
+  L.push(' */');
+  L.push('');
+  L.push('#ifndef LV_CONF_H');
+  L.push('#define LV_CONF_H');
+  L.push('');
+  L.push('#include <stdint.h>');
+  L.push('');
+  L.push('/*====================');
+  L.push(' * COLOR + GEOMETRY');
+  L.push(' *====================*/');
+  L.push('');
+  L.push('/* RGB565 framebuffer matches the Giga Display Shield */');
+  L.push('#define LV_COLOR_DEPTH 16');
+  L.push('#define LV_COLOR_16_SWAP 0');
+  L.push('');
+  L.push('/*====================');
+  L.push(' * MEMORY');
+  L.push(' *====================*/');
+  L.push('');
+  // Memory pool sized to the widget count: 32K base + 2K per widget.
+  // Tunable via the project (todo).
+  const totalWidgets = countAllWidgets();
+  const memKB = Math.max(48, Math.min(192, 32 + totalWidgets * 2));
+  L.push('/* Built-in heap pool. Sized for ~' + totalWidgets + ' widgets in this project. */');
+  L.push('#define LV_USE_STDLIB_MALLOC LV_STDLIB_BUILTIN');
+  L.push('#define LV_USE_STDLIB_STRING LV_STDLIB_BUILTIN');
+  L.push('#define LV_USE_STDLIB_SPRINTF LV_STDLIB_BUILTIN');
+  L.push('#define LV_MEM_SIZE (' + memKB + 'U * 1024U)');
+  L.push('#define LV_MEM_POOL_INCLUDE <stdlib.h>');
+  L.push('');
+  L.push('/*====================');
+  L.push(' * TICK + REFRESH');
+  L.push(' *====================*/');
+  L.push('');
+  L.push('/* Use Arduino millis() as the LVGL tick source */');
+  L.push('#define LV_TICK_CUSTOM 1');
+  L.push('#define LV_TICK_CUSTOM_INCLUDE "Arduino.h"');
+  L.push('#define LV_TICK_CUSTOM_SYS_TIME_EXPR (millis())');
+  L.push('');
+  L.push('#define LV_DPI_DEF 130');
+  L.push('#define LV_DISP_DEF_REFR_PERIOD 30');
+  L.push('#define LV_INDEV_DEF_READ_PERIOD 30');
+  L.push('');
+  L.push('/*====================');
+  L.push(' * DEBUG / LOGGING');
+  L.push(' *====================*/');
+  L.push('');
+  L.push('/* All disabled by default for production builds */');
+  L.push('#define LV_USE_LOG 0');
+  L.push('#define LV_USE_ASSERT_NULL 1');
+  L.push('#define LV_USE_ASSERT_MALLOC 1');
+  L.push('#define LV_USE_ASSERT_STYLE 0');
+  L.push('#define LV_USE_ASSERT_MEM_INTEGRITY 0');
+  L.push('#define LV_USE_ASSERT_OBJ 0');
+  L.push('#define LV_USE_PERF_MONITOR 0');
+  L.push('#define LV_USE_MEM_MONITOR 0');
+  L.push('');
+  L.push('/*====================');
+  L.push(' * FONTS');
+  L.push(' *====================*/');
+  L.push('');
+  L.push('/* Montserrat sizes used by this project. Sizes left at 0 will not');
+  L.push(' * be compiled into the binary, saving flash. Add others by changing');
+  L.push(' * 0 to 1 below. */');
+  // All 21 Montserrat sizes, with the ones we use turned on.
+  const allMontserrat = [8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48];
+  const used = new Set(usage.fontSizes);
+  for (const s of allMontserrat) {
+    L.push('#define LV_FONT_MONTSERRAT_' + s + ' ' + (used.has(s) ? 1 : 0));
+  }
+  L.push('');
+  // Default font: 14 if used, else the smallest one we have.
+  const defaultFontSize = used.has(14) ? 14 : (usage.fontSizes[0] || 14);
+  L.push('#define LV_FONT_DEFAULT &lv_font_montserrat_' + defaultFontSize);
+  L.push('');
+  L.push('/* Subpixel rendering and bidi support are off; turn on if needed */');
+  L.push('#define LV_FONT_SUBPX_BGR 0');
+  L.push('#define LV_USE_FONT_PLACEHOLDER 1');
+  L.push('');
+  L.push('/*====================');
+  L.push(' * WIDGETS');
+  L.push(' *====================*/');
+  L.push('');
+  L.push('/* Only the widget classes this project actually uses are enabled. */');
+  L.push('/* The compiler will strip unused widget code, keeping flash usage low. */');
+  // Collect all the LV_USE_* defines this project needs.
+  const usesNeeded = new Set();
+  for (const t of usage.widgetTypes) {
+    for (const u of lvUsesForWidget(t, usage.lvglVersion)) usesNeeded.add(u);
+  }
+  // List every potential LV_USE_* so users can see what's off and flip
+  // anything they want to add via Custom widget bodies.
+  const allUses = [
+    'LABEL', v9 ? 'BUTTON' : 'BTN', 'SLIDER', 'BAR', 'SWITCH', 'CHECKBOX',
+    'ARC', v9 ? 'SCALE' : 'METER', 'DROPDOWN', 'TEXTAREA', 'ROLLER',
+    'TABVIEW', v9 ? 'BUTTONMATRIX' : 'BTNMATRIX', 'LIST', 'CHART', 'LED',
+    'KEYBOARD', 'CALENDAR', 'CANVAS', 'IMAGE', 'LINE', 'TABLE', 'WIN', 'SPINBOX',
+    'SPINNER'
+  ];
+  for (const u of allUses) {
+    const key = 'LV_USE_' + u;
+    L.push('#define ' + key + ' ' + (usesNeeded.has(key) ? 1 : 0));
+  }
+  L.push('');
+  L.push('/*====================');
+  L.push(' * THEMES');
+  L.push(' *====================*/');
+  L.push('');
+  L.push('#define LV_USE_THEME_DEFAULT 1');
+  L.push('#define LV_USE_THEME_BASIC 0');
+  L.push('#define LV_USE_THEME_MONO 0');
+  // Tradigital theme is dark; lvgl_default is light. Match runtime default.
+  L.push('#define LV_THEME_DEFAULT_DARK ' + (usage.theme === 'tradigital' ? 1 : 0));
+  L.push('#define LV_THEME_DEFAULT_GROW 1');
+  L.push('#define LV_THEME_DEFAULT_TRANSITION_TIME 80');
+  L.push('');
+  L.push('/*====================');
+  L.push(' * ANIMATION + STYLE');
+  L.push(' *====================*/');
+  L.push('');
+  L.push('#define LV_USE_ANIMATION 1');
+  L.push('#define LV_USE_SHADOW 1');
+  L.push('#define LV_USE_OUTLINE 1');
+  L.push('#define LV_USE_PATTERN 1');
+  L.push('#define LV_USE_VALUE_STR 1');
+  L.push('#define LV_USE_OPA_SCALE 1');
+  L.push('#define LV_USE_GROUP 1');
+  L.push('#define LV_USE_GPU 0');
+  L.push('#define LV_USE_FILESYSTEM 0');
+  L.push('');
+  L.push('/*====================');
+  L.push(' * MISC');
+  L.push(' *====================*/');
+  L.push('');
+  L.push('#define LV_USE_BUILTIN_SNPRINTF 1');
+  L.push('#define LV_BIG_ENDIAN_SYSTEM 0');
+  L.push('#define LV_COMPILER_VLA_SUPPORTED 1');
+  L.push('#define LV_COMPILER_NON_CONST_INIT_SUPPORTED 1');
+  L.push('');
+  L.push('#endif /* LV_CONF_H */');
+  L.push('');
+  return L.join('\n');
+}
+
+// Total widget count across all screens, used to size the LVGL heap.
+function countAllWidgets() {
+  let n = 0;
+  function visit(arr) {
+    for (const w of arr) {
+      n++;
+      if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
+        for (const tab of w.props.tabs) {
+          if (Array.isArray(tab.widgets)) visit(tab.widgets);
+        }
+      }
+    }
+  }
+  for (const s of state.screens) visit(s.widgets || []);
+  return n;
+}
+
+// Project-specific README. Lists the libraries to install, the lv_conf.h
+// install step, peripheral-specific notes, and a quick first-flash recipe.
+function emitProjectReadme(usage, sketchName) {
+  const m = state.meta || {};
+  const L = [];
+  L.push('# ' + (m.title || 'PANELWRIGHT Project'));
+  L.push('');
+  if (m.author) { L.push('By ' + m.author); L.push(''); }
+  if (m.description && m.description.trim()) {
+    L.push(m.description.trim());
+    L.push('');
+  }
+  L.push('Generated by PANELWRIGHT (Field Instrument 042).');
+  L.push('');
+  L.push('## Quick start');
+  L.push('');
+  L.push('1. Install the Arduino libraries listed in `library_dependencies.txt` via');
+  L.push('   the Arduino IDE Library Manager (Tools > Manage Libraries).');
+  L.push('2. Copy `lv_conf.h` into your Arduino `libraries/lvgl/` folder, replacing');
+  L.push('   the existing `lv_conf.h`. Restart the Arduino IDE.');
+  L.push('3. Select board: Tools > Board > Arduino Mbed OS Giga Boards > Giga R1.');
+  L.push('4. Select port and click Upload.');
+  L.push('5. Open Serial Monitor at 115200 baud to watch boot diagnostics.');
+  L.push('');
+  if (usage.peripherals.has('wifi')) {
+    L.push('## WiFi credentials');
+    L.push('');
+    L.push('This sketch uses WiFi. Edit `arduino_secrets.h` and replace the');
+    L.push('placeholder values with your network SSID and password before flashing.');
+    L.push('Keep this file out of version control: a `.gitignore` is included.');
+    L.push('');
+  }
+  L.push('## Project summary');
+  L.push('');
+  L.push('- LVGL version: ' + (usage.lvglVersion === 'v8' ? 'v8 (legacy)' : 'v9'));
+  L.push('- Theme: ' + usage.theme);
+  L.push('- Screens: ' + usage.screenCount);
+  L.push('- Widgets in use: ' + (usage.widgetTypes.size ? [...usage.widgetTypes].sort().join(', ') : 'none yet'));
+  L.push('- Font sizes: ' + (usage.fontSizes.length ? usage.fontSizes.join(', ') : 'default 14'));
+  if (usage.peripherals.size) {
+    L.push('- Peripherals: ' + [...usage.peripherals].sort().join(', '));
+  }
+  L.push('');
+  if (usage.peripherals.size) {
+    L.push('## Peripheral notes');
+    L.push('');
+    if (usage.peripherals.has('camera')) {
+      L.push('- **Camera**: requires a sensor module physically attached to the');
+      L.push('  Display Shield camera connector. If no camera is attached,');
+      L.push('  `cam.begin()` may block on the I2C handshake.');
+    }
+    if (usage.peripherals.has('sdcard')) {
+      L.push('- **SD card**: format the card as FAT32. Files are accessed under `/sd/`');
+      L.push('  using C stdio (fopen, fprintf, fclose).');
+    }
+    if (usage.peripherals.has('rgbLed')) {
+      L.push('- **RGB LED**: uses digitalWrite (binary on/off per channel), not PWM.');
+      L.push('  This avoids a timer conflict with the LCD peripheral that would');
+      L.push('  otherwise cause a HardFault. See cookbook for details.');
+    }
+    if (usage.peripherals.has('ble')) {
+      L.push('- **BLE**: `init_ble()` starts advertising the local name. You must');
+      L.push('  define your own services and characteristics; see the cookbook.');
+    }
+    if (usage.peripherals.has('rtc')) {
+      L.push('- **RTC**: battery-backed only if the VBAT coin cell is populated.');
+      L.push('  Otherwise the clock resets on power loss.');
+    }
+    L.push('');
+  }
+  L.push('## Boot order');
+  L.push('');
+  L.push('The generated `setup()` brings up the UI **before** initialising any');
+  L.push('peripherals, so the screen renders even if a peripheral init faults.');
+  L.push('Each peripheral init prints `[boot] init_XXX...` to Serial before it');
+  L.push('runs and ` done` after it returns; if the board hangs, the last line');
+  L.push('printed identifies the culprit.');
+  L.push('');
+  L.push('## License');
+  L.push('');
+  L.push('GPL-3.0');
+  L.push('');
+  return L.join('\n');
+}
+
+// Library dependencies the user must install via the Arduino Library Manager.
+function emitLibraryDeps(usage) {
+  const libs = new Set();
+  libs.add('Arduino_H7_Video');
+  libs.add('Arduino_GigaDisplayTouch');
+  libs.add('lvgl');
+  if (usage.peripherals.has('microphone')) libs.add('PDM (built-in to Arduino Mbed core)');
+  if (usage.peripherals.has('imu'))        libs.add('Arduino_BMI270_BMM150');
+  if (usage.peripherals.has('camera'))     libs.add('Arduino_Pro_Tutorials (Camera library)');
+  if (usage.peripherals.has('wifi'))       libs.add('WiFi (built-in to Arduino Mbed core)');
+  if (usage.peripherals.has('ble'))        libs.add('ArduinoBLE');
+  // SD, RGB LED, RTC use no external libraries on the Giga
+  const L = [];
+  L.push('# Arduino libraries required by this PANELWRIGHT project');
+  L.push('# Install via Tools > Manage Libraries in the Arduino IDE.');
+  L.push('# Lines beginning with "(built-in)" require no install, they ship with the');
+  L.push('# Arduino Mbed OS Giga Boards core.');
+  L.push('');
+  for (const lib of [...libs].sort()) L.push(lib);
+  L.push('');
+  L.push('# Board support package: Arduino Mbed OS Giga Boards (install via Boards Manager)');
+  return L.join('\n');
+}
+
 
 function emitHeaderComment(ctx, opts) {
   const m = state.meta || {};
@@ -5886,6 +7473,64 @@ function emitWidgetHandles(ctx, keyword) {
   // Chart series are a different LVGL type. Emit them in the same block
   // so the user sees the full surface of file-scope handles together.
   for (const h of ctx.seriesHandles) out.push(prefix + 'lv_chart_series_t * ' + h + ';');
+  return out;
+}
+
+// Emit a static byte array + lv_image_dsc_t (v9) / lv_img_dsc_t (v8)
+// at file scope for every image widget that has an upload. The widget
+// builder code references these via &img_<name>_dsc. RGB565 bytes are
+// stored little-endian to match LVGL on the STM32H7. We format 12 bytes
+// per line so the compiler doesn't choke on very wide arrays.
+function emitImageAssets(ctx) {
+  if (!ctx.images.length) return [];
+  const v9 = (state.meta.lvglVersion || 'v9') === 'v9';
+  const dscType = v9 ? 'lv_image_dsc_t' : 'lv_img_dsc_t';
+  const out = [];
+  out.push('// ---- Image assets (RGB565, embedded in flash) ----');
+  for (const img of ctx.images) {
+    let bytes;
+    try { bytes = base64ToBytes(img.b64); }
+    catch (_) { continue; }
+    const total = bytes.length;
+    out.push('// ' + img.name + ': ' + img.w + ' x ' + img.h +
+             ' (' + total + ' bytes)');
+    out.push('static const uint8_t img_' + img.name + '_data[] = {');
+    let line = '  ';
+    for (let i = 0; i < total; i++) {
+      const hex = '0x' + bytes[i].toString(16).padStart(2, '0').toUpperCase();
+      line += hex + (i === total - 1 ? '' : ',');
+      if ((i + 1) % 12 === 0 || i === total - 1) {
+        out.push(line);
+        line = '  ';
+      } else {
+        line += ' ';
+      }
+    }
+    out.push('};');
+    // The descriptor wires the byte array into LVGL's image system.
+    // v9 uses LV_COLOR_FORMAT_RGB565; v8 uses LV_IMG_CF_TRUE_COLOR with
+    // the always_zero header field set explicitly.
+    out.push('static const ' + dscType + ' img_' + img.name + '_dsc = {');
+    if (v9) {
+      out.push('  .header.magic = LV_IMAGE_HEADER_MAGIC,');
+      out.push('  .header.cf = LV_COLOR_FORMAT_RGB565,');
+      out.push('  .header.flags = 0,');
+      out.push('  .header.w = ' + img.w + ',');
+      out.push('  .header.h = ' + img.h + ',');
+      out.push('  .header.stride = ' + (img.w * 2) + ',');
+      out.push('  .data_size = sizeof(img_' + img.name + '_data),');
+      out.push('  .data = img_' + img.name + '_data,');
+    } else {
+      out.push('  .header.always_zero = 0,');
+      out.push('  .header.w = ' + img.w + ',');
+      out.push('  .header.h = ' + img.h + ',');
+      out.push('  .header.cf = LV_IMG_CF_TRUE_COLOR,');
+      out.push('  .data_size = sizeof(img_' + img.name + '_data),');
+      out.push('  .data = img_' + img.name + '_data,');
+    }
+    out.push('};');
+    out.push('');
+  }
   return out;
 }
 
@@ -6677,6 +8322,33 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`  lv_calendar_set_showed_date(${N}, today_d.year, today_d.month);`);
       lines.push(`}`);
       break;
+    case 'image': {
+      // The image bytes are emitted at file scope by emitImageAssets;
+      // the descriptor variable is named img_<widgetname>_dsc. Here we
+      // just attach it. If no image is uploaded, render a placeholder
+      // rectangle so the widget still has a visible footprint.
+      if (!(w.props.imageRGB565)) {
+        lines.push(`${N} = lv_obj_create(${PARENT});`);
+        lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+        lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+        lines.push(`lv_obj_set_style_bg_opa(${N}, LV_OPA_50, 0);`);
+        break;
+      }
+      const v9 = (state.meta.lvglVersion || 'v9') !== 'v8';
+      const createFn = v9 ? 'lv_image_create' : 'lv_img_create';
+      const setSrc   = v9 ? 'lv_image_set_src' : 'lv_img_set_src';
+      lines.push(`${N} = ${createFn}(${PARENT});`);
+      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      lines.push(`${setSrc}(${N}, &img_${w.name}_dsc);`);
+      // Opacity (per-widget 0-100 mapped to LVGL 0-255)
+      const op = w.props.opacity != null ? w.props.opacity : 100;
+      if (op < 100) {
+        const lvOp = Math.round(op * 2.55);
+        lines.push(`lv_obj_set_style_img_opa(${N}, ${lvOp}, 0);`);
+      }
+      break;
+    }
   }
   return lines;
 }
@@ -6765,6 +8437,29 @@ function crc32(bytes) {
 const SVG_FONT = '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif';
 const SVG_MONO = 'JetBrains Mono, Menlo, Consolas, monospace';
 
+// LVGL theme palette for SVG export. Mirrors the --lv-* CSS variables
+// used by the canvas + preview renderers so a downloaded SVG visually
+// matches the editor and what LVGL renders on hardware. Light values
+// are LVGL v9 default theme on a Giga; dark values are the tradigital
+// brass palette. The svgXxx renderers call this once per widget.
+function lvSvgPalette() {
+  if (state.theme === 'tradigital') {
+    return {
+      bg: '#0e0a06', card: '#1a1208', text: '#f0e0c8',
+      textDim: '#b0a090', textMute: '#6a5340',
+      border: '#604838', track: '#3a2a18',
+      primary: '#d4a574', primaryText: '#1a1208'
+    };
+  }
+  // lvgl_default light theme (LVGL's default on the Giga)
+  return {
+    bg: '#ffffff', card: '#f5f5f5', text: '#1e1e1e',
+    textDim: '#757575', textMute: '#bdbdbd',
+    border: '#e0e0e0', track: '#d0d0d0',
+    primary: '#2196f3', primaryText: '#ffffff'
+  };
+}
+
 function svgEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>'"]/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&apos;','"':'&quot;'
@@ -6797,9 +8492,10 @@ function svgLabel(w) {
   const lineH = fs * 1.2;
   const totalH = lines.length * lineH;
   const startY = (w.h - totalH) / 2 + fs * 0.85;
+  const pal = lvSvgPalette();
   const parts = lines.map((line, i) =>
     '<text x="' + tx + '" y="' + (startY + i * lineH).toFixed(2) + '" ' +
-    'fill="' + svgEsc(p.color || '#d3d3d3') + '" ' +
+    'fill="' + svgEsc(p.color || pal.text) + '" ' +
     'font-size="' + fs + '" font-family="' + SVG_FONT + '" ' +
     'text-anchor="' + anchor + '">' + svgEsc(line) + '</text>'
   ).join('');
@@ -6808,8 +8504,9 @@ function svgLabel(w) {
 
 function svgButton(w) {
   const p = w.props || {};
-  const bg = p.bgColor || '#2e6cda';
-  const fg = p.textColor || '#ffffff';
+  const pal = lvSvgPalette();
+  const bg = p.bgColor || pal.primary;
+  const fg = p.textColor || pal.primaryText;
   const r = p.radius != null ? p.radius : 5;
   const fs = p.fontSize || 14;
   return svgGroup(w,
@@ -6824,30 +8521,32 @@ function svgButton(w) {
 
 function svgSlider(w) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const min = p.min != null ? p.min : 0;
   const max = p.max != null ? p.max : 100;
   const val = p.value != null ? p.value : 50;
   const pct = (max === min) ? 0 : (val - min) / (max - min);
-  const color = p.color || '#2e6cda';
-  const trackH = 6;
+  const color = p.color || pal.primary;
+  const trackH = 4;
   const knobR = Math.min(w.h / 2, 10);
   const cy = w.h / 2;
   const fillW = pct * w.w;
   return svgGroup(w,
     '<rect y="' + (cy - trackH / 2) + '" width="' + w.w + '" height="' + trackH +
-      '" rx="' + (trackH / 2) + '" fill="#3a3f4d"/>' +
+      '" rx="' + (trackH / 2) + '" fill="' + pal.track + '"/>' +
     '<rect y="' + (cy - trackH / 2) + '" width="' + fillW + '" height="' + trackH +
       '" rx="' + (trackH / 2) + '" fill="' + svgEsc(color) + '"/>' +
     '<circle cx="' + fillW + '" cy="' + cy + '" r="' + knobR + '" ' +
-      'fill="' + svgEsc(color) + '" stroke="#ffffff" stroke-width="1.5"/>'
+      'fill="' + svgEsc(color) + '"/>'
   );
 }
 
 function svgSwitch(w) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const checked = !!p.checked;
-  const color = p.color || '#2e6cda';
-  const trackColor = checked ? color : '#3a3f4d';
+  const color = p.color || pal.primary;
+  const trackColor = checked ? color : pal.track;
   const r = w.h / 2;
   const knobR = r - 3;
   const knobCx = checked ? (w.w - r) : r;
@@ -6860,15 +8559,16 @@ function svgSwitch(w) {
 
 function svgCheckbox(w) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const checked = !!p.checked;
-  const color = p.color || '#2e6cda';
+  const color = p.color || pal.primary;
   const text = p.text || '';
   const boxSize = Math.min(w.h, 24);
   const boxY = (w.h - boxSize) / 2;
   let inner =
     '<rect x="0" y="' + boxY + '" width="' + boxSize + '" height="' + boxSize +
-      '" rx="3" ry="3" fill="' + (checked ? svgEsc(color) : '#1d2027') +
-      '" stroke="' + (checked ? svgEsc(color) : '#3a3f4d') + '" stroke-width="2"/>';
+      '" rx="3" ry="3" fill="' + (checked ? svgEsc(color) : pal.bg) +
+      '" stroke="' + (checked ? svgEsc(color) : pal.border) + '" stroke-width="2"/>';
   if (checked) {
     // Check mark path
     const cx = boxSize / 2, cy = boxY + boxSize / 2;
@@ -6877,27 +8577,28 @@ function svgCheckbox(w) {
       '<polyline points="' + (cx - s) + ',' + cy + ' ' +
       (cx - s * 0.25) + ',' + (cy + s * 0.6) + ' ' +
       (cx + s) + ',' + (cy - s * 0.5) +
-      '" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+      '" stroke="' + pal.primaryText + '" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
   }
   if (text) {
     inner +=
       '<text x="' + (boxSize + 8) + '" y="' + svgTextY(w.h / 2, 14) + '" ' +
-      'fill="#d3d3d3" font-size="14" font-family="' + SVG_FONT + '">' + svgEsc(text) + '</text>';
+      'fill="' + pal.text + '" font-size="14" font-family="' + SVG_FONT + '">' + svgEsc(text) + '</text>';
   }
   return svgGroup(w, inner);
 }
 
 function svgBar(w) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const min = p.min != null ? p.min : 0;
   const max = p.max != null ? p.max : 100;
   const val = p.value != null ? p.value : 60;
   const pct = (max === min) ? 0 : (val - min) / (max - min);
-  const color = p.color || '#2e6cda';
+  const color = p.color || pal.primary;
   const r = Math.min(w.h / 2, 6);
   return svgGroup(w,
     '<rect width="' + w.w + '" height="' + w.h + '" rx="' + r + '" ry="' + r +
-      '" fill="#3a3f4d"/>' +
+      '" fill="' + pal.track + '"/>' +
     '<rect width="' + (pct * w.w) + '" height="' + w.h + '" rx="' + r + '" ry="' + r +
       '" fill="' + svgEsc(color) + '"/>'
   );
@@ -6918,10 +8619,11 @@ function svgArcPath(cx, cy, r, a0, a1) {
 
 function svgArc(w) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const min = p.min != null ? p.min : 0;
   const max = p.max != null ? p.max : 100;
   const val = p.value != null ? p.value : 40;
-  const color = p.color || '#2e6cda';
+  const color = p.color || pal.primary;
   const cx = w.w / 2, cy = w.h / 2;
   const radius = Math.min(cx, cy) - 6;
   const stroke = 8;
@@ -6932,7 +8634,7 @@ function svgArc(w) {
   const valAngle = a0 + pct * sweep;
   return svgGroup(w,
     '<path d="' + svgArcPath(cx, cy, radius, a0, a0 + sweep) + '" ' +
-      'fill="none" stroke="#3a3f4d" stroke-width="' + stroke + '" stroke-linecap="round"/>' +
+      'fill="none" stroke="' + pal.track + '" stroke-width="' + stroke + '" stroke-linecap="round"/>' +
     '<path d="' + svgArcPath(cx, cy, radius, a0, valAngle) + '" ' +
       'fill="none" stroke="' + svgEsc(color) + '" stroke-width="' + stroke + '" stroke-linecap="round"/>' +
     '<circle cx="' + (cx + radius * Math.cos(valAngle * Math.PI / 180)).toFixed(2) + '" ' +
@@ -6946,7 +8648,7 @@ function svgMeter(w) {
   const min = p.min != null ? p.min : 0;
   const max = p.max != null ? p.max : 100;
   const val = p.value != null ? p.value : 70;
-  const color = p.color || '#2e6cda';
+  const color = p.color || '#2196f3';
   const needleColor = p.needleColor || '#ff8050';
   const a0 = p.angleStart != null ? p.angleStart : 135;
   const a1 = p.angleEnd   != null ? p.angleEnd   : 45;
@@ -6957,9 +8659,10 @@ function svgMeter(w) {
   while (sweep <= 0) sweep += 360;
   const pct = (max === min) ? 0 : (val - min) / (max - min);
   const valAngle = a0 + pct * sweep;
+  const pal = lvSvgPalette();
   let inner =
     '<path d="' + svgArcPath(cx, cy, radius, a0, a0 + sweep) + '" ' +
-      'fill="none" stroke="#3a3f4d" stroke-width="6"/>' +
+      'fill="none" stroke="' + pal.track + '" stroke-width="6"/>' +
     '<path d="' + svgArcPath(cx, cy, radius, a0, valAngle) + '" ' +
       'fill="none" stroke="' + svgEsc(color) + '" stroke-width="6"/>';
   // Tick marks
@@ -6971,7 +8674,7 @@ function svgMeter(w) {
     const y2 = cy + (radius - 2)  * Math.sin(ang);
     inner += '<line x1="' + x1.toFixed(2) + '" y1="' + y1.toFixed(2) +
       '" x2="' + x2.toFixed(2) + '" y2="' + y2.toFixed(2) +
-      '" stroke="#8a8579" stroke-width="2"/>';
+      '" stroke="' + pal.textDim + '" stroke-width="2"/>';
   }
   // Needle
   const nAng = valAngle * Math.PI / 180;
@@ -6985,31 +8688,33 @@ function svgMeter(w) {
 
 function svgDropdown(w) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const options = String(p.options || '').split('\n').filter(s => s.length);
   const sel = p.selected != null ? Math.max(0, Math.min(options.length - 1, p.selected | 0)) : 0;
   const text = options[sel] || '';
   return svgGroup(w,
     '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
-      'fill="#1d2027" stroke="#3a3f4d" stroke-width="1"/>' +
-    '<text x="10" y="' + svgTextY(w.h / 2, 14) + '" fill="#d3d3d3" ' +
+      'fill="' + pal.bg + '" stroke="' + pal.border + '" stroke-width="1"/>' +
+    '<text x="10" y="' + svgTextY(w.h / 2, 14) + '" fill="' + pal.text + '" ' +
       'font-size="14" font-family="' + SVG_FONT + '">' + svgEsc(text) + '</text>' +
     '<polygon points="' + (w.w - 16) + ',' + (w.h / 2 - 4) + ' ' +
       (w.w - 8) + ',' + (w.h / 2 - 4) + ' ' +
-      (w.w - 12) + ',' + (w.h / 2 + 4) + '" fill="#d3d3d3"/>'
+      (w.w - 12) + ',' + (w.h / 2 + 4) + '" fill="' + pal.textDim + '"/>'
   );
 }
 
 function svgTextarea(w) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const text = p.text || '';
   const placeholder = p.placeholder || '';
   const display = text || placeholder;
-  const color = text ? '#d3d3d3' : '#585348';
+  const color = text ? pal.text : pal.textMute;
   // Multi-line: split on newlines, render each line
   const lines = display.split('\n');
   const lineH = 18;
   let inner = '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
-    'fill="#1d2027" stroke="#3a3f4d" stroke-width="1"/>';
+    'fill="' + pal.bg + '" stroke="' + pal.border + '" stroke-width="1"/>';
   const startY = 8 + 14;
   for (let i = 0; i < lines.length; i++) {
     const y = startY + i * lineH;
@@ -7022,20 +8727,21 @@ function svgTextarea(w) {
 
 function svgRoller(w) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const options = String(p.options || '').split('\n').filter(s => s.length);
   const sel = p.selected != null ? Math.max(0, Math.min(options.length - 1, p.selected | 0)) : 0;
   // Show 3 lines vertically with selected centered
   const rowH = w.h / 3;
   let inner =
     '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
-      'fill="#1d2027" stroke="#3a3f4d" stroke-width="1"/>' +
+      'fill="' + pal.card + '" stroke="' + pal.border + '" stroke-width="1"/>' +
     '<rect y="' + rowH + '" width="' + w.w + '" height="' + rowH +
-      '" fill="#2a2e38"/>';
+      '" fill="' + pal.bg + '"/>';
   for (let i = -1; i <= 1; i++) {
     const idx = sel + i;
     if (idx < 0 || idx >= options.length) continue;
     const y = rowH * (1 + i) + rowH / 2;
-    const col = i === 0 ? '#d4a574' : '#8a8579';
+    const col = i === 0 ? pal.primary : pal.textDim;
     inner += '<text x="' + (w.w / 2) + '" y="' + svgTextY(y, 14) + '" ' +
       'fill="' + col + '" font-size="14" font-family="' + SVG_FONT + '" ' +
       'text-anchor="middle">' + svgEsc(options[idx]) + '</text>';
@@ -7044,10 +8750,11 @@ function svgRoller(w) {
 }
 
 function svgList(w) {
+  const pal = lvSvgPalette();
   const items = String((w.props && w.props.items) || '').split('\n');
   let inner =
     '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
-      'fill="#1d2027" stroke="#3a3f4d" stroke-width="1"/>';
+      'fill="' + pal.bg + '" stroke="' + pal.border + '" stroke-width="1"/>';
   const rowH = 32;
   for (let i = 0; i < items.length; i++) {
     const y = i * rowH;
@@ -7055,16 +8762,16 @@ function svgList(w) {
     const it = items[i];
     if (it.startsWith('#')) {
       inner += '<rect y="' + y + '" width="' + w.w + '" height="' + rowH +
-        '" fill="#0a0a0a"/>';
+        '" fill="' + pal.card + '"/>';
       inner += '<text x="12" y="' + svgTextY(y + rowH / 2, 11) + '" ' +
-        'fill="#8a8579" font-size="11" font-family="' + SVG_FONT +
+        'fill="' + pal.textDim + '" font-size="11" font-family="' + SVG_FONT +
         '" font-weight="600" letter-spacing="0.08em">' +
         svgEsc(it.substring(1).trim().toUpperCase()) + '</text>';
     } else {
       if (i > 0) inner += '<line x1="0" y1="' + y + '" x2="' + w.w + '" y2="' + y +
-        '" stroke="#2a2e38"/>';
+        '" stroke="' + pal.border + '"/>';
       inner += '<text x="12" y="' + svgTextY(y + rowH / 2, 14) + '" ' +
-        'fill="#d3d3d3" font-size="14" font-family="' + SVG_FONT + '">' +
+        'fill="' + pal.text + '" font-size="14" font-family="' + SVG_FONT + '">' +
         svgEsc(it) + '</text>';
     }
   }
@@ -7073,21 +8780,22 @@ function svgList(w) {
 
 function svgChart(w) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const type = p.chartType || 'line';
   const pts = Math.max(2, p.pointCount || 16);
   const series = Math.max(1, Math.min(3, p.seriesCount || 1));
-  const colors = [p.color1 || '#2e6cda', p.color2 || '#d4a574', p.color3 || '#6fb5a8'];
+  const colors = [p.color1 || pal.primary, p.color2 || '#d4a574', p.color3 || '#6fb5a8'];
   const padding = 8;
   const plotW = w.w - padding * 2;
   const plotH = w.h - padding * 2;
   let inner =
     '<rect width="' + w.w + '" height="' + w.h + '" rx="3" ry="3" ' +
-      'fill="#0a0a0a" stroke="#3a3f4d" stroke-width="1"/>';
+      'fill="' + pal.bg + '" stroke="' + pal.border + '" stroke-width="1"/>';
   // Grid lines (4 horizontal)
   for (let i = 1; i < 4; i++) {
     const y = padding + (plotH * i / 4);
     inner += '<line x1="' + padding + '" y1="' + y + '" x2="' + (padding + plotW) +
-      '" y2="' + y + '" stroke="#2a2e38" stroke-dasharray="2,3"/>';
+      '" y2="' + y + '" stroke="' + pal.border + '" stroke-dasharray="2,3"/>';
   }
   // Generate deterministic-looking series data
   for (let s = 0; s < series; s++) {
@@ -7166,17 +8874,19 @@ const ICON_GLYPHS = {
 
 function svgIcon(w) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const symbol = p.symbol || 'wifi';
   const glyph = ICON_GLYPHS[symbol] || '\u25CF';
   const fs = p.fontSize || 24;
   return svgGroup(w,
     '<text x="' + (w.w / 2) + '" y="' + svgTextY(w.h / 2, fs) + '" ' +
-      'fill="' + svgEsc(p.color || '#d3d3d3') + '" font-size="' + fs + '" ' +
+      'fill="' + svgEsc(p.color || pal.text) + '" font-size="' + fs + '" ' +
       'font-family="' + SVG_FONT + '" text-anchor="middle">' + svgEsc(glyph) + '</text>'
   );
 }
 
 function svgKeyboard(w) {
+  const pal = lvSvgPalette();
   // Schematic representation: a grid of key boxes labeled with the row's chars
   const rows = {
     text_lower: ['qwertyuiop', 'asdfghjkl', 'zxcvbnm', ' '],
@@ -7189,7 +8899,7 @@ function svgKeyboard(w) {
   const rowH = w.h / layout.length;
   let inner =
     '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
-      'fill="#16181d" stroke="#3a3f4d" stroke-width="1"/>';
+      'fill="' + pal.card + '" stroke="' + pal.border + '" stroke-width="1"/>';
   for (let r = 0; r < layout.length; r++) {
     const row = layout[r];
     const keyW = w.w / row.length - 4;
@@ -7198,11 +8908,11 @@ function svgKeyboard(w) {
       const y = r * rowH + 2;
       inner += '<rect x="' + x.toFixed(2) + '" y="' + y.toFixed(2) +
         '" width="' + keyW.toFixed(2) + '" height="' + (rowH - 4).toFixed(2) +
-        '" rx="3" ry="3" fill="#2a2e38" stroke="#3a3f4d"/>';
+        '" rx="3" ry="3" fill="' + pal.bg + '" stroke="' + pal.border + '"/>';
       const ch = row[c];
       if (ch && ch !== ' ') {
         inner += '<text x="' + (x + keyW / 2).toFixed(2) + '" y="' +
-          svgTextY(y + (rowH - 4) / 2, 12) + '" fill="#d3d3d3" ' +
+          svgTextY(y + (rowH - 4) / 2, 12) + '" fill="' + pal.text + '" ' +
           'font-size="12" font-family="' + SVG_FONT + '" text-anchor="middle">' +
           svgEsc(ch) + '</text>';
       }
@@ -7221,6 +8931,7 @@ function svgCalendar(w) {
   const gridY = headerH + weekH;
   const gridH = w.h - gridY;
   const cellW = w.w / 7;
+  const pal = lvSvgPalette();
   // Compute first weekday of month (0 = Sunday)
   const first = new Date(year, month - 1, 1).getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -7229,14 +8940,14 @@ function svgCalendar(w) {
   const dayLabels = ['S','M','T','W','T','F','S'];
   let inner =
     '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
-      'fill="#1d2027" stroke="#3a3f4d" stroke-width="1"/>' +
+      'fill="' + pal.bg + '" stroke="' + pal.border + '" stroke-width="1"/>' +
     '<text x="' + (w.w / 2) + '" y="' + svgTextY(headerH / 2, 14) + '" ' +
-      'fill="#d4a574" font-size="14" font-weight="600" ' +
+      'fill="' + pal.primary + '" font-size="14" font-weight="600" ' +
       'font-family="' + SVG_FONT + '" text-anchor="middle">' +
       svgEsc(monthNames[month - 1] + ' ' + year) + '</text>';
   for (let i = 0; i < 7; i++) {
     inner += '<text x="' + (i * cellW + cellW / 2).toFixed(2) + '" y="' +
-      svgTextY(headerH + weekH / 2, 10) + '" fill="#8a8579" font-size="10" ' +
+      svgTextY(headerH + weekH / 2, 10) + '" fill="' + pal.textDim + '" font-size="10" ' +
       'font-family="' + SVG_FONT + '" text-anchor="middle">' + dayLabels[i] + '</text>';
   }
   const rows = Math.ceil((first + daysInMonth) / 7);
@@ -7249,13 +8960,13 @@ function svgCalendar(w) {
     if (d === selDay) {
       inner += '<circle cx="' + cx.toFixed(2) + '" cy="' + cy.toFixed(2) +
         '" r="' + (Math.min(cellW, cellH) / 2 - 3).toFixed(2) +
-        '" fill="#d4a574"/>';
+        '" fill="' + pal.primary + '"/>';
       inner += '<text x="' + cx.toFixed(2) + '" y="' + svgTextY(cy, 11) +
-        '" fill="#0e0f12" font-size="11" font-weight="600" ' +
+        '" fill="' + pal.primaryText + '" font-size="11" font-weight="600" ' +
         'font-family="' + SVG_FONT + '" text-anchor="middle">' + d + '</text>';
     } else {
       inner += '<text x="' + cx.toFixed(2) + '" y="' + svgTextY(cy, 11) +
-        '" fill="#d3d3d3" font-size="11" font-family="' + SVG_FONT +
+        '" fill="' + pal.text + '" font-size="11" font-family="' + SVG_FONT +
         '" text-anchor="middle">' + d + '</text>';
     }
   }
@@ -7267,29 +8978,30 @@ function svgCalendar(w) {
 // recurses into the active tab's widgets at the right offset.
 function svgTabview(w, opts) {
   const p = w.props || {};
+  const pal = lvSvgPalette();
   const tabs = Array.isArray(p.tabs) ? p.tabs : [];
   const activeTab = Math.max(0, Math.min(tabs.length - 1, p.activeTab || 0));
   const tabSize = p.tabSize || 50;
   const pos = p.tabPosition || 'top';
   let inner = '<rect width="' + w.w + '" height="' + w.h + '" rx="4" ry="4" ' +
-    'fill="#16181d" stroke="#3a3f4d" stroke-width="1"/>';
+    'fill="' + pal.bg + '" stroke="' + pal.border + '" stroke-width="1"/>';
   // Tab bar
   if (pos === 'top' || pos === 'bottom') {
     const barY = pos === 'top' ? 0 : (w.h - tabSize);
     inner += '<rect y="' + barY + '" width="' + w.w + '" height="' + tabSize +
-      '" fill="#0a0a0a"/>';
+      '" fill="' + pal.card + '"/>';
     const tabW = tabs.length ? (w.w / tabs.length) : 0;
     tabs.forEach((tab, i) => {
       const tx = i * tabW;
       if (i === activeTab) {
         inner += '<rect x="' + tx + '" y="' + barY + '" width="' + tabW +
-          '" height="' + tabSize + '" fill="#1d2027"/>';
+          '" height="' + tabSize + '" fill="' + pal.bg + '"/>';
         inner += '<rect x="' + tx + '" y="' + (pos === 'top' ? barY + tabSize - 2 : barY) +
-          '" width="' + tabW + '" height="2" fill="#d4a574"/>';
+          '" width="' + tabW + '" height="2" fill="' + pal.primary + '"/>';
       }
       inner += '<text x="' + (tx + tabW / 2).toFixed(2) + '" y="' +
         svgTextY(barY + tabSize / 2, 12) + '" fill="' +
-        (i === activeTab ? '#d4a574' : '#8a8579') + '" font-size="12" ' +
+        (i === activeTab ? pal.primary : pal.textDim) + '" font-size="12" ' +
         'font-family="' + SVG_FONT + '" text-anchor="middle">' +
         svgEsc(tab.name || ('Tab ' + (i + 1))) + '</text>';
     });
@@ -7297,17 +9009,17 @@ function svgTabview(w, opts) {
     // Left or right vertical tabs
     const barX = pos === 'left' ? 0 : (w.w - tabSize);
     inner += '<rect x="' + barX + '" width="' + tabSize + '" height="' + w.h +
-      '" fill="#0a0a0a"/>';
+      '" fill="' + pal.card + '"/>';
     const tabH = tabs.length ? (w.h / tabs.length) : 0;
     tabs.forEach((tab, i) => {
       const ty = i * tabH;
       if (i === activeTab) {
         inner += '<rect x="' + barX + '" y="' + ty + '" width="' + tabSize +
-          '" height="' + tabH + '" fill="#1d2027"/>';
+          '" height="' + tabH + '" fill="' + pal.bg + '"/>';
       }
       inner += '<text x="' + (barX + tabSize / 2).toFixed(2) + '" y="' +
         svgTextY(ty + tabH / 2, 12) + '" fill="' +
-        (i === activeTab ? '#d4a574' : '#8a8579') + '" font-size="12" ' +
+        (i === activeTab ? pal.primary : pal.textDim) + '" font-size="12" ' +
         'font-family="' + SVG_FONT + '" text-anchor="middle">' +
         svgEsc(tab.name || ('Tab ' + (i + 1))) + '</text>';
     });
@@ -7318,12 +9030,38 @@ function svgTabview(w, opts) {
 // Fallback for unknown / unimplemented widget types (e.g. "custom").
 // Renders a dashed bounding box with the widget's type label.
 function svgFallback(w) {
+  const pal = lvSvgPalette();
   return svgGroup(w,
     '<rect width="' + w.w + '" height="' + w.h +
-      '" fill="none" stroke="#585348" stroke-width="1" stroke-dasharray="4,3"/>' +
+      '" fill="none" stroke="' + pal.textMute + '" stroke-width="1" stroke-dasharray="4,3"/>' +
     '<text x="' + (w.w / 2) + '" y="' + svgTextY(w.h / 2, 11) + '" ' +
-      'fill="#585348" font-size="11" font-family="' + SVG_MONO +
+      'fill="' + pal.textMute + '" font-size="11" font-family="' + SVG_MONO +
       '" text-anchor="middle">' + svgEsc(w.type) + '</text>'
+  );
+}
+
+// SVG export for an Image widget. Embeds the cached preview data URL
+// via <image href="..."/> which any SVG-aware viewer can render. The
+// preview data URL is what the editor displays and is already resized
+// to the widget's intended on-screen pixels.
+function svgImage(w) {
+  const p = w.props || {};
+  const pal = lvSvgPalette();
+  if (!p.imageData) {
+    return svgGroup(w,
+      '<rect width="' + w.w + '" height="' + w.h + '" fill="' + pal.card +
+        '" stroke="' + pal.border + '" stroke-width="2" stroke-dasharray="4,3"/>' +
+      '<text x="' + (w.w / 2) + '" y="' + svgTextY(w.h / 2, 11) + '" ' +
+        'fill="' + pal.textDim + '" font-size="11" font-family="' + SVG_FONT +
+        '" text-anchor="middle">No image</text>'
+    );
+  }
+  const par = ({ cover: 'xMidYMid slice', contain: 'xMidYMid meet', stretch: 'none' })[p.fitMode] || 'xMidYMid slice';
+  const opa = ((p.opacity != null ? p.opacity : 100) / 100).toString();
+  return svgGroup(w,
+    '<image href="' + svgEsc(p.imageData) + '" x="0" y="0" ' +
+      'width="' + w.w + '" height="' + w.h + '" ' +
+      'preserveAspectRatio="' + par + '" opacity="' + opa + '"/>'
   );
 }
 
@@ -7332,7 +9070,7 @@ const WIDGET_SVG_RENDERERS = {
   checkbox: svgCheckbox, bar: svgBar, arc: svgArc, meter: svgMeter,
   dropdown: svgDropdown, textarea: svgTextarea, roller: svgRoller, list: svgList,
   chart: svgChart, led: svgLed, icon: svgIcon, keyboard: svgKeyboard,
-  calendar: svgCalendar, tabview: svgTabview
+  calendar: svgCalendar, tabview: svgTabview, image: svgImage
 };
 
 // Build a native-SVG-primitive string for one screen. Returns the
@@ -7347,7 +9085,7 @@ function buildScreenSvgNative(screen, opts) {
   const bannerH  = hostShell ? 26 : 0;
   const svgW = dims.w + shellPad * 2;
   const svgH = dims.h + shellPad * 2 + bannerH;
-  const bg = state.theme === 'tradigital' ? '#0e0a06' : '#0a0a0a';
+  const bg = state.theme === 'tradigital' ? '#0e0a06' : '#ffffff';
 
   function renderArr(arr, ox, oy) {
     let out = '';
@@ -7786,6 +9524,18 @@ document.getElementById('code-download-zip').addEventListener('click', () => {
     const code = $codeOutput.dataset.raw;
     files.push({ name: sketchName + '/' + sketchName + '.ino', data: enc.encode(code) });
   }
+  // ---- Complete project bundle additions ----
+  // These three files turn a generated .ino into a self-contained project
+  // the user can extract, install libraries from, copy one config file,
+  // and flash. Eliminates the "silent font fallback" and "which libraries
+  // do I need" classes of first-boot surprise.
+  const usage = collectUsage();
+  files.push({ name: sketchName + '/lv_conf.h',
+               data: enc.encode(emitLvConfH(usage)) });
+  files.push({ name: sketchName + '/README.md',
+               data: enc.encode(emitProjectReadme(usage, sketchName)) });
+  files.push({ name: sketchName + '/library_dependencies.txt',
+               data: enc.encode(emitLibraryDeps(usage)) });
   // If WiFi is enabled with useSecretsFile, write the companion header.
   const wifi = state.peripherals.wifi;
   if (wifi && wifi.enabled && wifi.useSecretsFile !== false) {
