@@ -1125,11 +1125,6 @@ ArduinoGraphics
 `ArduinoGraphics` is pulled in transitively by some library versions, so if
 the Library Manager flags it as already present, that is expected.
 
-The generated sketch targets LVGL v8 API, which is what the current Arduino
-LVGL library ships. If you have upgraded to v9 locally, `lv_meter` has been
-renamed to `lv_scale` and the meter widget's generated code will need a small
-edit. The other widgets remain source-compatible.
-
 ---
 
 ## Installing the project's lv_conf.h
