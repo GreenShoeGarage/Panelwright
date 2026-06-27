@@ -1132,6 +1132,110 @@ edit. The other widgets remain source-compatible.
 
 ---
 
+## Installing the project's lv_conf.h
+
+Every Montserrat font size that LVGL renders is gated by a compile-time
+define in `lv_conf.h`. The default `lv_conf.h` enables a small handful of
+sizes; the rest get stripped from the binary so they don't waste flash.
+That means if your PANELWRIGHT project uses font size 32 but your installed
+`lv_conf.h` has `LV_FONT_MONTSERRAT_32` set to 0, the sketch fails to
+compile with `'lv_font_montserrat_32' was not declared in this scope`.
+
+PANELWRIGHT solves this by emitting a tuned `lv_conf.h` in the project
+bundle that enables exactly the sizes your screens use and leaves the rest
+disabled. Each enabled size costs roughly 3 KB of flash, so the file is
+sized to the project. The status bar's **Memory** readout shows the
+running total.
+
+### Steps
+
+1. **Generate the bundle.** Click **Generate Code** in the toolbar, then in
+   the modal click **Download .zip**. The bundle contains
+   `your_sketch/your_sketch.ino` and a tuned `lv_conf.h`.
+
+2. **Locate your sketchbook.** Arduino IDE: Settings → "Sketchbook
+   location". The default is `~/Documents/Arduino` on macOS and Linux and
+   `Documents\Arduino` on Windows.
+
+3. **Open the LVGL library folder in Finder.** On macOS the fastest path is
+   `Cmd + Shift + G` to bring up "Go to Folder", then paste:
+
+   ```
+   ~/Documents/Arduino/libraries/lvgl/
+   ```
+
+   Press Return. Substitute the path that matches your sketchbook location
+   if you have moved it (a CloudDocs path is common if you keep your
+   sketchbook in iCloud Drive).
+
+   If you do not see an `lvgl` folder in `libraries/`, install LVGL first
+   through the Library Manager and run step 3 again.
+
+4. **Back up the stock `lv_conf.h`.** Rename the existing file to
+   `lv_conf.h.original`. This is your fallback if anything goes wrong and
+   the file you will restore when working on other sketches that do not
+   share this project's font set.
+
+5. **Drop in the bundled `lv_conf.h`.** Copy the `lv_conf.h` from your
+   PANELWRIGHT project bundle into `libraries/lvgl/`, replacing the stock
+   file.
+
+6. **(Optional) Verify the enabled sizes.** Open the new `lv_conf.h` in a
+   text editor and search for `LV_FONT_MONTSERRAT_`. The sizes your
+   project uses should each show `1`. For a project using sizes 14, 18,
+   and 32:
+
+   ```c
+   #define LV_FONT_MONTSERRAT_14 1
+   #define LV_FONT_MONTSERRAT_18 1
+   #define LV_FONT_MONTSERRAT_32 1
+   ```
+
+   Sizes you do not use should stay at `0` to keep flash usage down.
+
+7. **Compile.** Open `your_sketch/your_sketch.ino` in Arduino IDE, select
+   Tools → Board → Arduino Mbed OS Giga Boards → Arduino Giga R1, then
+   click Verify. A clean compile means every referenced font is enabled.
+
+8. **Upload.** Connect the Giga over USB and click Upload. Your UI should
+   appear with every size rendering correctly.
+
+### One-time setup vs per-project
+
+Most Field Instruments will reuse a similar set of font sizes (14, 18,
+and 24 are the workhorses). Once you have installed the bundled
+`lv_conf.h` for the first project, subsequent projects that use the same
+sizes or a subset of them need no further changes. Only when a project
+introduces a new size does the bundled `lv_conf.h` need to be reinstalled.
+
+If you want one `lv_conf.h` that covers everything, you can enable every
+Montserrat size you commonly reach for (or all 23 stock sizes, which adds
+about 70 KB of flash). The Giga has plenty of flash to absorb this; the
+trade-off is one larger binary versus the swap-and-rebuild dance on every
+project change.
+
+### Troubleshooting
+
+`'lv_font_montserrat_NN' was not declared in this scope` means that size
+is not enabled in your current `lv_conf.h`. Open the file, find
+`LV_FONT_MONTSERRAT_NN` (substitute your size), change `0` to `1`, save,
+and recompile. Or re-export the project bundle, which will set every
+needed size automatically.
+
+A Library Manager update can silently overwrite your custom `lv_conf.h`.
+If your sketch suddenly stops finding font sizes, that is the most likely
+cause. Restore from your `lv_conf.h.original` backup, or re-export the
+PANELWRIGHT bundle and copy `lv_conf.h` over again. Pinning the LVGL
+library version in Library Manager prevents the silent updates.
+
+If you change which font sizes your project uses (renaming a header,
+adding a screen with a large display value, etc.), regenerate the bundle
+and replace `lv_conf.h` again. The font advisory in the code preview
+modal lists every size your current project needs so you can cross-check
+without leaving PANELWRIGHT.
+
+---
+
 ## LVGL version compatibility
 
 The **LVGL version** dropdown in Project Details switches the codegen
