@@ -1614,6 +1614,7 @@ button#btn-serial.active {
     <button id="btn-templates" title="Browse starter templates (multimeter, thermostat, weather station, ...)">Templates</button>
     <input type="file" id="file-input" accept=".json" style="display:none">
     <span class="sep"></span>
+    <button id="btn-project" title="Project settings: title, author, LVGL version, code hooks">&#x2699; Project</button>
     <button id="btn-hardware" title="Configure onboard peripherals (microphone, camera, SD, WiFi, BLE, LED, RTC)">Hardware</button>
     <button id="btn-preview" title="Toggle the docked live preview pane">Preview</button>
     <button id="btn-serial" title="Toggle the Web Serial monitor (live device output + send)">Serial</button>
@@ -1661,7 +1662,7 @@ button#btn-serial.active {
       <div class="item"><span class="key">Selected</span><span class="val" id="status-selected">none</span></div>
       <div class="item"><span class="key">Screen</span><span class="val" id="status-screen">main</span></div>
       <div class="item"><span class="key">Widgets</span><span class="val" id="status-count">0</span></div>
-      <div class="item" id="status-mem-item" title="Estimated flash + SRAM impact of this UI. Hover for breakdown."><span class="key">Memory</span><span class="val" id="status-mem">0 KB</span></div>
+      <div class="item" id="status-mem-item" title="Estimated flash + SRAM impact of this UI. Hover for breakdown." style="cursor: help;"><span class="key">Memory</span><span class="val" id="status-mem">0 KB</span></div>
       <div class="spacer"></div>
       <div class="periph-indicators" id="periph-indicators"></div>
       <div class="item"><span class="key">Display</span><span class="val" id="status-display">800 x 480</span></div>
@@ -1977,6 +1978,16 @@ button#btn-serial.active {
       Generate Code to produce a complete Arduino sketch using LVGL.
     </p>
 
+    <h3>Starting a project</h3>
+    <p>
+      Click <strong>Templates</strong> in the toolbar to start from a curated
+      project (multimeter, thermostat, weather station, sensor recorder, audio
+      spectrum, or blank). Click the gear-icon <strong>Project</strong> button
+      (or the project title at the top-left) to open
+      <strong>Project Details</strong> and set author, target board, LVGL
+      version, and per-project setup / loop code hooks.
+    </p>
+
     <h3>Multi-screen</h3>
     <p>
       The tab strip below the toolbar lists all screens. Click a tab to switch.
@@ -1987,10 +1998,67 @@ button#btn-serial.active {
 
     <h3>Theme</h3>
     <p>
-      The Theme selector switches between LVGL's default look and a Tradigital
-      preset (amber primary, teal secondary, dark mode on). The choice is
-      saved with the project and applied to the generated sketch via
-      lv_theme_default_init.
+      The <strong>Theme</strong> selector switches the LVGL canvas between
+      lvgl_default (light) and Tradigital (dark amber/teal). The choice is
+      saved with the project and applied via lv_theme_default_init at runtime.
+      The small moon / sun button in the toolbar toggles the
+      <strong>editor itself</strong> (toolbar, palette, panels) between dark
+      and a warm cream/sepia light mode, independent of the canvas theme.
+      Preference persists across reloads.
+    </p>
+
+    <h3>Onboard hardware</h3>
+    <p>
+      Click <strong>Hardware</strong> to enable and configure the Giga R1 and
+      Display Shield peripherals: microphone, IMU, camera, SD card, WiFi, BLE,
+      RGB LED, and RTC. Enabled peripherals show as amber dots in the status
+      bar at the bottom (click any dot to jump back to the modal). Helpers
+      are generated automatically in the sketch.
+    </p>
+
+    <h3>Live preview &amp; Serial monitor</h3>
+    <p>
+      <strong>Preview</strong> docks a live LVGL-accurate preview of the
+      current screen on the right side, useful while you adjust properties.
+      <strong>Serial</strong> opens a Web Serial monitor (Chrome / Edge) that
+      connects to a flashed Giga over USB so you can watch boot diagnostics
+      and live output while you iterate. Send commands from the input row.
+    </p>
+
+    <h3>Output</h3>
+    <p>
+      <strong>Generate Code</strong> opens a code preview with the full
+      Arduino sketch. From there, copy to clipboard, download a single .ino,
+      or download a complete .zip project bundle with a tuned lv_conf.h that
+      enables exactly the font sizes your project uses.
+      <strong>Export</strong> saves the current screen as PNG or SVG.
+      <strong>Open Viewer</strong> opens a separate read-only viewer for
+      sharing or testing.
+    </p>
+
+    <h3>LVGL version (v8 vs v9)</h3>
+    <p>
+      Set the target LVGL version in Project Details. Default is v9 (current
+      Arduino Library Manager). Pick v8 if your installed library is older;
+      the codegen switches API calls (lv_meter / lv_scale, lv_img_create /
+      lv_image_create, color formats, image descriptors) to match.
+    </p>
+
+    <h3>Image widget</h3>
+    <p>
+      Drag <strong>Image</strong> from the palette, then upload a PNG or JPG
+      from the properties panel. PANELWRIGHT resizes it (max 240 x 180) and
+      compiles it to RGB565 bytes alongside the sketch. Choose fit mode
+      (cover / contain / stretch) and opacity. Flash impact appears in the
+      status bar Memory readout.
+    </p>
+
+    <h3>Memory budget</h3>
+    <p>
+      The Memory item in the status bar estimates the flash + SRAM impact of
+      your project, broken down by images, fonts, and widget count. Hover for
+      the per-category breakdown. Use this to gauge whether you need to trim
+      images or unused font sizes before flashing.
     </p>
 
     <h3>Keyboard</h3>
@@ -1998,6 +2066,7 @@ button#btn-serial.active {
       <kbd>Click</kbd><span>Select widget</span>
       <kbd>Drag</kbd><span>Move widget</span>
       <kbd>Corners</kbd><span>Resize</span>
+      <kbd>Right-click</kbd><span>Widget context menu</span>
       <kbd>Delete</kbd><span>Delete selected</span>
       <kbd>Arrows</kbd><span>Nudge 1 px</span>
       <kbd>Shift + Arrows</kbd><span>Nudge 10 px</span>
@@ -6528,6 +6597,7 @@ function closeProjectModal() {
 }
 
 document.getElementById('project-tag').addEventListener('click', openProjectModal);
+document.getElementById('btn-project').addEventListener('click', openProjectModal);
 document.getElementById('project-close').addEventListener('click', closeProjectModal);
 document.getElementById('project-done').addEventListener('click', closeProjectModal);
 $projectModal.addEventListener('click', (e) => {
@@ -6702,7 +6772,14 @@ function updatePeripheralIndicators() {
     if (!cfg || !cfg.enabled) continue;
     const el = document.createElement('div');
     el.className = 'indicator';
-    el.title = spec.label + ' enabled';
+    // Each lit indicator is a shortcut into the Hardware modal so the
+    // user can jump from "what's on" in the status bar to "configure it".
+    el.title = spec.label + ' enabled. Click to manage peripherals.';
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => {
+      renderHardwareModal();
+      $hardwareModal.classList.add('open');
+    });
     const dot = document.createElement('span');
     dot.className = 'dot';
     const txt = document.createElement('span');
