@@ -4792,6 +4792,16 @@ function renderPreview() {
   canvas.style.transform = 'scale(' + scale.toFixed(4) + ')';
   canvas.classList.toggle('theme-tradigital', state.theme === 'tradigital');
 
+  // Honor the active screen's effective background so the docked preview
+  // matches what runs on the device, just like the main canvas does in
+  // redrawAll. Without this, the preview shows the theme default while
+  // the editor and device show a custom bgColor.
+  if (screen && screen.bgColor) {
+    canvas.style.backgroundColor = screen.bgColor;
+  } else {
+    canvas.style.backgroundColor = '';
+  }
+
   if (!screen) return;
 
   // Render every widget on the active screen. Tab children render at
