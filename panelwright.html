@@ -310,6 +310,38 @@ header.topbar label.opt select { width: auto; }
   font-size: 9px;
 }
 .screens-strip .screen-tab.active .default-mark { color: var(--amber-bright); }
+/* Per-screen background color swatch. Sits between the rename pencil
+   and the delete x. Default styling shows a faint border so users can
+   tell it's the theme default; the .custom modifier highlights it
+   with the amber border when the user has set an explicit override. */
+.screens-strip .screen-tab .screen-bg-swatch {
+  position: relative;
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--border-hot);
+  cursor: pointer;
+  margin: 0 2px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15);
+}
+.screens-strip .screen-tab .screen-bg-swatch.custom {
+  border-color: var(--amber);
+}
+.screens-strip .screen-tab .screen-bg-swatch input[type="color"] {
+  /* Position the native color picker invisibly over the swatch so
+     clicking the swatch opens it. Setting opacity:0 keeps the click
+     target while letting the swatch background show through. */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+}
 .screens-strip .screen-tab .close {
   color: var(--ink-mute);
   font-size: 13px;
@@ -3927,6 +3959,21 @@ function hexToLvHex(hex) {
   return '0x' + hex.replace('#', '').toUpperCase();
 }
 
+// ----- Screen background helpers --------------------------
+// Each LVGL theme has a default screen background color. lvgl_default
+// (Material-derived) defaults to white; tradigital is a warm dark brass.
+// Per-screen bgColor overrides this. The same helpers are used by the
+// editor canvas, the project bundle's viewer, and the codegen so all
+// three render identically. Mismatching these caused the "white in
+// editor, black on Giga" bug fixed in this session.
+function defaultScreenBg(theme) {
+  return theme === 'tradigital' ? '#0e0a06' : '#ffffff';
+}
+
+function effectiveScreenBg(screen, theme) {
+  return (screen && screen.bgColor) || defaultScreenBg(theme);
+}
+
 // ----- DOM refs ------------------------------------------
 
 const $canvas = document.getElementById('canvas');
@@ -4508,6 +4555,51 @@ function renderScreensStrip() {
       });
     });
 
+    // Per-screen background color swatch. Shows the effective color
+    // (custom or theme-derived); click to open a native color picker.
+    // Right-click resets to the theme default. Storing per-screen lets
+    // each screen have its own backdrop without affecting the others.
+    const effective = effectiveScreenBg(s, state.theme);
+    const isCustom = !!s.bgColor;
+    const swatchWrap = document.createElement('label');
+    swatchWrap.className = 'screen-bg-swatch';
+    swatchWrap.title = isCustom
+      ? ('Background: ' + s.bgColor + ' (right-click to reset to theme default)')
+      : ('Background: theme default (' + effective + '). Click to override.');
+    swatchWrap.style.background = effective;
+    if (isCustom) swatchWrap.classList.add('custom');
+    swatchWrap.addEventListener('click', e => e.stopPropagation());
+    swatchWrap.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (s.bgColor) {
+        pushHistory();
+        delete s.bgColor;
+        markDirty();
+        renderScreensStrip();
+        if (s.id === state.activeScreenId) redrawAll();
+      }
+    });
+    const swatchInput = document.createElement('input');
+    swatchInput.type = 'color';
+    swatchInput.value = effective;
+    swatchInput.addEventListener('input', e => {
+      // Don't push history for every intermediate color drag step;
+      // push once on commit (change).
+      s.bgColor = e.target.value;
+      swatchWrap.style.background = e.target.value;
+      swatchWrap.classList.add('custom');
+      if (s.id === state.activeScreenId) redrawAll();
+    });
+    swatchInput.addEventListener('change', e => {
+      pushHistory();
+      s.bgColor = e.target.value;
+      markDirty();
+      renderScreensStrip();
+      if (s.id === state.activeScreenId) redrawAll();
+    });
+    swatchWrap.appendChild(swatchInput);
+
     const close = document.createElement('span');
     close.className = 'close';
     close.textContent = '\u00D7';
@@ -4520,6 +4612,7 @@ function renderScreensStrip() {
     tab.appendChild(lbl);
     tab.appendChild(mark);
     tab.appendChild(dbl);
+    tab.appendChild(swatchWrap);
     tab.appendChild(close);
     $screensStrip.appendChild(tab);
   }
@@ -4536,7 +4629,7 @@ function renderScreensStrip() {
 
   const info = document.createElement('div');
   info.className = 'strip-actions';
-  info.innerHTML = '<span>\u2605 Default</span><span>\u270E Rename</span>';
+  info.innerHTML = '<span>\u2605 Default</span><span>\u270E Rename</span><span>\u25A0 BG color</span>';
   $screensStrip.appendChild(info);
 }
 
@@ -4545,6 +4638,17 @@ function renderScreensStrip() {
 function redrawAll(opts) {
   $canvas.innerHTML = '';
   $canvas.classList.toggle('theme-tradigital', state.theme === 'tradigital');
+
+  // Apply the active screen's effective background to the editor canvas
+  // so what you see here matches what runs on the device. If the screen
+  // has a custom bgColor we use it; otherwise we clear the inline style
+  // and let --lv-canvas-bg from the theme cascade through.
+  const activeScreen = state.screens.find(s => s.id === state.activeScreenId);
+  if (activeScreen && activeScreen.bgColor) {
+    $canvas.style.backgroundColor = activeScreen.bgColor;
+  } else {
+    $canvas.style.backgroundColor = '';
+  }
 
   // In tab scope, render the parent screen widgets dimmed for context,
   // then the tab content area frame, then the tab widgets at offset.
@@ -6118,6 +6222,9 @@ $themeSelect.addEventListener('change', () => {
   pushHistory();
   state.theme = $themeSelect.value;
   redrawAll();
+  // Re-render the screens strip so swatches update their theme-default
+  // colors (each shows effectiveScreenBg(s, state.theme)).
+  renderScreensStrip();
 });
 
 document.getElementById('btn-apply-theme').addEventListener('click', () => {
@@ -7857,7 +7964,14 @@ function emitScreenBuilders(ctx) {
     out.push('// ---- Build screen: ' + s.name + ' ----');
     out.push('static void build_screen_' + s.name + '(void) {');
     out.push('  scr_' + s.name + ' = lv_obj_create(NULL);');
-    out.push('  lv_obj_set_style_bg_color(scr_' + s.name + ', lv_color_hex(0x000000), 0);');
+    // Screen background: honor the per-screen bgColor if set, otherwise
+    // fall back to a theme-appropriate default. Previously this was
+    // hardcoded to 0x000000, which made every device flash render as
+    // black regardless of theme or per-screen choice while the editor
+    // canvas (which uses --lv-canvas-bg) showed white. That mismatch
+    // was the "white in editor, black on Giga" bug.
+    const bg = effectiveScreenBg(s, state.theme);
+    out.push('  lv_obj_set_style_bg_color(scr_' + s.name + ', lv_color_hex(' + hexToLvHex(bg) + '), 0);');
     out.push('  lv_obj_set_style_bg_opa(scr_' + s.name + ', LV_OPA_COVER, 0);');
     out.push('');
     for (const w of s.widgets) {
