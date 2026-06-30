@@ -260,6 +260,21 @@ The choice is saved with the project file and applies to every screen at
 runtime. Per-widget color overrides still win wherever you set them
 explicitly in the properties panel.
 
+### Per-screen background color
+
+Each screen tab in the strip below the toolbar carries a small color
+swatch between the rename pencil and the delete x. Click the swatch to
+override that screen's background to whatever color you like; right-click
+to reset to the theme default. The swatch border goes amber when an
+override is set, and the editor canvas, viewer, and generated sketch all
+honor the same value so the device output matches what you previewed.
+
+Without an override, each screen falls back to the theme's default screen
+background: white for lvgl_default and a warm dark for tradigital. (The
+previous codegen unconditionally emitted black for every screen, which is
+why the editor showed white while the device showed black; that's now
+resolved.)
+
 ### Editor light mode
 
 The toolbar has a small moon (☾) / sun (☀) button between the
