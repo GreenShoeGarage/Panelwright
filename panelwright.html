@@ -1884,6 +1884,13 @@ button#btn-serial.active {
               <option value="true">Split into ui.h / ui.cpp (zip only)</option>
             </select>
           </div>
+          <div class="ph-row">
+            <label title="Emit Serial.print calls after each widget that print the actual computed position and size at boot. Useful for debugging device-vs-editor positioning mismatches.">Debug positions</label>
+            <label class="opt" style="justify-self: start;">
+              <input type="checkbox" id="meta-debug-positions">
+              Print widget positions to Serial at boot (115200 baud)
+            </label>
+          </div>
           <div class="ph-row" style="grid-template-columns: 110px 1fr; align-items: start;">
             <label style="padding-top: 5px;">Description</label>
             <textarea id="meta-description" rows="4" spellcheck="false"
@@ -2244,13 +2251,16 @@ const WIDGET_TYPES = {
     label: 'Slider', glyph: '\u2500\u25CF\u2500',
     defaultSize: { w: 200, h: 20 },
     defaultName: 'sld',
-    defaultProps: { min: 0, max: 100, value: 50, color: '#2196f3', customLogic: '' },
+    defaultProps: { min: 0, max: 100, value: 50, color: '#2196f3',
+                    knobSize: 16, customLogic: '' },
     render: renderSlider,
     properties: [
       { key: 'min', label: 'Min', type: 'number' },
       { key: 'max', label: 'Max', type: 'number' },
       { key: 'value', label: 'Value', type: 'number' },
       { key: 'color', label: 'Color', type: 'color' },
+      { key: 'knobSize', label: 'Knob', type: 'number', min: 6, max: 80,
+        hint: 'Diameter of the drag handle in pixels' },
       { key: 'customLogic', label: 'Event Code', type: 'textarea',
         hint: 'C++ inserted into the value-changed handler' }
     ]
@@ -2272,12 +2282,20 @@ const WIDGET_TYPES = {
     label: 'Checkbox', glyph: '\u2611',
     defaultSize: { w: 140, h: 24 },
     defaultName: 'chk',
-    defaultProps: { text: 'Option', checked: false, color: '#2196f3', customLogic: '' },
+    defaultProps: { text: 'Option', checked: false, color: '#2196f3',
+                    textColor: '#d3d3d3', fontSize: 14, customLogic: '' },
     render: renderCheckbox,
     properties: [
       { key: 'text', label: 'Label', type: 'text' },
       { key: 'checked', label: 'Checked', type: 'boolean' },
-      { key: 'color', label: 'Color', type: 'color' },
+      { key: 'color', label: 'Box', type: 'color' },
+      { key: 'textColor', label: 'Text', type: 'color' },
+      { key: 'fontSize', label: 'Font', type: 'select', options: [
+          { v: 12, l: '12 px' }, { v: 14, l: '14 px' }, { v: 16, l: '16 px' },
+          { v: 18, l: '18 px' }, { v: 20, l: '20 px' }, { v: 24, l: '24 px' },
+          { v: 28, l: '28 px' }, { v: 32, l: '32 px' }, { v: 36, l: '36 px' },
+          { v: 40, l: '40 px' }, { v: 48, l: '48 px' }
+      ]},
       { key: 'customLogic', label: 'Event Code', type: 'textarea',
         hint: 'C++ inserted into the value-changed handler' }
     ]
@@ -2330,11 +2348,18 @@ const WIDGET_TYPES = {
     label: 'Dropdown', glyph: '\u25BC',
     defaultSize: { w: 160, h: 36 },
     defaultName: 'dd',
-    defaultProps: { options: 'Option 1\nOption 2\nOption 3', selected: 0, customLogic: '' },
+    defaultProps: { options: 'Option 1\nOption 2\nOption 3', selected: 0,
+                    textColor: '#d3d3d3', fontSize: 14, customLogic: '' },
     render: renderDropdown,
     properties: [
       { key: 'options', label: 'Options', type: 'textarea', hint: 'One per line' },
       { key: 'selected', label: 'Default', type: 'number' },
+      { key: 'textColor', label: 'Text', type: 'color' },
+      { key: 'fontSize', label: 'Font', type: 'select', options: [
+          { v: 12, l: '12 px' }, { v: 14, l: '14 px' }, { v: 16, l: '16 px' },
+          { v: 18, l: '18 px' }, { v: 20, l: '20 px' }, { v: 24, l: '24 px' },
+          { v: 28, l: '28 px' }, { v: 32, l: '32 px' }, { v: 36, l: '36 px' }
+      ]},
       { key: 'customLogic', label: 'Event Code', type: 'textarea',
         hint: 'C++ inserted into the value-changed handler' }
     ]
@@ -2355,13 +2380,20 @@ const WIDGET_TYPES = {
     label: 'Roller', glyph: '\u2630',
     defaultSize: { w: 100, h: 120 },
     defaultName: 'rl',
-    defaultProps: { options: 'One\nTwo\nThree\nFour\nFive', selected: 0, mode: 'normal', customLogic: '' },
+    defaultProps: { options: 'One\nTwo\nThree\nFour\nFive', selected: 0, mode: 'normal',
+                    textColor: '#d3d3d3', fontSize: 14, customLogic: '' },
     render: renderRoller,
     properties: [
       { key: 'options', label: 'Options', type: 'textarea', hint: 'One per line' },
       { key: 'selected', label: 'Default', type: 'number' },
       { key: 'mode', label: 'Mode', type: 'select', options: [
           { v: 'normal', l: 'Normal' }, { v: 'infinite', l: 'Infinite' }
+      ]},
+      { key: 'textColor', label: 'Text', type: 'color' },
+      { key: 'fontSize', label: 'Font', type: 'select', options: [
+          { v: 12, l: '12 px' }, { v: 14, l: '14 px' }, { v: 16, l: '16 px' },
+          { v: 18, l: '18 px' }, { v: 20, l: '20 px' }, { v: 24, l: '24 px' },
+          { v: 28, l: '28 px' }, { v: 32, l: '32 px' }
       ]},
       { key: 'customLogic', label: 'Event Code', type: 'textarea',
         hint: 'C++ inserted into the value-changed handler' }
@@ -3182,6 +3214,15 @@ function renderSlider(w) {
   knob.className = 'knob';
   knob.style.left = (pct * 100) + '%';
   knob.style.background = w.props.color;
+  // Per-widget knob diameter. The default-styled knob is positioned via
+  // a CSS rule (.knob) at a fixed size; an explicit knobSize overrides
+  // both width and height, and we adjust the margin so the knob stays
+  // centered on the track.
+  const knobSize = w.props.knobSize || 16;
+  knob.style.width = knobSize + 'px';
+  knob.style.height = knobSize + 'px';
+  knob.style.marginLeft = (-knobSize / 2) + 'px';
+  knob.style.marginTop = (-knobSize / 2) + 'px';
   track.appendChild(fill);
   track.appendChild(knob);
   wrap.appendChild(track);
@@ -3224,6 +3265,11 @@ function renderCheckbox(w) {
   inner.appendChild(box);
   const txt = document.createElement('span');
   txt.textContent = w.props.text || '';
+  // Apply per-widget text color and font size so the editor preview
+  // matches the LVGL output (which uses lv_obj_set_style_text_color /
+  // _font on LV_PART_MAIN). Defaults match the prior hardcoded look.
+  if (w.props.textColor) txt.style.color = w.props.textColor;
+  if (w.props.fontSize) txt.style.fontSize = w.props.fontSize + 'px';
   inner.appendChild(txt);
   el.appendChild(inner);
   return el;
@@ -3394,6 +3440,11 @@ function renderDropdown(w) {
   inner.className = 'lv-dropdown';
   inner.style.width = '100%';
   inner.style.height = '100%';
+  // Apply font + color to the container so both the displayed selection
+  // and the caret inherit the styles, matching LVGL's text style cascade
+  // on LV_PART_MAIN. Defaults match the prior fixed styling.
+  if (w.props.textColor) inner.style.color = w.props.textColor;
+  if (w.props.fontSize) inner.style.fontSize = w.props.fontSize + 'px';
   const opts = (w.props.options || '').split('\n').filter(s => s.length);
   const txt = document.createElement('span');
   txt.textContent = opts[w.props.selected] || opts[0] || '';
@@ -3429,6 +3480,10 @@ function renderRoller(w) {
   inner.className = 'lv-roller';
   inner.style.width = '100%';
   inner.style.height = '100%';
+  // Apply font + color so the rendered rows match what LVGL will draw
+  // when we set text styles on LV_PART_MAIN at codegen time.
+  if (w.props.textColor) inner.style.color = w.props.textColor;
+  if (w.props.fontSize) inner.style.fontSize = w.props.fontSize + 'px';
   const opts = (w.props.options || '').split('\n').filter(s => s.length);
   const sel = Math.min(w.props.selected || 0, opts.length - 1);
   for (let i = -1; i <= 1; i++) {
@@ -5229,6 +5284,14 @@ function beginResize(e, w, dir) {
   const startX = e.clientX;
   const startY = e.clientY;
   const sX = w.x, sY = w.y, sW = w.w, sH = w.h;
+  // Capture starting font for auto-scaling widgets. Buttons and icons
+  // hold their visible content size in props.fontSize; resizing the
+  // bounding box on its own grew the box but left the text/symbol the
+  // same size, so the visual element appeared not to track the handles.
+  // We scale fontSize by min(nw/sW, nh/sH) so the inner content tracks
+  // the smaller dimension of the box (which keeps text fitting cleanly).
+  const sFont = w.props.fontSize;
+  const autoScaleFont = (w.type === 'button' || w.type === 'icon') && sFont > 0;
   pushHistory();
 
   function onMove(ev) {
@@ -5246,6 +5309,14 @@ function beginResize(e, w, dir) {
     if (nx + nw > dims.w) nw = dims.w - nx;
     if (ny + nh > dims.h) nh = dims.h - ny;
     w.x = nx; w.y = ny; w.w = nw; w.h = nh;
+    if (autoScaleFont) {
+      // Track the smaller dimension change so the text or icon stays
+      // inside its box. Snap to the nearest available Montserrat size
+      // so the font advisory still has discrete values to enable in
+      // lv_conf.h, rather than continuous floats only this widget uses.
+      const scale = Math.min(nw / sW, nh / sH);
+      w.props.fontSize = nearestFont(Math.max(8, Math.round(sFont * scale)));
+    }
     redrawAll();
   }
   function onUp() {
@@ -6679,6 +6750,7 @@ const $metaLvglVersion = document.getElementById('meta-lvgl-version');
 const $metaSplitFiles = document.getElementById('meta-split-files');
 const $metaSetupCode = document.getElementById('meta-setup-code');
 const $metaLoopCode = document.getElementById('meta-loop-code');
+const $metaDebugPositions = document.getElementById('meta-debug-positions');
 
 function openProjectModal() {
   $metaTitle.value = state.meta.title || '';
@@ -6690,6 +6762,7 @@ function openProjectModal() {
   $metaSplitFiles.value = state.meta.splitFiles ? 'true' : 'false';
   $metaSetupCode.value = state.meta.setupCode || '';
   $metaLoopCode.value = state.meta.loopCode || '';
+  $metaDebugPositions.checked = !!state.meta.debugPositions;
   $projectModal.classList.add('open');
 }
 function closeProjectModal() {
@@ -6702,7 +6775,8 @@ function closeProjectModal() {
     lvglVersion: $metaLvglVersion.value || 'v9',
     splitFiles: $metaSplitFiles.value === 'true',
     setupCode: $metaSetupCode.value,
-    loopCode: $metaLoopCode.value
+    loopCode: $metaLoopCode.value,
+    debugPositions: $metaDebugPositions.checked
   };
   const changed = JSON.stringify(newMeta) !== JSON.stringify(state.meta);
   if (changed) {
@@ -7161,6 +7235,7 @@ function generateCode() {
   pushLines(out, emitThemeFunction(ctx));
   pushLines(out, emitEventHandlers(ctx));
   pushLines(out, emitScreenBuilders(ctx));
+  pushLines(out, emitDebugPositions(ctx));
   pushLines(out, emitSetupFunction(ctx, { inlineUiInit: true }));
   out.push('');
   pushLines(out, emitLoopFunction(ctx));
@@ -7202,6 +7277,11 @@ function generateSplitCode() {
   ui_h.push('// Call from setup() once after Display.begin() / TouchDetector.begin().');
   ui_h.push('// Builds every screen, applies the theme, and loads the default screen.');
   ui_h.push('void ui_init(void);');
+  if (state.meta.debugPositions) {
+    ui_h.push('// Debug: print every widget\'s actual computed position to Serial.');
+    ui_h.push('// Call from setup() AFTER ui_init() and a lv_timer_handler() pass.');
+    ui_h.push('void print_widget_positions(void);');
+  }
   ui_h.push('');
   ui_h.push('#endif // ' + guardName);
   ui_h.push('');
@@ -7224,6 +7304,7 @@ function generateSplitCode() {
   pushLines(ui_cpp, emitThemeFunction(ctx));
   pushLines(ui_cpp, emitEventHandlers(ctx));
   pushLines(ui_cpp, emitScreenBuilders(ctx));
+  pushLines(ui_cpp, emitDebugPositions(ctx));
   // ui_init body: theme apply + every screen build + load default
   ui_cpp.push('void ui_init(void) {');
   if (themed) ui_cpp.push('  apply_theme();');
@@ -7338,8 +7419,12 @@ function collectFontSizes(screens) {
       if (w.type === 'button') {
         sizes.add(nearestFont(w.props.fontSize || 14));
       }
-      // Tradigital theme uses _16 for its theme font
-      // (added below as a global, not per-widget)
+      // Checkbox / Dropdown / Roller: per-widget text size, applied via
+      // lv_obj_set_style_text_font on LV_PART_MAIN at codegen time.
+      // Each pulls a Montserrat size into the lv_conf.h advisory.
+      if (w.type === 'checkbox' || w.type === 'dropdown' || w.type === 'roller') {
+        sizes.add(nearestFont(w.props.fontSize || 14));
+      }
       // Tabview: recurse into children of each tab
       if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
         for (const tab of w.props.tabs) {
@@ -7911,6 +7996,58 @@ function emitScreenForwardDecls(ctx, keyword) {
   return out;
 }
 
+// Emit a print_widget_positions() helper that walks every named widget
+// and prints its actual computed coords + size to Serial at 115200 baud.
+// Called from setup() after the first lv_timer_handler() so layout has
+// had a chance to compute. Useful for debugging "the LED appears shifted
+// on the device vs editor" mismatches: if LVGL reports (576, 138) but
+// the LED looks like it's at (606, 138) on the LCD, the issue is in the
+// LVGL widget's draw code or display rotation, not in our codegen. If
+// LVGL reports a different x or y than the editor, the issue is upstream
+// (theme, alignment, screen padding).
+function emitDebugPositions(ctx) {
+  if (!state.meta.debugPositions) return [];
+  const out = [];
+  out.push('// ---- Debug: print each widget\'s actual computed position to Serial ----');
+  out.push('// Enabled in Project Details > "Debug positions". Disable for production');
+  out.push('// builds to save the few hundred bytes of flash + serial chatter.');
+  // No 'static' qualifier so split mode (ui.cpp) can export this function
+  // and the .ino setup() can call it after lv_timer_handler() runs once.
+  // Inline mode also benefits from the unified signature.
+  out.push('void print_widget_positions(void) {');
+  out.push('  Serial.println("[pos] ---- widget positions (computed by LVGL after first paint) ----");');
+  out.push('  lv_area_t coords;');
+  for (const s of state.screens) {
+    out.push('  Serial.println("[pos] screen: ' + s.name + '");');
+    function emitForWidgets(widgets, prefix) {
+      for (const w of widgets) {
+        const N = w.name;
+        // Single setup line: "[pos]   <prefix><type> <name> set_xy=(x,y) set_wh=(w,h)"
+        const header = '[pos]   ' + prefix + w.type + ' ' + N +
+                       ' set_xy=(' + w.x + ',' + w.y + ')' +
+                       ' set_wh=(' + w.w + ',' + w.h + ')';
+        out.push('  lv_obj_get_coords(' + N + ', &coords);');
+        out.push('  Serial.print("' + header + '");');
+        out.push('  Serial.print(" actual_xy=("); Serial.print(coords.x1);');
+        out.push('  Serial.print(","); Serial.print(coords.y1);');
+        out.push('  Serial.print(") actual_wh=("); Serial.print(coords.x2 - coords.x1 + 1);');
+        out.push('  Serial.print(","); Serial.print(coords.y2 - coords.y1 + 1);');
+        out.push('  Serial.println(")");');
+        // Recurse into tabview children so debug covers nested widgets too
+        if (w.type === 'tabview' && Array.isArray(w.props.tabs)) {
+          for (const t of w.props.tabs) {
+            if (Array.isArray(t.widgets)) emitForWidgets(t.widgets, prefix + '  tab[' + t.name + ']/');
+          }
+        }
+      }
+    }
+    emitForWidgets(s.widgets, '');
+  }
+  out.push('}');
+  out.push('');
+  return out;
+}
+
 function emitThemeFunction(ctx) {
   if (state.theme !== 'tradigital') return [];
   const v9 = (state.meta.lvglVersion || 'v9') === 'v9';
@@ -8057,12 +8194,16 @@ function emitSetupFunction(ctx, opts) {
     const def = defaultScreen();
     if (def) out.push('  lv_scr_load(scr_' + def.name + ');');
     out.push('  lv_timer_handler();  // force first paint before peripheral init');
+    // Debug positions runs AFTER the first lv_timer_handler so layout has
+    // been computed. Otherwise lv_obj_get_coords may report stale values.
+    if (state.meta.debugPositions) out.push('  print_widget_positions();');
     out.push('');
   } else {
     // Split: delegate to ui_init() in ui.cpp
     out.push('  // ---- UI ----');
     out.push('  ui_init();');
     out.push('  lv_timer_handler();  // force first paint before peripheral init');
+    if (state.meta.debugPositions) out.push('  print_widget_positions();');
     out.push('');
   }
 
@@ -8444,6 +8585,17 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`lv_slider_set_value(${N}, ${w.props.value}, LV_ANIM_OFF);`);
       lines.push(`lv_obj_set_style_bg_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR);`);
       lines.push(`lv_obj_set_style_bg_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_KNOB);`);
+      // Knob diameter is controlled via pad_all on LV_PART_KNOB: the
+      // knob expands outward from the track by this many pixels on
+      // each side, so visible diameter is (track_height + 2 * pad).
+      // We compute the pad from the requested diameter and the track
+      // height, clamping to >= 0 so very small knobs don't try to
+      // shrink the knob below the track height.
+      if (w.props.knobSize) {
+        const trackH = Math.max(1, w.h);
+        const pad = Math.max(0, Math.round((w.props.knobSize - trackH) / 2));
+        lines.push(`lv_obj_set_style_pad_all(${N}, ${pad}, LV_PART_KNOB);`);
+      }
       cb('LV_EVENT_VALUE_CHANGED');
       break;
 
@@ -8462,6 +8614,17 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`lv_checkbox_set_text(${N}, ${cstr(w.props.text)});`);
       if (w.props.checked) lines.push(`lv_obj_add_state(${N}, LV_STATE_CHECKED);`);
       lines.push(`lv_obj_set_style_bg_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR | LV_STATE_CHECKED);`);
+      // Text color applies to the label portion of the checkbox via
+      // LV_PART_MAIN (the checkbox's text inherits from main, not
+      // indicator). Font size uses the same compile-time-guarded
+      // emitter as the label widget so missing Montserrat sizes fall
+      // back gracefully to LV_FONT_DEFAULT.
+      if (w.props.textColor) {
+        lines.push(`lv_obj_set_style_text_color(${N}, lv_color_hex(${hexToLvHex(w.props.textColor)}), 0);`);
+      }
+      if (w.props.fontSize) {
+        for (const l of emitFontStyle(N, w.props.fontSize)) lines.push(l);
+      }
       cb('LV_EVENT_VALUE_CHANGED');
       break;
 
@@ -8478,6 +8641,23 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`${N} = lv_arc_create(${PARENT});`);
       lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      // LVGL's lv_arc draws its inscribed circle aligned to the TOP-LEFT
+      // of the bounding box: center is at (x + r + pad_left, y + r + pad_top)
+      // where r = min(w, h) / 2. For non-square arcs this puts the
+      // visible arc in the top-left corner of the box, not the center.
+      // The editor preview centers the arc in the box, so without
+      // compensating padding the device renders the arc shifted toward
+      // whichever side (left or top) is wider. We add equal padding on
+      // the long axis to push LVGL's center back to the box center.
+      if (w.w > w.h) {
+        const padX = Math.floor((w.w - w.h) / 2);
+        lines.push(`lv_obj_set_style_pad_left(${N}, ${padX}, 0);`);
+        lines.push(`lv_obj_set_style_pad_right(${N}, ${padX}, 0);`);
+      } else if (w.h > w.w) {
+        const padY = Math.floor((w.h - w.w) / 2);
+        lines.push(`lv_obj_set_style_pad_top(${N}, ${padY}, 0);`);
+        lines.push(`lv_obj_set_style_pad_bottom(${N}, ${padY}, 0);`);
+      }
       lines.push(`lv_arc_set_range(${N}, ${w.props.min}, ${w.props.max});`);
       lines.push(`lv_arc_set_value(${N}, ${w.props.value});`);
       lines.push(`lv_obj_set_style_arc_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}), LV_PART_INDICATOR);`);
@@ -8553,6 +8733,15 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       lines.push(`lv_dropdown_set_options(${N}, "${opts}");`);
       if (w.props.selected) lines.push(`lv_dropdown_set_selected(${N}, ${w.props.selected});`);
+      // Text styles on LV_PART_MAIN affect the closed-state label.
+      // The opened popup list inherits font from the dropdown unless
+      // overridden, so a single style cascade is enough for both.
+      if (w.props.textColor) {
+        lines.push(`lv_obj_set_style_text_color(${N}, lv_color_hex(${hexToLvHex(w.props.textColor)}), 0);`);
+      }
+      if (w.props.fontSize) {
+        for (const l of emitFontStyle(N, w.props.fontSize)) lines.push(l);
+      }
       cb('LV_EVENT_VALUE_CHANGED');
       break;
     }
@@ -8574,6 +8763,15 @@ function genWidgetCode(w, screen, parentOverride) {
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
       lines.push(`lv_roller_set_options(${N}, "${opts}", ${mode});`);
       if (w.props.selected) lines.push(`lv_roller_set_selected(${N}, ${w.props.selected}, LV_ANIM_OFF);`);
+      // LV_PART_MAIN applies to every row including the highlighted one.
+      // The selected (center) row inherits from main; setting a single
+      // font/color style cascades through all visible options.
+      if (w.props.textColor) {
+        lines.push(`lv_obj_set_style_text_color(${N}, lv_color_hex(${hexToLvHex(w.props.textColor)}), 0);`);
+      }
+      if (w.props.fontSize) {
+        for (const l of emitFontStyle(N, w.props.fontSize)) lines.push(l);
+      }
       cb('LV_EVENT_VALUE_CHANGED');
       break;
     }
