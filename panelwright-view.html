@@ -973,6 +973,15 @@ function renderScreen(screenId) {
   $canvas.innerHTML = '';
   $canvas.classList.toggle('theme-tradigital', state.project.theme === 'tradigital');
 
+  // Honor per-screen background override so the viewer matches what
+  // runs on the device. Without an override, the theme's --lv-canvas-bg
+  // (white for lvgl_default, dark warm for tradigital) cascades.
+  if (screen.bgColor) {
+    $canvas.style.backgroundColor = screen.bgColor;
+  } else {
+    $canvas.style.backgroundColor = '';
+  }
+
   for (const w of screen.widgets) {
     renderOneWidget(w, $canvas, 0, 0);
   }
