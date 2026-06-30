@@ -8009,6 +8009,17 @@ function emitScreenBuilders(ctx) {
     const bg = effectiveScreenBg(s, state.theme);
     out.push('  lv_obj_set_style_bg_color(scr_' + s.name + ', lv_color_hex(' + hexToLvHex(bg) + '), 0);');
     out.push('  lv_obj_set_style_bg_opa(scr_' + s.name + ', LV_OPA_COVER, 0);');
+    // Zero out the screen's default padding so widget positions are
+    // screen-absolute. Without this, lv_obj_create's theme padding
+    // shifted every widget down and right by ~10 px (the LED at 30x30
+    // showed this most visibly), so the device output did not match
+    // the editor preview which has no equivalent padding.
+    out.push('  lv_obj_set_style_pad_all(scr_' + s.name + ', 0, 0);');
+    // Disable screen scrolling so widgets whose visual extent leaks past
+    // the screen edge (LED glow, shadow effects, button drop shadows)
+    // don't trigger phantom scrollbars or shift content. Touch UIs of
+    // this scale should not scroll the root anyway.
+    out.push('  lv_obj_clear_flag(scr_' + s.name + ', LV_OBJ_FLAG_SCROLLABLE);');
     out.push('');
     for (const w of s.widgets) {
       out.push('  // ' + w.type.toUpperCase() + ': ' + w.name);
