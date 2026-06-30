@@ -578,6 +578,13 @@ const RENDERERS = {
     const knob = document.createElement('div'); knob.className = 'knob';
     knob.style.left = (pct * 100) + '%';
     knob.style.background = 'linear-gradient(180deg, ' + lighten(w.props.color, 0.2) + ', ' + w.props.color + ')';
+    // Honor per-widget knob diameter (matches the editor's knobSize prop).
+    // The .knob CSS rule uses transform: translate(-50%, -50%) so we only
+    // need to override width/height; centering is automatic.
+    if (w.props.knobSize) {
+      knob.style.width = w.props.knobSize + 'px';
+      knob.style.height = w.props.knobSize + 'px';
+    }
     track.appendChild(fill); track.appendChild(knob); wrap.appendChild(track); el.appendChild(wrap);
     return el;
   },
