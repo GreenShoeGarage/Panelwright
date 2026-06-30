@@ -1266,6 +1266,12 @@ function setOverride(widgetId, propKey, value) {
 function renderCanvasOnly(screen) {
   $canvas.innerHTML = '';
   $canvas.classList.toggle('theme-tradigital', state.project.theme === 'tradigital');
+  // Reapply per-screen bgColor so it survives fill-override re-renders.
+  if (screen.bgColor) {
+    $canvas.style.backgroundColor = screen.bgColor;
+  } else {
+    $canvas.style.backgroundColor = '';
+  }
   for (const w of screen.widgets) {
     renderOneWidget(w, $canvas, 0, 0);
   }
