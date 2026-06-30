@@ -8665,8 +8665,18 @@ function genWidgetCode(w, screen, parentOverride) {
 
     case 'led':
       lines.push(`${N} = lv_led_create(${PARENT});`);
-      lines.push(`lv_obj_set_pos(${N}, ${w.x}, ${w.y});`);
+      // Use lv_obj_align with LV_ALIGN_TOP_LEFT instead of lv_obj_set_pos
+      // so the position is always interpreted relative to the parent's
+      // top-left, regardless of whatever align style LVGL's theme or
+      // the LED's constructor may have set. lv_obj_set_pos respects the
+      // object's current alignment, which can shift the visible LED by
+      // unexpected amounts. This is equivalent to set_pos when align
+      // is default, but explicit-anchor is the safer default.
+      lines.push(`lv_obj_align(${N}, LV_ALIGN_TOP_LEFT, ${w.x}, ${w.y});`);
       lines.push(`lv_obj_set_size(${N}, ${w.w}, ${w.h});`);
+      // Clear any inherited padding on the LED itself, in case the
+      // theme adds padding that shifts the visible body within bounds.
+      lines.push(`lv_obj_set_style_pad_all(${N}, 0, 0);`);
       lines.push(`lv_led_set_color(${N}, lv_color_hex(${hexToLvHex(w.props.color)}));`);
       lines.push(`lv_led_set_brightness(${N}, ${w.props.brightness});`);
       lines.push(`lv_led_${w.props.on ? 'on' : 'off'}(${N});`);
