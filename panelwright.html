@@ -7227,6 +7227,9 @@ function generateSplitCode() {
   // ui_init body: theme apply + every screen build + load default
   ui_cpp.push('void ui_init(void) {');
   if (themed) ui_cpp.push('  apply_theme();');
+  // Initialize image descriptors before any screen builder references
+  // them, matching the inline-mode emitSetupFunction logic.
+  if (ctx.images && ctx.images.length) ui_cpp.push('  init_image_dscs();');
   for (const s of state.screens) ui_cpp.push('  build_screen_' + s.name + '();');
   const def = defaultScreen();
   if (def) {
@@ -7823,6 +7826,16 @@ function emitWidgetHandles(ctx, keyword) {
 // builder code references these via &img_<name>_dsc. RGB565 bytes are
 // stored little-endian to match LVGL on the STM32H7. We format 12 bytes
 // per line so the compiler doesn't choke on very wide arrays.
+//
+// CRITICAL: Arduino compiles .ino as C++, and C++ before C++20 does not
+// accept C99 nested designated initializers (.header.magic = X). Even
+// C++20 only accepts flat designators. Two safe-across-standards options
+// remain: positional aggregate init (fragile against LVGL field-order
+// changes between releases) or runtime field-by-field assignment in a
+// helper called from setup(). We use the latter so the codegen is
+// portable across LVGL minor versions without tracking struct layout.
+// The descriptors live in RAM (a few dozen bytes per image; the heavy
+// data array stays in flash via static const uint8_t).
 function emitImageAssets(ctx) {
   if (!ctx.images.length) return [];
   const v9 = (state.meta.lvglVersion || 'v9') === 'v9';
@@ -7849,30 +7862,43 @@ function emitImageAssets(ctx) {
       }
     }
     out.push('};');
-    // The descriptor wires the byte array into LVGL's image system.
-    // v9 uses LV_COLOR_FORMAT_RGB565; v8 uses LV_IMG_CF_TRUE_COLOR with
-    // the always_zero header field set explicitly.
-    out.push('static const ' + dscType + ' img_' + img.name + '_dsc = {');
-    if (v9) {
-      out.push('  .header.magic = LV_IMAGE_HEADER_MAGIC,');
-      out.push('  .header.cf = LV_COLOR_FORMAT_RGB565,');
-      out.push('  .header.flags = 0,');
-      out.push('  .header.w = ' + img.w + ',');
-      out.push('  .header.h = ' + img.h + ',');
-      out.push('  .header.stride = ' + (img.w * 2) + ',');
-      out.push('  .data_size = sizeof(img_' + img.name + '_data),');
-      out.push('  .data = img_' + img.name + '_data,');
-    } else {
-      out.push('  .header.always_zero = 0,');
-      out.push('  .header.w = ' + img.w + ',');
-      out.push('  .header.h = ' + img.h + ',');
-      out.push('  .header.cf = LV_IMG_CF_TRUE_COLOR,');
-      out.push('  .data_size = sizeof(img_' + img.name + '_data),');
-      out.push('  .data = img_' + img.name + '_data,');
-    }
-    out.push('};');
+    // Forward-declare the descriptor; init_image_dscs() fills the fields.
+    // No 'const' so we can assign at runtime.
+    out.push('static ' + dscType + ' img_' + img.name + '_dsc;');
     out.push('');
   }
+
+  // Runtime initializer for every image descriptor. Called from setup()
+  // (inline mode) or ui_init() (split mode) BEFORE the screen builders
+  // reference &img_<name>_dsc. Field-by-field assignment is portable
+  // across every C++ standard Arduino supports and does not rely on
+  // LVGL's internal struct field order.
+  out.push('// Populate image descriptors at runtime (portable across');
+  out.push('// every C++ standard Arduino supports, unlike .header.field');
+  out.push('// designated initializers which are a C99 construct).');
+  out.push('static void init_image_dscs(void) {');
+  for (const img of ctx.images) {
+    const N = 'img_' + img.name;
+    if (v9) {
+      out.push('  ' + N + '_dsc.header.magic = LV_IMAGE_HEADER_MAGIC;');
+      out.push('  ' + N + '_dsc.header.cf = LV_COLOR_FORMAT_RGB565;');
+      out.push('  ' + N + '_dsc.header.flags = 0;');
+      out.push('  ' + N + '_dsc.header.w = ' + img.w + ';');
+      out.push('  ' + N + '_dsc.header.h = ' + img.h + ';');
+      out.push('  ' + N + '_dsc.header.stride = ' + (img.w * 2) + ';');
+      out.push('  ' + N + '_dsc.data_size = sizeof(' + N + '_data);');
+      out.push('  ' + N + '_dsc.data = ' + N + '_data;');
+    } else {
+      out.push('  ' + N + '_dsc.header.always_zero = 0;');
+      out.push('  ' + N + '_dsc.header.w = ' + img.w + ';');
+      out.push('  ' + N + '_dsc.header.h = ' + img.h + ';');
+      out.push('  ' + N + '_dsc.header.cf = LV_IMG_CF_TRUE_COLOR;');
+      out.push('  ' + N + '_dsc.data_size = sizeof(' + N + '_data);');
+      out.push('  ' + N + '_dsc.data = ' + N + '_data;');
+    }
+  }
+  out.push('}');
+  out.push('');
   return out;
 }
 
@@ -8012,6 +8038,10 @@ function emitSetupFunction(ctx, opts) {
   if (inlineUiInit) {
     out.push('  // ---- UI (build first so screen renders before any peripheral risk) ----');
     if (state.theme === 'tradigital') out.push('  apply_theme();');
+    // Image descriptors must be populated before any screen builder
+    // references them (the build_screen_* functions call
+    // lv_image_set_src(&img_<name>_dsc)).
+    if (ctx.images && ctx.images.length) out.push('  init_image_dscs();');
     for (const s of state.screens) out.push('  build_screen_' + s.name + '();');
     const def = defaultScreen();
     if (def) out.push('  lv_scr_load(scr_' + def.name + ');');
