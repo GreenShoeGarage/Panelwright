@@ -3214,15 +3214,14 @@ function renderSlider(w) {
   knob.className = 'knob';
   knob.style.left = (pct * 100) + '%';
   knob.style.background = w.props.color;
-  // Per-widget knob diameter. The default-styled knob is positioned via
-  // a CSS rule (.knob) at a fixed size; an explicit knobSize overrides
-  // both width and height, and we adjust the margin so the knob stays
-  // centered on the track.
+  // Per-widget knob diameter. The .knob CSS rule centers the element via
+  // `top: 50%; transform: translate(-50%, -50%)`, which already handles
+  // any size. We only need to override width/height; adding negative
+  // margins would double-shift and push the knob off-center vertically
+  // (it would float above the track instead of sitting on it).
   const knobSize = w.props.knobSize || 16;
   knob.style.width = knobSize + 'px';
   knob.style.height = knobSize + 'px';
-  knob.style.marginLeft = (-knobSize / 2) + 'px';
-  knob.style.marginTop = (-knobSize / 2) + 'px';
   track.appendChild(fill);
   track.appendChild(knob);
   wrap.appendChild(track);
